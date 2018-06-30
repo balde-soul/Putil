@@ -99,13 +99,26 @@ class CrossSplit:
         >>> train_test_split(y, shuffle=False)
         [[0, 1, 2], [3, 4]]
         """
-        self.Data = dict()
-        self.Element = len(arrays)
-        if self.Element == 0:
+        self._Data = dict()
+        self._Element = len(arrays)
+        if self._Element == 0:
             raise ValueError("At least one array required as input")
         assert False not in [type(i) == np.ndarray for i in arrays], \
             'element of arrays must be numpy.ndarray'
+        self._Array = arrays
         pass
+
+    @property
+    def Array(self):
+        return self._Array
+
+    @property
+    def Element(self):
+        return self._Element
+
+    @property
+    def Data(self):
+        return self._Data
 
     def mutual_exclusion(self, **options):
         """
@@ -113,16 +126,37 @@ class CrossSplit:
         :param options:
         :return:
         """
-        axis = options.pop('axis', default=np.zeros([self.Element]))
         n_cross = options.pop('n_cross', 'default')
         if n_cross == 'default':
             print('unspecified n_cross, use default: 5')
+            n_cross = 5
             pass
         print('>>>>>>>>>>>>cross split database use n_cross: ', n_cross, '>>>>>>>>>>>>')
         if options:
             raise TypeError("Invalid parameters passed: %s" % str(options))
-
-        for i in range(0, self.Element):
-            a = 1
+        test_size = self._Array[0].shape[0] / n_cross
+        assert np.ceil(test_size) == test_size, 'array data should be {0} cross exact division'.format(n_cross)
+        remain = self.Array
+        temp = None
+        for i in range(0, n_cross - 1):
+            temp = sms.train_test_split(remain, test_size=int(test_size))
+            remain = temp[0: self._Element]
+            self._Data[i] = temp[self._Element:]
+        self._Data[n_cross - 1] = temp
         pass
+    pass
+
+
+def __test_mutual_exclusion():
+    data = np.reshape(np.array(list(range(0, 1000)), dtype=np.float32), [250, 4])
+    data2 = np.reshape(np.array(list(range(0, 250)), dtype=np.float32), [250, 1])
+    data3 = np.reshape(np.array(list(range(0, 2500)), dtype=np.float32), [250, 10])
+    split = CrossSplit(data, data2, data3)
+    split.mutual_exclusion(n_cross=10)
+    assert list(split.Data.keys()) == [str(i) for i in range(0, 10)], 'cross number does not match'
+    assert False not in []
+    pass
+
+if __name__ == '__main__':
+    __test_mutual_exclusion()
     pass
