@@ -4,7 +4,39 @@ import sklearn as skl
 import sklearn.model_selection as sms
 import numpy as np
 
+def check_mutual_exclusion_param_equal(*now, **params):
+    """
+    判断是否存在参数一致的单元
+    :param now:目前类型中所有
+    :param params:
+    :return:
+    """
+    n_cross = params.pop('n_cross')
+    for param_dict, index in zip(now, list(range(0, len(now)))):
+        if n_cross == param_dict['n_cross']:
+            return False, index
+        else:
+            pass
+        pass
+    return True, len(now)
 
+def pack_param(all_param_dict, **options):
+    """
+    打包_type类型的参数集为tuple（顺序强制统一）
+    :param all_param_dict:
+    :param options:
+    :return:
+    """
+    _type = options.pop('type')
+    amount = len(all_param_dict[_type].keys())
+    param_dict = all_param_dict[_type]
+    param = list()
+    [param.append(param_dict[i]) for i in range(0, amount)]
+    return param
+
+# 数据生成，随机打乱
+# 可以反向索引
+# 单源数据，多种类数据生成
 class CrossSplit:
     """
     使用sklearn.model_selection
@@ -99,13 +131,16 @@ class CrossSplit:
         >>> train_test_split(y, shuffle=False)
         [[0, 1, 2], [3, 4]]
         """
-        self._Data = dict()
         self._Element = len(arrays)
         if self._Element == 0:
             raise ValueError("At least one array required as input")
         assert False not in [type(i) == np.ndarray for i in arrays], \
             'element of arrays must be numpy.ndarray'
         self._Array = arrays
+        self._Data = dict()
+        self._Data['mutual_exclusion'] = dict()
+        self._Param = dict()
+        self._Param['mutual_exclusion'] = dict()
         pass
 
     @property
@@ -120,31 +155,90 @@ class CrossSplit:
     def Data(self):
         return self._Data
 
-    def mutual_exclusion(self, **options):
+    @property
+    def Param(self):
+        return self._Param
+
+    def __mutual_exclusion(self, **options):
         """
         axis=0, 分割第一维度
         :param options:
         :return:
         """
-        n_cross = options.pop('n_cross', 'default')
-        if n_cross == 'default':
-            print('unspecified n_cross, use default: 5')
-            n_cross = 5
+        n_cross = options.pop('n_cross')
+        new_index = options.pop('new_index', None)
+        # generate new_index
+        if new_index is None:
+            new_index = len(self._Param['mutual_exclusion'].keys())
             pass
+        # update: _Param collection
+        self._Param['mutual_exclusion'][new_index] = dict()
+        self._Param['mutual_exclusion'][new_index]['n_cross'] = n_cross
         print('>>>>>>>>>>>>cross split database use n_cross: ', n_cross, '>>>>>>>>>>>>')
         if options:
             raise TypeError("Invalid parameters passed: %s" % str(options))
         test_size = self._Array[0].shape[0] / n_cross
         assert np.ceil(test_size) == test_size, 'array data should be {0} cross exact division'.format(n_cross)
         remain = self.Array
+        data = dict()
         temp = None
         for i in range(0, n_cross - 1):
-            temp = sms.train_test_split(remain, test_size=int(test_size))
-            remain = temp[0: self._Element]
-            self._Data[i] = temp[self._Element:]
-        self._Data[n_cross - 1] = temp
+            temp = sms.train_test_split(*remain, test_size=int(test_size))
+            remain = list()
+            data[i] = list()
+            for j, index in zip(temp, range(0, len(temp))):
+                if index % 2 == 0:
+                    remain.append(j)
+                else:
+                    data[i].append(j)
+                pass
+            remain = tuple(remain)
+        data[n_cross - 1] = list(remain)
+        self._Data['mutual_exclusion'][new_index] = data
+        return new_index
         pass
-    pass
+
+    #  数据分割统一调用函数，判断是否重新分割
+    def __deal_data(self, func, flags, **options):
+        if flags is True:
+            func(**options)
+        else:
+            pass
+        pass
+
+    def gen_mutual_exclusion(self, **options):
+        n_cross = options.pop('n_cross', 'default')
+        #标志：是否强制新建分割数据
+        force_re_split = options.pop('force_re_split', False)
+        if n_cross == 'default':
+            print('unspecified n_cross, use default: 5')
+            n_cross = 5
+            pass
+        #   检查是否存在同等参数的数据分割，存在则不再进行分割，而是使用存在数已经分割的数据
+        if force_re_split is True:
+            flags = True
+            index = None
+            self.__deal_data(self.__mutual_exclusion(), flags=flags, n_cross=n_cross, new_index=index)
+        else:
+            flags, index = check_mutual_exclusion_param_equal(*pack_param(self._Param, type='mutual_exclusion'), n_cross=n_cross)
+            self.__deal_data(self.__mutual_exclusion, flags=flags, n_cross=n_cross, new_index=index)
+        #  循环参数数据
+        max = len(list(self._Data['mutual_exclusion'][index].keys()))
+        index_data = list()
+        total = False
+        has = False
+        while True:
+            if index_data == []:
+                index_data = list(range(0, max))
+                if has is True:
+                    total = True
+                has = True
+                pass
+            for i in index_data:
+                yield  self._Data['mutual_exclusion'][index][i], total
+                pass
+            pass
+        pass
 
 
 def __test_mutual_exclusion():
@@ -152,8 +246,17 @@ def __test_mutual_exclusion():
     data2 = np.reshape(np.array(list(range(0, 250)), dtype=np.float32), [250, 1])
     data3 = np.reshape(np.array(list(range(0, 2500)), dtype=np.float32), [250, 10])
     split = CrossSplit(data, data2, data3)
-    split.mutual_exclusion(n_cross=10)
-    assert list(split.Data.keys()) == [str(i) for i in range(0, 10)], 'cross number does not match'
+    gen1 = split.gen_mutual_exclusion(n_cross=10)
+    gen1.__next__()
+    assert len(split.Param['mutual_exclusion'].keys()) == 1, 'one Param append error'
+    assert split.Param['mutual_exclusion'][0]['n_cross'] == 10, 'one Param update error'
+    assert len(split.Data['mutual_exclusion'].keys()) == 1, 'one Data append error'
+    gen2 = split.gen_mutual_exclusion(n_cross=5)
+    gen2.__next__()
+    assert len(split.Param['mutual_exclusion'].keys()) == 2, 'two Param append error'
+    assert split.Param['mutual_exclusion'][1]['n_cross'] == 5, 'two Param update error'
+    assert len(split.Data['mutual_exclusion'].keys()) == 2, 'two Data append error'
+    # todo: more test
     assert False not in []
     pass
 
