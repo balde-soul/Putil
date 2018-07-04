@@ -3,6 +3,7 @@
 import sklearn as skl
 import sklearn.model_selection as sms
 import numpy as np
+from colorama import Fore
 
 def check_mutual_exclusion_param_equal(*now, **params):
     """
@@ -224,17 +225,11 @@ class CrossSplit:
             self.__deal_data(self.__mutual_exclusion, flags=flags, n_cross=n_cross, new_index=index)
         #  循环参数数据
         max = len(list(self._Data['mutual_exclusion'][index].keys()))
-        index_data = list()
         total = False
-        has = False
         while True:
-            if index_data == []:
-                index_data = list(range(0, max))
-                if has is True:
+            for i in range(0, max):
+                if i == max - 1:
                     total = True
-                has = True
-                pass
-            for i in index_data:
                 yield  self._Data['mutual_exclusion'][index][i], total
                 pass
             pass
@@ -247,7 +242,11 @@ def __test_mutual_exclusion():
     data3 = np.reshape(np.array(list(range(0, 2500)), dtype=np.float32), [250, 10])
     split = CrossSplit(data, data2, data3)
     gen1 = split.gen_mutual_exclusion(n_cross=10)
-    gen1.__next__()
+    for i in range(0, 30):
+        data, total = gen1.__next__()
+        if i == 9:
+            assert total == True, Fore.RED + 'stop error'
+            break
     assert len(split.Param['mutual_exclusion'].keys()) == 1, 'one Param append error'
     assert split.Param['mutual_exclusion'][0]['n_cross'] == 10, 'one Param update error'
     assert len(split.Data['mutual_exclusion'].keys()) == 1, 'one Data append error'
