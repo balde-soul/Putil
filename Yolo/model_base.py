@@ -141,8 +141,20 @@ def place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     assert len(prior_h) == len(prior_w), Fore.RED + 'len of the prior_h and prior_w should be the same'
     cluster_object_count = len(prior_h)
     with tf.name_scope('gt_place_process'):
-        # fixme: dims error
-        gt_process['class'] = tf.one_hot(gt_place_result['class'], class_num, 1.0, 0.0, axis=-1)
+        before_one_hot = tf.shape(gt_place_result['class'])
+        gt_process_one_hot = tf.one_hot(gt_place_result['class'], class_num, 1.0, 0.0, axis=-1)
+        after_one_hot = tf.shape(gt_process_one_hot)
+        reshape_last = tf.multiply(after_one_hot[-1], after_one_hot[-2])
+        shape = tf.concat(
+            [tf.slice(
+                tf.transpose(before_one_hot),
+                [1],
+                [-1]
+            ),
+                [gt_process_one_hot.get_shape().as_list()[-1] * gt_process_one_hot.get_shape().as_list()[-2] ]],
+            axis=0
+        )
+        gt_process['class'] = tf.reshape(gt_process_one_hot, shape)
         gt_process['y'] = gt_place_result['y']
         gt_process['x'] = gt_place_result['x']
         y_pro = tf.div(gt_place_result['y'], scalar)
