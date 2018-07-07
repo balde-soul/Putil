@@ -9,11 +9,22 @@ def append_yolo2(
         other_new_feature,
         feature_chanel,
         class_num,
-        cluster_object_count,
         prior_h,
         prior_w,
         scalar,
 ):
+    """
+    
+    :param other_new_feature: feature from base net output
+    :param feature_chanel: other_new_feature channel
+    :param class_num: the count of the class with background
+    :param prior_h: prior height list or 1-D ndarray
+    :param prior_w: prior width list or 1-D ndarray
+    :param scalar: down sample scalar
+    :return: 
+    """
+    assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
+    cluster_object_count = len(prior_w)
     pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
     split_pro_result = split_pro(pro, class_num=class_num, cluster_object_count=cluster_object_count)
     place_gt_result = PlaceGT(cluster_object_count=cluster_object_count).Place
@@ -21,11 +32,11 @@ def append_yolo2(
     pro_result_read_result = pro_result_reader(split_pro_result=split_pro_result,
                                                cluster_object_count=cluster_object_count)
     calc_iou_result = calc_iou(pro_result_read_result=pro_result_read_result, place_process_result=place_process_result,
-                               scalar=scalar,prior_h=prior_h, prior_w=prior_w)
+                               scalar=scalar, prior_h=prior_h, prior_w=prior_w)
     loss = calc_loss(split_pro_result=split_pro_result, gt_process_result=place_process_result,
                      calc_iou_result=calc_iou_result)
     return loss, place_gt_result
-    pass
+
 
 
 # todo: generator placeholder for total feed, designed to easy used and generate
@@ -346,5 +357,5 @@ def calc_loss(split_pro_result, gt_process_result, calc_iou_result):
 
 if __name__ == '__main__':
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
-    loss, place = append_yolo2(feature_feed, 100, 3, 4, [10, 5, 3, 4], [2, 3, 4, 8], 32)
+    loss, place = append_yolo2(feature_feed, 100, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
     pass
