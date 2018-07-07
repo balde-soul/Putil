@@ -1,0 +1,25 @@
+{
+  "Static":{
+    "Init": ["mrsa", "zero"],
+    "Regularize": ["l2", "l1"]
+  },
+  "Arch":[
+    {
+      "Name": null,
+      "Grow": 3,
+      "Depth": 3,
+      "Weight": { "Height": 3, "Width": 3, "Init": 0 },
+      "Bias": { "Init": 0 },
+      "BatchNormal": true,
+      "MovingAverage": [true, 0.999],
+      "Dropout": [true, 0.1],
+      "Transition": {
+        "Compress":[true, 0.2]
+      }
+    },
+
+    {
+
+    }
+  ]
+}
