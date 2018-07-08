@@ -26,14 +26,14 @@ def append_yolo2_loss(
     assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
     cluster_object_count = len(prior_w)
     # pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
-    split_pro_result = split_pro(other_new_feature, class_num=class_num, cluster_object_count=cluster_object_count)
-    place_gt_result = PlaceGT(cluster_object_count=cluster_object_count).Place
-    place_process_result = place_process(place_gt_result, class_num, prior_h, prior_w, scalar=scalar)
-    pro_result_read_result = pro_result_reader(split_pro_result=split_pro_result,
+    split_pro_result = __split_pro(other_new_feature, class_num=class_num, cluster_object_count=cluster_object_count)
+    place_gt_result = __PlaceGT(cluster_object_count=cluster_object_count).Place
+    place_process_result = __place_process(place_gt_result, class_num, prior_h, prior_w, scalar=scalar)
+    pro_result_read_result = __pro_result_reader(split_pro_result=split_pro_result,
                                                cluster_object_count=cluster_object_count)
-    calc_iou_result = calc_iou(pro_result_read_result=pro_result_read_result, place_process_result=place_process_result,
+    calc_iou_result = __calc_iou(pro_result_read_result=pro_result_read_result, place_process_result=place_process_result,
                                scalar=scalar, prior_h=prior_h, prior_w=prior_w)
-    loss = calc_loss(split_pro_result=split_pro_result, gt_process_result=place_process_result,
+    loss = __calc_loss(split_pro_result=split_pro_result, gt_process_result=place_process_result,
                      calc_iou_result=calc_iou_result)
     return loss, place_gt_result
 
@@ -41,11 +41,13 @@ def append_yolo2_loss(
 
 # todo: generator placeholder for total feed, designed to easy used and generate
 # gt is the standard data
-# 'class' : one_hot include background and all kind of object
+# 'class' : int include background and all kind of object
 # 'p_mask' : set 1.0 in the cell location which has an object and set 0.0 for other
 # 'n_mask' : set 1.0 in the cell location which does not contain any object and set 0.0 for other
+# 'y': object center location y shift from the top left point int the cell, set 0.0 which cell does not contain object
+# 'x': object center location x shift from the top left point int the cell, set 0.0 which cell does not contain object
 # relationship between real (center_y, center_x, height, width) and (y_shift, x_shift, h_shift, w_shift):
-class PlaceGT:
+class __PlaceGT:
     def __init__(self, cluster_object_count):
         gt_place = dict()
         with tf.name_scope('GT'):
@@ -53,7 +55,7 @@ class PlaceGT:
             # set 0.0 in the cell which does not contain any object except background
             gt_place['y'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
             gt_place['x'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
-            # !!!!important: because of the follow process in (place_process), hw should not contain negative and zero
+            # !!!!important: because of the follow process in (__place_process), hw should not contain negative and zero
             # !!!!suggest fill prior value in the cell location which does not contain any object
             gt_place['h'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
             gt_place['w'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
@@ -118,7 +120,7 @@ def gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count):
 
 # todo: the pro tensor is not easy to used in calc loss, make same process in this function, this function should make
 # todo: sure gradient can propagate directly
-def split_pro(pro, class_num, cluster_object_count):
+def __split_pro(pro, class_num, cluster_object_count):
     with tf.name_scope('split'):
         class_list = list()
         anchor_list = list()
@@ -138,7 +140,7 @@ def split_pro(pro, class_num, cluster_object_count):
 
 
 # todo: the result of place_gt are not easy to used to calc loss, make some process in the function
-def place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
+def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     """
     process the placeholder for using in the network easier
     :param gt_place_result: the result of placeholder
@@ -189,10 +191,10 @@ def place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
 
 
 # todo: to read the pro result, avoid the gradient propagate from precision loss to the network twice
-def pro_result_reader(split_pro_result, cluster_object_count):
+def __pro_result_reader(split_pro_result, cluster_object_count):
     """
     read the pro result, avoid the gradient propagate from precision loss to the network twice
-    :param split_pro_result: split_pro result
+    :param split_pro_result: __split_pro result
     :param cluster_object_count: prior cluster count
     :return: 
     """
@@ -218,7 +220,7 @@ def pro_result_reader(split_pro_result, cluster_object_count):
 
 
 # todo:use gt_anchor and anchor_pro to calc iou， output for calc precision loss
-def calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w):
+def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w):
     yt = place_process_result['y']
     xt = place_process_result['x']
     ht = place_process_result['h']
@@ -238,7 +240,7 @@ def calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prio
 
 
 # todo: generate the loss op
-def calc_loss(split_pro_result, gt_process_result, calc_iou_result):
+def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     lambda_obj = 1.0
     lambda_noobj = 0.1
     anchor_pro = split_pro_result['anchor']
