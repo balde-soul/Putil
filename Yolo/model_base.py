@@ -5,13 +5,13 @@ from colorama import Fore
 assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.6.0'
 
 
-def append_yolo2(
+def append_yolo2_loss(
         other_new_feature,
         feature_chanel,
         class_num,
         prior_h,
         prior_w,
-        scalar,
+        scalar
 ):
     """
     
@@ -25,8 +25,8 @@ def append_yolo2(
     """
     assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
     cluster_object_count = len(prior_w)
-    pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
-    split_pro_result = split_pro(pro, class_num=class_num, cluster_object_count=cluster_object_count)
+    # pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
+    split_pro_result = split_pro(other_new_feature, class_num=class_num, cluster_object_count=cluster_object_count)
     place_gt_result = PlaceGT(cluster_object_count=cluster_object_count).Place
     place_process_result = place_process(place_gt_result, class_num, prior_h, prior_w, scalar=scalar)
     pro_result_read_result = pro_result_reader(split_pro_result=split_pro_result,
@@ -357,5 +357,6 @@ def calc_loss(split_pro_result, gt_process_result, calc_iou_result):
 
 if __name__ == '__main__':
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
-    loss, place = append_yolo2(feature_feed, 100, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
+    yolo_feature = gen_pro(feature_feed, 100, 3, 4)
+    loss, place = append_yolo2_loss(feature_feed, 100, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
     pass
