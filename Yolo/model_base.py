@@ -6,8 +6,7 @@ assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.
 
 
 def append_yolo2_loss(
-        other_new_feature,
-        feature_chanel,
+        yolo2_net_feature,
         class_num,
         prior_h,
         prior_w,
@@ -15,8 +14,7 @@ def append_yolo2_loss(
 ):
     """
     
-    :param other_new_feature: feature from base net output
-    :param feature_chanel: other_new_feature channel
+    :param yolo2_net_feature: feature from base net output
     :param class_num: the count of the class with background
     :param prior_h: prior height list or 1-D ndarray
     :param prior_w: prior width list or 1-D ndarray
@@ -26,20 +24,34 @@ def append_yolo2_loss(
     assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
     cluster_object_count = len(prior_w)
     # pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
-    split_pro_result = __split_pro(other_new_feature, class_num=class_num, cluster_object_count=cluster_object_count)
+    split_pro_result = __split_pro(
+        yolo2_net_feature,
+        class_num=class_num,
+        cluster_object_count=cluster_object_count)
     place_gt_result = __PlaceGT(cluster_object_count=cluster_object_count).Place
-    place_process_result = __place_process(place_gt_result, class_num, prior_h, prior_w, scalar=scalar)
-    pro_result_read_result = __pro_result_reader(split_pro_result=split_pro_result,
-                                               cluster_object_count=cluster_object_count)
-    calc_iou_result = __calc_iou(pro_result_read_result=pro_result_read_result, place_process_result=place_process_result,
-                               scalar=scalar, prior_h=prior_h, prior_w=prior_w)
-    loss = __calc_loss(split_pro_result=split_pro_result, gt_process_result=place_process_result,
-                     calc_iou_result=calc_iou_result)
+    place_process_result = __place_process(
+        place_gt_result,
+        class_num,
+        prior_h,
+        prior_w,
+        scalar=scalar)
+    pro_result_read_result = __pro_result_reader(
+        split_pro_result=split_pro_result,
+        cluster_object_count=cluster_object_count)
+    calc_iou_result = __calc_iou(
+        pro_result_read_result=pro_result_read_result,
+        place_process_result=place_process_result,
+        scalar=scalar,
+        prior_h=prior_h,
+        prior_w=prior_w)
+    loss = __calc_loss(
+        split_pro_result=split_pro_result,
+        gt_process_result=place_process_result,
+        calc_iou_result=calc_iou_result)
     return loss, place_gt_result
 
 
-
-# todo: generator placeholder for total feed, designed to easy used and generate
+# generator placeholder for total feed, designed to easy used and generate
 # gt is the standard data
 # 'class' : int include background and all kind of object
 # 'p_mask' : set 1.0 in the cell location which has an object and set 0.0 for other
@@ -103,8 +115,9 @@ class __PlaceGT:
         return self._gt_place['n_mask']
 
 
-# todo: this function is used to generate the standard pro in yolo-version2 network
-def gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count):
+# : this function is used to generate the standard pro in yolo-version2 network
+def gen_pro(other_new_feature, class_num, cluster_object_count):
+    feature_chanel = other_new_feature.shape.as_list()[-1]
     with tf.name_scope('yolo_pro'):
         weight = tf.get_variable(
             name='compress_w', shape=[1, 1, feature_chanel, cluster_object_count * (class_num + 4 + 1)],
@@ -118,8 +131,8 @@ def gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count):
     pass
 
 
-# todo: the pro tensor is not easy to used in calc loss, make same process in this function, this function should make
-# todo: sure gradient can propagate directly
+# : the pro tensor is not easy to used in calc loss, make same process in this function, this function should make
+# : sure gradient can propagate directly
 def __split_pro(pro, class_num, cluster_object_count):
     with tf.name_scope('split'):
         class_list = list()
@@ -139,7 +152,7 @@ def __split_pro(pro, class_num, cluster_object_count):
     pass
 
 
-# todo: the result of place_gt are not easy to used to calc loss, make some process in the function
+# : the result of place_gt are not easy to used to calc loss, make some process in the function
 def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     """
     process the placeholder for using in the network easier
@@ -190,7 +203,7 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     return gt_process
 
 
-# todo: to read the pro result, avoid the gradient propagate from precision loss to the network twice
+# : to read the pro result, avoid the gradient propagate from precision loss to the network twice
 def __pro_result_reader(split_pro_result, cluster_object_count):
     """
     read the pro result, avoid the gradient propagate from precision loss to the network twice
@@ -219,7 +232,7 @@ def __pro_result_reader(split_pro_result, cluster_object_count):
     pass
 
 
-# todo:use gt_anchor and anchor_pro to calc iou， output for calc precision loss
+# :use gt_anchor and anchor_pro to calc iou， output for calc precision loss
 def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w):
     yt = place_process_result['y']
     xt = place_process_result['x']
@@ -239,7 +252,7 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
     pass
 
 
-# todo: generate the loss op
+# : generate the loss op
 def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     lambda_obj = 1.0
     lambda_noobj = 0.1
@@ -359,6 +372,6 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
 
 if __name__ == '__main__':
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
-    yolo_feature = gen_pro(feature_feed, 100, 3, 4)
-    loss, place = append_yolo2_loss(feature_feed, 100, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
+    yolo_feature = gen_pro(feature_feed, 3, 4)
+    loss, place = append_yolo2_loss(feature_feed, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
     pass
