@@ -19,10 +19,12 @@ class yolo_cluster:
     生成pd文件：
              cluseter_count_1     cluseter_count_2
 
-        type      H, W              H, W, H, W
+        type      H, W              H, W||H, W
     """
     def __init__(self, array, **options):
         """
+        options: max_cluster: limit the max cluster num for the cluster
+        options: result_path: the path where saving the result
         array:shape:[sampel_count, 2],[N, :] = [Height, Width]
         """
         self._GT = array
@@ -50,7 +52,10 @@ class yolo_cluster:
         for i in range(1, self._MaxCluster + 1):
             kmean = clu.KMeans(n_clusters=i, precompute_distances='auto', algorithm='auto', random_state=0)
             kmean.fit(self._GT)
-            self.TotalPd.loc['k-means', i] = str(kmean.cluster_centers_).replace('[', '').replace(']', '').replace(',', ' ')
+            store_h_w_str = ''
+            for j in kmean.cluster_centers_:
+                store_h_w_str += '||' + str(j[0]) + ',' + str(j[1])
+            self.TotalPd.loc['k-means', i] = store_h_w_str[2: ]
             m_iou = list()
             for j in self._GT:
                 one_gt_iou = list()
@@ -97,7 +102,33 @@ class yolo_cluster:
         self.TotalPd.to_excel(writer, sheet_name='h-w')
         self._IoUPd.to_excel(writer, sheet_name='iou')
         writer.save()
-    pass
+        pass
+
+# extract the prior height and width from the h_w_iou_file
+def extract_prior(self, h_w_iou_file, **options):
+    num = options.pop('num', None)
+    assert (num is None) or (type(num) == type(int)), Fore.RED + 'num not support'
+    _type = options.pop('cluster_type', 'k-means')
+    prior_h = list()
+    prior_w = list()
+    # specify num , get prior_h, prior_w
+    if num is not None:
+        data_sheet = pd.read_excel(h_w_iou_file, sheet_name='h-w', index_col=0)
+        prior_h_w = data_sheet[num][_type]
+        count = 0
+        split = prior_h_w.split("||")
+        for one in split:
+            s = one.split(',')
+            prior_h.append(float(s[0]))
+            prior_w.append(float(s[1]))
+            pass
+        return prior_h, prior_w
+    # todo: if num has not been specified,
+    # todo: we use the iou shhet to get the max iou and the get the prior_h and prior_w
+    else:
+        h_w_sheet = pd.read_excel(h_w_iou_file, sheet_name='h-w', index_col=0)
+        iou_sheet = pd.read_excel(h_w_iou_file, sheet_name='h-w', index_col=0)
+pass
 
 
 def __test_yolo_cluster_init():
