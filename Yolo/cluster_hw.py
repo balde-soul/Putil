@@ -43,7 +43,7 @@ class yolo_cluster:
         self._IoUPd = self._IoUPd.set_index('type')
         pass
 
-    def __kmeans(self, **options):
+    def __kmeans(self, iou_image_name, distribution_image_name):
         miou = list()
         # fig = plt.figure()
         # plt.subplots(121)
@@ -78,19 +78,22 @@ class yolo_cluster:
         plt.close()
         pass
 
-    def __cluster(self, c_type,  **options):
+    def __cluster(self, c_type,  iou_image_name, distribution_image_name, **options):
         if c_type == 'k-means':
-            self.__kmeans()
+            self.__kmeans(iou_image_name, distribution_image_name)
             pass
         pass
 
     def analysis(self, *c_type, **options):
+        iou_image_name = options.pop('iou_image_name', 'n_cluster-mIoU.png')
+        distribution_image_name = options.pop('distribution_image_name', 'gt-hw-distribution.png')
+        h_w_iou_file_name = options.pop('h_w_iou_file_name', 'h-w-analysis.xlsx')
         for i in c_type:
             assert i in cluseter_type, Fore.RED + i + 'is not supported'
         for _c_type in c_type:
-            self.__cluster(_c_type)
+            self.__cluster(_c_type, iou_image_name, distribution_image_name)
             pass
-        writer = pd.ExcelWriter(os.path.join(self._AnalysisResultPath, 'h-w-analysis.xlsx'))
+        writer = pd.ExcelWriter(os.path.join(self._AnalysisResultPath, h_w_iou_file_name))
         self.TotalPd.to_excel(writer, sheet_name='h-w')
         self._IoUPd.to_excel(writer, sheet_name='iou')
         writer.save()
