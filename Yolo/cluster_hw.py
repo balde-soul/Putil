@@ -105,7 +105,7 @@ class yolo_cluster:
         pass
 
 # extract the prior height and width from the h_w_iou_file
-def extract_prior(self, h_w_iou_file, **options):
+def extract_prior(h_w_iou_file, **options):
     num = options.pop('num', None)
     assert (num is None) or (type(num) == type(int)), Fore.RED + 'num not support'
     _type = options.pop('cluster_type', 'k-means')
