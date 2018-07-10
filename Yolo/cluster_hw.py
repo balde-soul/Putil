@@ -107,7 +107,7 @@ class yolo_cluster:
 # extract the prior height and width from the h_w_iou_file
 def extract_prior(h_w_iou_file, **options):
     num = options.pop('num', None)
-    assert (num is None) or (type(num) == type(int)), Fore.RED + 'num not support'
+    assert (num is None) or (type(num) != type(int)), Fore.RED + 'num not support'
     _type = options.pop('cluster_type', 'k-means')
     prior_h = list()
     prior_w = list()
@@ -126,6 +126,7 @@ def extract_prior(h_w_iou_file, **options):
     # todo: if num has not been specified,
     # todo: we use the iou shhet to get the max iou and the get the prior_h and prior_w
     else:
+        print(Fore.RED + 'this method is not conform')
         h_w_sheet = pd.read_excel(h_w_iou_file, sheet_name='h-w', index_col=0)
         iou_sheet = pd.read_excel(h_w_iou_file, sheet_name='h-w', index_col=0)
 pass
