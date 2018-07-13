@@ -104,6 +104,7 @@ class yolo_cluster:
         writer.save()
         pass
 
+
 # extract the prior height and width from the h_w_iou_file
 def extract_prior(h_w_iou_file, **options):
     num = options.pop('num', None)
