@@ -2,6 +2,8 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 from colorama import Fore
+import numpy as np
+import random
 assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.6.0'
 
 
@@ -64,17 +66,22 @@ class __PlaceGT:
     def __init__(self, cluster_object_count):
         gt_place = dict()
         with tf.name_scope('GT'):
-            gt_place['class'] = tf.placeholder(dtype=tf.int32, shape=[None, None, None, cluster_object_count])
+            gt_place['class'] = tf.placeholder(dtype=tf.int32, shape=[None, None, None, cluster_object_count],
+                                               name='class')
             # set 0.0 in the cell which does not contain any object except background
-            gt_place['y'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
-            gt_place['x'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
+            gt_place['y'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+                                           name='y')
+            gt_place['x'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+                                           name='x')
             # !!!!important: because of the follow process in (__place_process), hw should not contain negative and zero
             # !!!!suggest fill prior value in the cell location which does not contain any object
-            gt_place['h'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
-            gt_place['w'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count])
+            gt_place['h'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+                                           name='h')
+            gt_place['w'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+                                           name='w')
             # the mask frequently used in calc loss
-            gt_place['p_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1])
-            gt_place['n_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1])
+            gt_place['p_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='p_mask')
+            gt_place['n_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='n_mask')
             pass
         self._gt_place = gt_place
         pass
@@ -234,19 +241,19 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     cluster_object_count = len(prior_h)
     with tf.name_scope('gt_place_process'):
         before_one_hot = tf.shape(gt_place_result['class'])
-        gt_process_one_hot = tf.one_hot(gt_place_result['class'], class_num, 1.0, 0.0, axis=-1)
+        gt_process_one_hot = tf.one_hot(gt_place_result['class'], class_num, 1.0, 0.0, name='one_hot')
         after_one_hot = tf.shape(gt_process_one_hot)
         reshape_last = tf.multiply(after_one_hot[-1], after_one_hot[-2])
         shape = tf.concat(
             [tf.slice(
-                tf.transpose(before_one_hot),
-                [1],
-                [-1]
+                before_one_hot,
+                [0],
+                [tf.rank(gt_place_result['class']) - 1]
             ),
                 [reshape_last]],
             axis=0
         )
-        gt_process['class'] = tf.reshape(gt_process_one_hot, shape)
+        gt_process['class'] = tf.reshape(gt_process_one_hot, shape, name='one_hot_reshape')
         gt_process['y'] = gt_place_result['y']
         gt_process['x'] = gt_place_result['x']
         y_pro = tf.div(gt_place_result['y'], scalar)
@@ -426,7 +433,27 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
 
 if __name__ == '__main__':
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
+    f = np.zeros([10, 10, 10, 100], np.float32)
+    p_mask = np.zeros([10, 10, 10, 1], np.float32)
+    n_mask = np.ones([10, 10, 10, 1], np.float32)
+    cl = np.zeros([10, 10, 10, 4], np.int64)
+    y = np.zeros([10, 10, 10, 4], np.float32)
+    x = np.zeros([10, 10, 10, 4], np.float32)
+    h = np.zeros([10, 10, 10, 4], np.float32)
+    w = np.zeros([10, 10, 10, 4], np.float32)
     yolo_feature = gen_pro(feature_feed, 3, 4)
     loss, place = append_yolo2_loss(yolo_feature, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
     tf.summary.FileWriter('../test/yolo/model_base-', tf.Session().graph).close()
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    print(sess.run([loss], feed_dict={
+        feature_feed: f,
+        place['class']: cl,
+        place['y']: y,
+        place['x']: x,
+        place['h']: h,
+        place['w']: w,
+        place['p_mask']: p_mask,
+        place['n_mask']: n_mask
+    }))
     pass
