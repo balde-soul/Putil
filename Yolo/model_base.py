@@ -22,6 +22,11 @@ def append_yolo2_loss(
     :return: 
     """
     assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
+    print(Fore.YELLOW + '-------generate yolo2 loss---------')
+    print(Fore.GREEN + 'class_num : ', class_num)
+    print(Fore.GREEN + 'prior_h : ', prior_h)
+    print(Fore.GREEN + 'prior_w : ', prior_w)
+    print(Fore.GREEN + 'scalar : ', scalar)
     cluster_object_count = len(prior_w)
     # pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
     split_pro_result = __split_pro(
@@ -48,6 +53,7 @@ def append_yolo2_loss(
         split_pro_result=split_pro_result,
         gt_process_result=place_process_result,
         calc_iou_result=calc_iou_result)
+    print(Fore.YELLOW + '-------generate yolo2 loss done---------')
     return loss, place_gt_result
 
 
@@ -117,6 +123,9 @@ class __PlaceGT:
 
 # : this function is used to generate the standard pro in yolo-version2 network
 def gen_pro(other_new_feature, class_num, cluster_object_count):
+    print(Fore.YELLOW + '-----------generate yolo2 base pro---------')
+    print(Fore.GREEN + 'class_num : ', class_num)
+    print(Fore.GREEN + 'cluster_object_count : ', cluster_object_count)
     feature_chanel = other_new_feature.shape.as_list()[-1]
     with tf.name_scope('yolo_pro'):
         weight = tf.get_variable(
@@ -177,7 +186,7 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
                 [1],
                 [-1]
             ),
-                [gt_process_one_hot.get_shape().as_list()[-1] * gt_process_one_hot.get_shape().as_list()[-2] ]],
+                [reshape_last]],
             axis=0
         )
         gt_process['class'] = tf.reshape(gt_process_one_hot, shape)
