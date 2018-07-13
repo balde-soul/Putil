@@ -28,11 +28,6 @@ def append_yolo2_loss(
     print(Fore.GREEN + 'prior_w : ', prior_w)
     print(Fore.GREEN + 'scalar : ', scalar)
     cluster_object_count = len(prior_w)
-    # pro = gen_pro(other_new_feature, feature_chanel, class_num, cluster_object_count)
-    split_pro_result = __split_pro(
-        yolo2_net_feature,
-        class_num=class_num,
-        cluster_object_count=cluster_object_count)
     place_gt_result = __PlaceGT(cluster_object_count=cluster_object_count).Place
     place_process_result = __place_process(
         place_gt_result,
@@ -41,7 +36,7 @@ def append_yolo2_loss(
         prior_w,
         scalar=scalar)
     pro_result_read_result = __pro_result_reader(
-        split_pro_result=split_pro_result,
+        split_pro_result=yolo2_net_feature,
         cluster_object_count=cluster_object_count)
     calc_iou_result = __calc_iou(
         pro_result_read_result=pro_result_read_result,
@@ -50,7 +45,7 @@ def append_yolo2_loss(
         prior_h=prior_h,
         prior_w=prior_w)
     loss = __calc_loss(
-        split_pro_result=split_pro_result,
+        split_pro_result=yolo2_net_feature,
         gt_process_result=place_process_result,
         calc_iou_result=calc_iou_result)
     print(Fore.YELLOW + '-------generate yolo2 loss done---------')
@@ -119,10 +114,90 @@ class __PlaceGT:
     @property
     def NMask(self):
         return self._gt_place['n_mask']
+    pass
+
+
+# : the pro tensor is not easy to used in calc loss, make same process in this function, this function should make
+# : sure gradient can propagate directly
+def __split_pro_ac(pro, class_num, cluster_object_count):
+    with tf.name_scope('split_and_pro'):
+        class_list = list()
+        anchor_y_list = list()
+        anchor_x_list = list()
+        anchor_h_list = list()
+        anchor_w_list = list()
+        precision_list = list()
+        step = 4 + 1 + class_num
+        # generate all part y x: sigmoid; h w: None; precision: sigmoid; class: part softmax
+        with tf.name_scope('total_split'):
+            for i in range(0, cluster_object_count):
+                y_part = pro[:, :, :, step * i + 0: step * i + 1]
+                anchor_y_list.append(tf.nn.sigmoid(y_part, name='y_{0}_sigmoid'.format(i)))
+                x_part = pro[:, :, :, step * i + 1: step * i + 2]
+                anchor_x_list.append(tf.nn.sigmoid(x_part, name='x_{0}_sigmoid'.format(i)))
+                h_part = pro[:, :, :, step * i + 2: step * i + 3]
+                anchor_h_list.append(h_part)
+                w_part = pro[:, :, :, step * i + 3: step * i + 4]
+                anchor_w_list.append(w_part)
+                precision_part = pro[:, :, :, step * i + 4: step * i + 5]
+                precision_list.append(tf.nn.sigmoid(precision_part, name='precision_{0}_sigmoid'.format(i)))
+                class_part = pro[:, :, :, step * i + 5: step * i + 5 + class_num]
+                class_list.append(tf.nn.softmax(class_part, axis=-1, name='class_{0}_softmax'.format(i)))
+                pass
+            pass
+        # generate y x h w pro
+        with tf.name_scope('y-x-h-w_pro'):
+            y_pro = tf.concat(anchor_y_list, axis=-1, name='y_pro')
+            x_pro = tf.concat(anchor_x_list, axis=-1, name='x_pro')
+            h_pro = tf.concat(anchor_h_list, axis=-1, name='h_pro')
+            w_pro = tf.concat(anchor_w_list, axis=-1, name='w_pro')
+
+        pro_part_list = list()
+        anchor_list = list()
+        # generate anchor list
+        with tf.name_scope('anchor_pro'):
+            for i in range(0, cluster_object_count):
+                anchor_list.append(
+                    tf.concat([anchor_y_list[i], anchor_x_list[i], anchor_h_list[i], anchor_w_list[i]],
+                              axis=-1,
+                              name='anchor_{0}_concat'.format(i)))
+                pass
+            anchor_pro = tf.concat(anchor_list, axis=-1, name='anchor_pro')
+            pass
+        with tf.name_scope('pro'):
+            for i in range(0, cluster_object_count):
+                pro_part_list.append(
+                    tf.concat(
+                        [anchor_list[i], precision_list[i], class_list[i]],
+                        axis=-1,
+                        name='{0}_prediction_gen'.format(i)
+                    )
+                )
+                pass
+            pro = tf.concat(pro_part_list, axis=-1, name='pro')
+            pass
+        with tf.name_scope('class_pro'):
+            class_pro = tf.concat(class_list, axis=-1, name='class_pro')
+            pass
+        with tf.name_scope('precision_pro'):
+            precision_pro = tf.concat(precision_list, axis=-1, name='precision_pro')
+            pass
+        pass
+    return {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
+            'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
+    pass
 
 
 # : this function is used to generate the standard pro in yolo-version2 network
 def gen_pro(other_new_feature, class_num, cluster_object_count):
+    """
+    pro = {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
+            'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
+    :param other_new_feature: base net feature
+    :param class_num: 
+    :param cluster_object_count: 
+    :return: 
+    """
     print(Fore.YELLOW + '-----------generate yolo2 base pro---------')
     print(Fore.GREEN + 'class_num : ', class_num)
     print(Fore.GREEN + 'cluster_object_count : ', cluster_object_count)
@@ -132,32 +207,14 @@ def gen_pro(other_new_feature, class_num, cluster_object_count):
             name='compress_w', shape=[1, 1, feature_chanel, cluster_object_count * (class_num + 4 + 1)],
             initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'), dtype=tf.float32)
         bias = tf.get_variable(
-            name='compress_b', shape=[cluster_object_count],
+            name='compress_b', shape=[cluster_object_count * (class_num + 4 + 1)],
             initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG')
         )
-        conv = tf.nn.conv2d(other_new_feature, weight, [1, 1, 1, 1], padding='SAME', name='pro')
-    return conv
-    pass
-
-
-# : the pro tensor is not easy to used in calc loss, make same process in this function, this function should make
-# : sure gradient can propagate directly
-def __split_pro(pro, class_num, cluster_object_count):
-    with tf.name_scope('split'):
-        class_list = list()
-        anchor_list = list()
-        precision_list = list()
-        step = 4 + 1 + class_num
-        for i in range(0, cluster_object_count):
-            class_list.append(tf.slice(pro, [0, 0, 0, step * i + 5], [-1, -1, -1, class_num]))
-            anchor_list.append(tf.slice(pro, [0, 0, 0, step * i], [-1, -1, -1, 4]))
-            precision_list.append(tf.slice(pro, [0, 0, 0, step * i + 4], [-1, -1, -1, 1]))
-            pass
-        class_pro = tf.concat(class_list, axis=-1, name='class_pro')
-        anchor_pro = tf.concat(anchor_list, axis=-1, name='anchor_pro')
-        precision_pro = tf.concat(precision_list, axis=-1, name='precision_pro')
+        conv = tf.nn.conv2d(other_new_feature, weight, [1, 1, 1, 1], padding='SAME', name='conv')
+        add = tf.nn.bias_add(conv, bias, name='bias_add')
         pass
-    return {'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro}
+    pro = __split_pro_ac(add, class_num, cluster_object_count)
+    return pro
     pass
 
 
@@ -221,22 +278,10 @@ def __pro_result_reader(split_pro_result, cluster_object_count):
     :return: 
     """
     pro_result_read = dict()
-    anchor = tf.identity(split_pro_result['anchor'])
-    with tf.name_scope('pro_result_read'):
-        y = list()
-        x = list()
-        h = list()
-        w = list()
-        for i in range(0, cluster_object_count):
-            y.append(tf.expand_dims(anchor[:, :, :, i * 4 + 0], axis=-1))
-            x.append(tf.expand_dims(anchor[:, :, :, i * 4 + 1], axis=-1))
-            h.append(tf.expand_dims(anchor[:, :, :, i * 4 + 2], axis=-1))
-            w.append(tf.expand_dims(anchor[:, :, :, i * 4 + 3], axis=-1))
-        pro_result_read['y'] = tf.concat(y, axis=-1, name='y_read')
-        pro_result_read['x'] = tf.concat(x, axis=-1, name='x_read')
-        pro_result_read['h'] = tf.concat(h, axis=-1, name='h_read')
-        pro_result_read['w'] = tf.concat(h, axis=-1, name='w_read')
-        pass
+    pro_result_read['y'] = tf.identity(split_pro_result['y'], name='y_read')
+    pro_result_read['x'] = tf.identity(split_pro_result['x'], name='x_read')
+    pro_result_read['h'] = tf.identity(split_pro_result['h'], name='h_read')
+    pro_result_read['w'] = tf.identity(split_pro_result['w'], name='w_read')
     return pro_result_read
     pass
 
@@ -382,5 +427,6 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
 if __name__ == '__main__':
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
     yolo_feature = gen_pro(feature_feed, 3, 4)
-    loss, place = append_yolo2_loss(feature_feed, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
+    loss, place = append_yolo2_loss(yolo_feature, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
+    tf.summary.FileWriter('../test/yolo/model_base-', tf.Session().graph).close()
     pass
