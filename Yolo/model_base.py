@@ -329,7 +329,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
         with tf.name_scope('anchor_loss'):
             p_anchor_loss = tf.multiply(
                 lambda_obj,
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
@@ -344,7 +344,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             )
             n_anchor_loss = tf.multiply(
                 lambda_noobj,
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
@@ -361,7 +361,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             pass
         with tf.name_scope('precision_loss'):
             n_precision_loss = tf.multiply(
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
@@ -376,7 +376,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
                 name='n_loss'
             )
             p_precision_loss = tf.multiply(
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
@@ -395,7 +395,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
         with tf.name_scope('class_loss'):
             p_class_loss = tf.multiply(
                 lambda_obj,
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
@@ -410,7 +410,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             )
             n_class_loss = tf.multiply(
                 lambda_noobj,
-                tf.reduce_sum(
+                tf.reduce_mean(
                     tf.multiply(
                         tf.square(
                             tf.subtract(
