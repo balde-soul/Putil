@@ -195,7 +195,9 @@ def __split_pro_ac(pro, class_num, cluster_object_count):
     pass
 
 
-# : this function is used to generate the standard pro in yolo-version2 network
+# : this function is used to generate the standard pro in yolo-version2 network, which split into
+# {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
+#            'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
 def gen_pro(other_new_feature, class_num, cluster_object_count):
     """
     pro = {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
