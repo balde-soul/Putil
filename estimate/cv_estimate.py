@@ -95,6 +95,7 @@ def mutual_exclusion_cv_estimate(train, val, result_save, **options):
                 '{1}_cv_{0}_estimate_{2}.png'.format(
                     cv_count, save_flag_prefix, save_flag_suffix)))
         cv_count += 1
+        plt.close()
     pass
 
 
