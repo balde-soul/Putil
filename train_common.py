@@ -1,7 +1,316 @@
 # coding=utf-8
+from colorama import Fore
+import numpy as np
+import Putil.estimate.cv_estimate as cv_est
+import sys
 
 
 class TrainCommon:
     def __init__(self):
         pass
+    
+    def model_run(self):
+        pass
+
+    def model_train(self):
+        pass
+
+    # support for different kinds of data type which can not train together, but can train in the same model
+    # support for cv estimate :which kinds of data type should has the same cv num
+    # support for specify batch epoch
+    # support estimate visual cross epoch
+    def model_cv(self, model, cv_collection, index_to_data, epoch, val_epoch_step, batch, save_path, **options):
+        """
+        
+        :param model: 
+        :param cv_collection: 
+        :param index_to_data: 
+        :param epoch: 
+        :param batch: 
+        :return: 
+        """
+        # use to fix the data_generator keys to the model data feed keys{'gen_key': 'feed_key'}
+        gen_data_feed_data_reflect = options.pop('gdfdr', None)
+        # use to fix the result gen keys to the estimate wanted data keys{'result_key': 'estimate_key'}
+        gen_result_estimate_result_reflect = options.pop('grerr', None)
+        # all cv result save space
+        result_collection = dict()
+        val_result_collection = dict()
+        for _cv_type in cv_collection.keys():
+            result_collection[_cv_type] = list()
+            val_result_collection[_cv_type] = list()
+            pass
+
+        # cross estimate calculation
+        while True:
+            # : generator cv index generator in every dat type one by one
+            _index_generator = dict()
+            for _cv_type in cv_collection.keys():
+                # explain: every _index_generator is {'train': this_cv_train_index_gen, 'val': this_cv_val_index_gen}
+                try:
+                    _index_generator[_cv_type] = cv_collection[_cv_type].__next__()
+                    # append a dict to collect the train result while every cv_step came
+                    result_collection[_cv_type].append(dict())
+                    val_result_collection[_cv_type].append(dict())
+                except StopIteration:
+                    print(Fore.RED + 'cv : {0} finish'.format(_cv_type))
+                    break
+                    pass
+
+                # set every result from model train as a list follow epoch step
+                if gen_result_estimate_result_reflect is not None:
+                    for _model_result_name in model.TrainResultReflect:
+                        result_collection[_cv_type][-1][gen_result_estimate_result_reflect[_model_result_name]] = list()
+                    for _model_result_name in model.ValResultReflect:
+                        val_result_collection[_cv_type][-1][gen_result_estimate_result_reflect[_model_result_name]] = list()
+                    pass
+                    pass
+                else:
+                    for _model_result_name in model.TrainResultReflect:
+                        result_collection[_cv_type][-1][_model_result_name] = list()
+                    for _model_result_name in model.ValResultReflect:
+                        val_result_collection[_cv_type][-1][_model_result_name] = list()
+                    pass
+                pass
+
+            # check if there are any cv in all type which do not finished
+            # yes continue cv this type, no break and finish the while cv estimate
+            if len(_index_generator.keys()) == 0:
+                print(Fore.GREEN + 'total cv finish')
+                # todo: generate cv estimate visual use result_collection
+                break
+                pass
+
+            # every cv should re init the model
+            model.re_init()
+
+            # : set the data to feed(every kind of cv use the same feed_data_list)
+            _train_data_batch = dict()
+            _val_data_batch = dict()
+            # fill the batch data use what index_to_data generates
+            if gen_data_feed_data_reflect is not None:
+                for data_name in index_to_data.DataListName:
+                    _train_data_batch[gen_data_feed_data_reflect[data_name]] = list()
+                    _val_data_batch[gen_data_feed_data_reflect[data_name]] = list()
+                    pass
+                pass
+            else:
+                for data_name in index_to_data.DataListName:
+                    _train_data_batch[data_name] = list()
+                    _val_data_batch[data_name] = list()
+                    pass
+                pass
+
+            train_epoch = list()
+            val_epoch = list()
+
+            # : train all epoch in one cv with all data type
+            for _epoch in range(0, epoch):
+                # batch_train_result collection
+                epoch_result_with_cross_batch = dict()
+                for _type_name in cv_collection.keys():
+                    epoch_result_with_cross_batch[_type_name] = dict()
+                    if gen_result_estimate_result_reflect is not None:
+                        for _model_result_name in model.TrainResultReflect:
+                            epoch_result_with_cross_batch[_type_name][gen_result_estimate_result_reflect[_model_result_name]] = list()
+                            pass
+                        pass
+                    else:
+                        for _model_result_name in model.TrainResultReflect:
+                            epoch_result_with_cross_batch[_type_name][_model_result_name] = list()
+                            pass
+                        pass
+                    pass
+
+                _all_type_batch_done = dict()
+                # : the flag for all cv_type epoch done : initializer
+                for _key in cv_collection.keys():
+                    _all_type_batch_done[_key] = False
+                    pass
+
+                # : train epoch batch by batch in all kind of cv
+                while True:
+                    batch_count = 1
+                    # while any kind of data type do not finish its epoch in this cv
+                    if (False in _all_type_batch_done.values()) is False:
+                        # : while one epoch done ,collect the mean result follow the batch to the result_collection
+                        for _result_type_cv in epoch_result_with_cross_batch.keys():
+                            for _result_type in epoch_result_with_cross_batch[_result_type_cv].keys():
+                                result_collection[_result_type_cv][-1][_result_type].append(
+                                    np.mean(epoch_result_with_cross_batch[_result_type_cv][_result_type])
+                                )
+                                pass
+                            pass
+                        break
+                        pass
+
+                    # : train batch by batch in all kind of cv
+                    for _cv_type in cv_collection.keys():
+                        if _all_type_batch_done[_cv_type] is not True:
+                            # generate batch data and update the statue of epoch done or not in every kind of cv
+                            for _batch in range(0, batch):
+                                # require index_generator_in_cv yield {'data': data, 'total': total_or_not}
+                                _train_data_index = _index_generator[_cv_type]['train'].__next__()
+
+                                # set this cv_type epoch done
+                                if _train_data_index['total']:
+                                    _all_type_batch_done[_cv_type] = True
+                                    pass
+
+                                # index to real data
+                                _train_data_one = index_to_data.index_to_data(_train_data_index['data'])
+                                # generate batch
+                                if gen_data_feed_data_reflect is not None:
+                                    for _data_name in _train_data_one.keys():
+                                        _train_data_batch[gen_data_feed_data_reflect[_data_name]].append(_train_data_one[_data_name])
+                                        pass
+                                    pass
+                                else:
+                                    for _data_name in _train_data_one.keys():
+                                        _train_data_batch[_data_name].append(_train_data_one[_data_name])
+                                        pass
+                                    pass
+                                pass
+
+                            # use _train_data_batch to train the model, wanted!!: model train return a dict
+                            try:
+                                _train_result = model.TrainCV(_train_data_batch)
+                            except:
+                                print(Fore.RED + 'train model exception')
+                                # set the step for estimate
+                                for _cv_type in cv_collection.keys():
+                                    val_result_collection[_cv_type][-1]['step'] = val_epoch
+                                    result_collection[_cv_type][-1]['step'] = train_epoch
+                                    pass
+                                pass
+                                for _cv_type in result_collection.keys():
+                                    cv_est.mutual_exclusion_cv_estimate(
+                                        result_collection[_cv_type],
+                                        val_result_collection[_cv_type],
+                                        result_save=save_path,
+                                        prefix=_cv_type,
+                                    )
+                                    pass
+                                sys.exit()
+                            # collect result to the batch collection
+                            if gen_result_estimate_result_reflect is not None:
+                                for _result_name in _train_result.keys():
+                                    epoch_result_with_cross_batch[_cv_type][gen_result_estimate_result_reflect[_result_name]].append(_train_result[_result_name])
+                                pass
+                            else:
+                                for _result_name in _train_result.keys():
+                                    epoch_result_with_cross_batch[_cv_type][_result_name].append(_train_result[_result_name])
+                                pass
+                            pass
+                        else:
+                            pass
+                        pass
+                    batch_count += 1
+                    pass
+
+                # val
+                if _epoch % val_epoch_step == 0:
+                    # batch_train_result collection
+                    val_result_with_cross_batch = dict()
+                    for _type_name in cv_collection.keys():
+                        val_result_with_cross_batch[_type_name] = dict()
+                        if gen_result_estimate_result_reflect is not None:
+                            for _model_result_name in model.ValResultReflect:
+                                val_result_with_cross_batch[_type_name][gen_result_estimate_result_reflect[_model_result_name]] = list()
+                                pass
+                            pass
+                        else:
+                            for _model_result_name in model.ValResultReflect:
+                                val_result_with_cross_batch[_type_name][_model_result_name] = list()
+                                pass
+                            pass
+                        pass
+                    _val_all_type_batch_done = dict()
+                    for _key in cv_collection.keys():
+                        _val_all_type_batch_done[_key] = False
+                        pass
+                    while True:
+                        # while any kind of data type do not finish its epoch in this cv
+                        if (False in _val_all_type_batch_done.values()) is False:
+                            # : while one epoch done ,collect the mean result follow the batch to the result_collection
+                            for _result_type_cv in val_result_with_cross_batch.keys():
+                                for _result_type in val_result_with_cross_batch[_result_type_cv].keys():
+                                    val_result_collection[_result_type_cv][-1][_result_type].append(
+                                        np.mean(val_result_with_cross_batch[_result_type_cv][_result_type])
+                                    )
+                                    pass
+                                pass
+                            break
+                            pass
+                        for _cv_type in cv_collection.keys():
+                            if _val_all_type_batch_done[_cv_type] is not True:
+                                for _batch in range(0, batch):
+                                    _val_data_index = _index_generator[_cv_type]['val'].__next__()
+                                    if _val_data_index['total']:
+                                        _val_all_type_batch_done[_cv_type] = True
+                                        pass
+                                    _val_data_one = index_to_data.index_to_data(_val_data_index['data'])
+                                    if gen_data_feed_data_reflect is not None:
+                                        for _data_name in _val_data_one.keys():
+                                            _val_data_batch[gen_data_feed_data_reflect[_data_name]].append(_val_data_one[_data_name])
+                                            pass
+                                        pass
+                                    else:
+                                        for _data_name in _val_data_one.keys():
+                                            _val_data_batch[_data_name].append(_val_data_one[_data_name])
+                                            pass
+                                        pass
+                                    pass
+                                try:
+                                    val_result = model.Val(_val_data_batch)
+                                except:
+                                    print(Fore.RED + 'train model exception')
+                                    # set the step for estimate
+                                    for _cv_type in cv_collection.keys():
+                                        val_result_collection[_cv_type][-1]['step'] = val_epoch
+                                        result_collection[_cv_type][-1]['step'] = train_epoch
+                                        pass
+                                    pass
+                                    for _cv_type in result_collection.keys():
+                                        cv_est.mutual_exclusion_cv_estimate(
+                                            result_collection[_cv_type],
+                                            val_result_collection[_cv_type],
+                                            result_save=save_path,
+                                            prefix=_cv_type,
+                                        )
+                                        pass
+                                    sys.exit()
+                                if gen_result_estimate_result_reflect is not None:
+                                    for _result_name in val_result.keys():
+                                        val_result_with_cross_batch[_cv_type][gen_result_estimate_result_reflect[_result_name]].append(
+                                            val_result[_result_name])
+                                else:
+                                    for _result_name in val_result.keys():
+                                        val_result_with_cross_batch[_cv_type][_result_name].append(
+                                            val_result[_result_name])
+                                        pass
+                                    pass
+                                pass
+                            pass
+                        pass
+
+                    val_epoch.append(_epoch)
+                    pass
+                train_epoch.append(_epoch)
+                pass
+            # set the step for estimate
+            for _cv_type in cv_collection.keys():
+                val_result_collection[_cv_type][-1]['step'] = val_epoch
+                result_collection[_cv_type][-1]['step'] = train_epoch
+                pass
+            pass
+        pass
+        # : save estimate result
+        for _cv_type in result_collection.keys():
+            cv_est.mutual_exclusion_cv_estimate(
+                result_collection[_cv_type],
+                val_result_collection[_cv_type],
+                result_save=save_path,
+                prefix=_cv_type,
+            )
     pass
