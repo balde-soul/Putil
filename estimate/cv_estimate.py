@@ -24,10 +24,16 @@ def mutual_exclusion_cv_estimate(train, val, result_save, **options):
     """
     
     :param train: list mean len(train) cv estimate, every item in train is dict={'loss':, 'step':}
-    :param val: 
+    :param val: list mean len(val) cv estimate, every item in train is dict={'loss':, 'step':}
     :param result_save:
     :return: 
     """
+    save_flag_prefix = options.pop('prefix', '')
+    save_flag_suffix = options.pop('suffix', '')
+    print(Fore.GREEN + 'use prefix: ' + save_flag_prefix) \
+        if save_flag_prefix != '' else print(Fore.REd + 'not use prefix')
+    print(Fore.GREEN + 'use suffix: ' + save_flag_suffix) \
+        if save_flag_suffix != '' else print(Fore.RED + 'not use suffix')
     as_step = options.pop('as_step', None)
     if as_step is None:
         as_step = 'step'
@@ -86,7 +92,8 @@ def mutual_exclusion_cv_estimate(train, val, result_save, **options):
         plt.savefig(
             os.path.join(
                 result_save,
-                'cv_{0}_estimate.png'.format(cv_count)))
+                '{1}_cv_{0}_estimate_{2}.png'.format(
+                    cv_count, save_flag_prefix, save_flag_suffix)))
         cv_count += 1
     pass
 
