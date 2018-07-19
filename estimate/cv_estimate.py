@@ -31,7 +31,7 @@ def mutual_exclusion_cv_estimate(train, val, result_save, **options):
     save_flag_prefix = options.pop('prefix', '')
     save_flag_suffix = options.pop('suffix', '')
     print(Fore.GREEN + 'use prefix: ' + save_flag_prefix) \
-        if save_flag_prefix != '' else print(Fore.REd + 'not use prefix')
+        if save_flag_prefix != '' else print(Fore.RED + 'not use prefix')
     print(Fore.GREEN + 'use suffix: ' + save_flag_suffix) \
         if save_flag_suffix != '' else print(Fore.RED + 'not use suffix')
     as_step = options.pop('as_step', None)
