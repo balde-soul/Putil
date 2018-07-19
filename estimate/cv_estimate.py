@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import os
 from optparse import OptionParser
 import numpy as np
-import visual.matplotlib_plot as pltt
+import Putil.visual.matplotlib_plot as pltt
 from colorama import Fore
 
 parser = OptionParser(usage="usage:%prog [options] arg1 arg2")
