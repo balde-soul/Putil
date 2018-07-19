@@ -33,6 +33,10 @@ class TrainCommon:
         gen_data_feed_data_reflect = options.pop('gdfdr', None)
         # use to fix the result gen keys to the estimate wanted data keys{'result_key': 'estimate_key'}
         gen_result_estimate_result_reflect = options.pop('grerr', None)
+        assert len(cv_collection) == len(index_to_data), \
+            print(Fore.RED + 'cv_collection should has the same length with index_to_data')
+        assert (False in [i in index_to_data.keys() for i in cv_collection.keys()]) is False, \
+            print(Fore.RED + 'cv_collection should has thesame keys with index_to_data')
         # all cv result save space
         result_collection = dict()
         val_result_collection = dict()
@@ -88,18 +92,21 @@ class TrainCommon:
             _train_data_batch = dict()
             _val_data_batch = dict()
             # fill the batch data use what index_to_data generates
-            if gen_data_feed_data_reflect is not None:
-                for data_name in index_to_data.DataListName:
-                    _train_data_batch[gen_data_feed_data_reflect[data_name]] = list()
-                    _val_data_batch[gen_data_feed_data_reflect[data_name]] = list()
+            for _cv_type in cv_collection.keys():
+                _train_data_batch[_cv_type] = dict()
+                _val_data_batch[_cv_type] = dict()
+                if gen_data_feed_data_reflect is not None:
+                    for data_name in index_to_data[_cv_type].DataListName:
+                        _train_data_batch[_cv_type][gen_data_feed_data_reflect[data_name]] = list()
+                        _val_data_batch[_cv_type][gen_data_feed_data_reflect[data_name]] = list()
+                        pass
                     pass
-                pass
-            else:
-                for data_name in index_to_data.DataListName:
-                    _train_data_batch[data_name] = list()
-                    _val_data_batch[data_name] = list()
+                else:
+                    for data_name in index_to_data[_cv_type].DataListName:
+                        _train_data_batch[_cv_type][data_name] = list()
+                        _val_data_batch[_cv_type][data_name] = list()
+                        pass
                     pass
-                pass
 
             train_epoch = list()
             val_epoch = list()
@@ -158,23 +165,23 @@ class TrainCommon:
                                     pass
 
                                 # index to real data
-                                _train_data_one = index_to_data.index_to_data(_train_data_index['data'])
+                                _train_data_one = index_to_data[_cv_type].index_to_data(_train_data_index['data'])
                                 # generate batch
                                 if gen_data_feed_data_reflect is not None:
                                     for _data_name in _train_data_one.keys():
-                                        _train_data_batch[gen_data_feed_data_reflect[_data_name]].append(_train_data_one[_data_name])
+                                        _train_data_batch[_cv_type][gen_data_feed_data_reflect[_data_name]].append(_train_data_one[_data_name])
                                         pass
                                     pass
                                 else:
                                     for _data_name in _train_data_one.keys():
-                                        _train_data_batch[_data_name].append(_train_data_one[_data_name])
+                                        _train_data_batch[_cv_type][_data_name].append(_train_data_one[_data_name])
                                         pass
                                     pass
                                 pass
 
                             # use _train_data_batch to train the model, wanted!!: model train return a dict
                             try:
-                                _train_result = model.TrainCV(_train_data_batch)
+                                _train_result = model.TrainCV(_train_data_batch[_cv_type])
                             except:
                                 print(Fore.RED + 'train model exception')
                                 # set the step for estimate
@@ -192,6 +199,15 @@ class TrainCommon:
                                     )
                                     pass
                                 sys.exit()
+                                pass
+
+                            # : release the memory
+                            for reset in _train_data_batch[_cv_type].items():
+                                for data in reset[1]:
+                                    data = list()
+                                    pass
+                                pass
+
                             # collect result to the batch collection
                             if gen_result_estimate_result_reflect is not None:
                                 for _result_name in _train_result.keys():
@@ -249,20 +265,20 @@ class TrainCommon:
                                     if _val_data_index['total']:
                                         _val_all_type_batch_done[_cv_type] = True
                                         pass
-                                    _val_data_one = index_to_data.index_to_data(_val_data_index['data'])
+                                    _val_data_one = index_to_data[_cv_type].index_to_data(_val_data_index['data'])
                                     if gen_data_feed_data_reflect is not None:
                                         for _data_name in _val_data_one.keys():
-                                            _val_data_batch[gen_data_feed_data_reflect[_data_name]].append(_val_data_one[_data_name])
+                                            _val_data_batch[_cv_type][gen_data_feed_data_reflect[_data_name]].append(_val_data_one[_data_name])
                                             pass
                                         pass
                                     else:
                                         for _data_name in _val_data_one.keys():
-                                            _val_data_batch[_data_name].append(_val_data_one[_data_name])
+                                            _val_data_batch[_cv_type][_data_name].append(_val_data_one[_data_name])
                                             pass
                                         pass
                                     pass
                                 try:
-                                    val_result = model.Val(_val_data_batch)
+                                    val_result = model.Val(_val_data_batch[_cv_type])
                                 except:
                                     print(Fore.RED + 'train model exception')
                                     # set the step for estimate
@@ -280,6 +296,15 @@ class TrainCommon:
                                         )
                                         pass
                                     sys.exit()
+                                    pass
+
+                                # : to release the memory
+                                for reset in _val_data_batch[_cv_type].items():
+                                    for data in reset[1]:
+                                        data = list()
+                                        pass
+                                    pass
+
                                 if gen_result_estimate_result_reflect is not None:
                                     for _result_name in val_result.keys():
                                         val_result_with_cross_batch[_cv_type][gen_result_estimate_result_reflect[_result_name]].append(
