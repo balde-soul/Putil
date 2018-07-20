@@ -107,6 +107,33 @@ class TrainCommon:
                         _val_data_batch[_cv_type][data_name] = list()
                         pass
                     pass
+                pass
+
+            # : display the data keys which is wanted to feed
+            info = 'Train:\n'
+            for i in _train_data_batch.keys():
+                info += '--->'
+                info += str(i)
+                info += ':\n'
+                for j in _train_data_batch[i].keys():
+                    info += str(j)
+                    info += ', '
+                    pass
+                info += '\n'
+                pass
+            info_v = 'Val:\n'
+            for i in _train_data_batch.keys():
+                info_v += '--->'
+                info_v += str(i)
+                info_v += ':\n'
+                for j in _train_data_batch[i].keys():
+                    info_v += str(j)
+                    info_v += ', '
+                    pass
+                info_v += '\n'
+                pass
+            print(Fore.YELLOW + 'from train_common data feed to Model(actually the model used):\n'
+                                '{0}\n{1}'.format(info, info_v))
 
             train_epoch = list()
             val_epoch = list()
