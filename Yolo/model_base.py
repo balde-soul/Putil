@@ -319,64 +319,196 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
 def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     lambda_obj = 1.0
     lambda_noobj = 0.1
+    y_pro = split_pro_result['y']
+    x_pro = split_pro_result['x']
+    h_pro = split_pro_result['h']
+    w_pro = split_pro_result['w']
     anchor_pro = split_pro_result['anchor']
     precision_pro = split_pro_result['precision']
     class_pro = split_pro_result['class']
     p_mask = gt_process_result['p_mask']
     n_mask = gt_process_result['n_mask']
+    gt_y = gt_process_result['y']
+    gt_x = gt_process_result['x']
+    gt_h = gt_process_result['h']
+    gt_w = gt_process_result['w']
     gt_anchor = gt_process_result['anchor']
     # gt_precision = place_gt_result['precision']
     gt_class = gt_process_result['class']
     with tf.name_scope('loss'):
         with tf.name_scope('anchor_loss'):
-            p_anchor = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        gt_anchor,
-                        anchor_pro
-                    )
+            # yx loss part
+            with tf.name_scope('yx_loss'):
+                yx_loss = tf.add(
+                    tf.square(
+                        tf.multiply(
+                            tf.subtract(
+                                y_pro,
+                                gt_y,
+                                name='y_sub'
+                            ),
+                            p_mask,
+                            name='apply_p_mask'
+                        ),
+                        name='y_square'
+                    ),
+                    tf.square(
+                        tf.multiply(
+                            tf.subtract(
+                                x_pro,
+                                gt_x,
+                                name='x_sub'
+                            ),
+                            p_mask,
+                            name='apply_p_mask'
+                        ),
+                        name='x_square'
+                    ),
+                    name='y_x_add'
+                )
+                # yx_loss = tf.multiply(
+                #     tf.add(
+                #         tf.square(
+                #             tf.subtract(
+                #                 y_pro,
+                #                 gt_y,
+                #                 name='y_sub'
+                #             ),
+                #             name='y_square'
+                #         ),
+                #         tf.square(
+                #             tf.subtract(
+                #                 x_pro,
+                #                 gt_x,
+                #                 name='x_sub'
+                #             ),
+                #             name='x_square'
+                #         ),
+                #         name='y_x_add'
+                #     ),
+                #     p_mask,
+                #     name='apply_p_mask'
+                # )
+                pass
+            # hw loss part
+            with tf.name_scope('hw_loss'):
+                hw_loss = tf.add(
+                    tf.square(
+                        tf.subtract(
+                            tf.sqrt(
+                                tf.multiply(
+                                    h_pro,
+                                    p_mask,
+                                    name='h_pro_apply_p_mask'
+                                ),
+                                name='h_pro_sqrt'
+                            ),
+                            tf.sqrt(
+                                tf.multiply(
+                                    gt_h,
+                                    p_mask,
+                                    name='gt_h_apply_p_mask'
+                                ),
+                                name='gt_h_sqrt'
+                            ),
+                            name='h_sub'
+                        ),
+                        name='h_square'
+                    ),
+                    tf.square(
+                        tf.subtract(
+                            tf.sqrt(
+                                tf.multiply(
+                                    w_pro,
+                                    p_mask,
+                                    name='w_pro_apply_p_mask'
+                                ),
+                                name='w_pro_sqrt'
+                            ),
+                            tf.sqrt(
+                                tf.multiply(
+                                    gt_w,
+                                    p_mask,
+                                    name='gt_w_apply_p_mask'
+                                ),
+                                name='gt_w_sqrt'
+                            ),
+                            name='w_sub'
+                        ),
+                        name='w_square'
+                    ),
+                    name='hw_add'
+                )
+                pass
+            # p_anchor = tf.multiply(
+            #     tf.square(
+            #         tf.subtract(
+            #             gt_anchor,
+            #             anchor_pro
+            #         )
+            #     ),
+            #     p_mask,
+            #     name='p_anchor'
+            # )
+            # p_anchor_loss = tf.multiply(
+            #     lambda_obj,
+            #     tf.reduce_sum(tf.reduce_mean(p_anchor, axis=0)),
+            #     name='p_loss'
+            # )
+            # n_anchor = tf.multiply(
+            #     tf.square(
+            #         tf.subtract(
+            #             gt_anchor,
+            #             anchor_pro
+            #         )
+            #     ),
+            #     n_mask,
+            #     name='n_anchor'
+            # )
+            # n_anchor_loss = tf.multiply(
+            #     lambda_noobj,
+            #     tf.reduce_sum(tf.reduce_mean(n_anchor, axis=0)),
+            #     name='n_loss'
+            # )
+            # anchor_loss = tf.add(p_anchor_loss, n_anchor_loss, name='loss')
+
+            # anchor loss
+            anchor_loss = tf.add(
+                tf.multiply(
+                    lambda_obj,
+                    tf.reduce_sum(
+                        yx_loss,
+                        name='yx_sum'
+                    ),
+                    name='apply_lambda_weight'
                 ),
-                p_mask,
-                name='p_anchor'
-            )
-            p_anchor_loss = tf.multiply(
-                lambda_obj,
-                tf.reduce_sum(tf.reduce_mean(p_anchor, axis=0)),
-                name='p_loss'
-            )
-            n_anchor = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        gt_anchor,
-                        anchor_pro
-                    )
+                tf.multiply(
+                    lambda_obj,
+                    tf.reduce_sum(
+                        hw_loss,
+                        name='hw_sum'
+                    ),
+                    name='apply_lambda_weight'
                 ),
-                n_mask,
-                name='n_anchor'
+                name='anchor_sum'
             )
-            n_anchor_loss = tf.multiply(
-                lambda_noobj,
-                tf.reduce_sum(tf.reduce_mean(n_anchor, axis=0)),
-                name='n_loss'
-            )
-            anchor_loss = tf.add(p_anchor_loss, n_anchor_loss, name='loss')
             pass
         with tf.name_scope('precision_loss'):
-            n_precision = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        precision_pro,
-                        0
-                    )
-                ),
-                n_mask,
-                name='n_precision'
-            )
-            n_precision_loss = tf.multiply(
-                tf.reduce_sum(tf.reduce_mean(n_precision, axis=0)),
-                lambda_noobj,
-                name='n_loss'
-            )
+            # n_precision = tf.multiply(
+            #     tf.square(
+            #         tf.subtract(
+            #             precision_pro,
+            #             0
+            #         )
+            #     ),
+            #     n_mask,
+            #     name='n_precision'
+            # )
+            # n_precision_loss = tf.multiply(
+            #     tf.reduce_sum(tf.reduce_mean(n_precision, axis=0)),
+            #     lambda_noobj,
+            #     name='n_loss'
+            # )
             p_precision = tf.multiply(
                 tf.square(
                     tf.subtract(
@@ -392,7 +524,8 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
                 lambda_obj,
                 name='p_loss'
             )
-            precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
+            precision_loss = p_precision_loss
+            # precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
             pass
         with tf.name_scope('class_loss'):
             p_class = tf.multiply(
