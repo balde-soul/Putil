@@ -164,7 +164,6 @@ class TrainCommon:
 
                 # : train epoch batch by batch in all kind of cv
                 while True:
-                    batch_count = 1
                     # while any kind of data type do not finish its epoch in this cv
                     if (False in _all_type_batch_done.values()) is False:
                         # : while one epoch done ,collect the mean result follow the batch to the result_collection
@@ -248,8 +247,17 @@ class TrainCommon:
                         else:
                             pass
                         pass
-                    batch_count += 1
                     pass
+
+                # todo: train one epoch display
+                epoch_info = 'train_epoch: {0}\n'.format(_epoch)
+                for _cv_type in result_collection.keys():
+                    epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
+                    for _wanted in result_collection[_cv_type][-1].keys():
+                        epoch_info += ' --<{0}: {1}\n'.format(_wanted, result_collection[_cv_type][-1][_wanted][-1])
+                        pass
+                    pass
+                print(Fore.RED + epoch_info)
 
                 # val
                 if _epoch % val_epoch_step == 0:
@@ -348,6 +356,17 @@ class TrainCommon:
 
                     val_epoch.append(_epoch)
                     pass
+
+                # todo: val one epoch display
+                epoch_info = 'val_epoch: {0}\n'.format(_epoch)
+                for _cv_type in val_result_collection.keys():
+                    epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
+                    for _wanted in val_result_collection[_cv_type][-1].keys():
+                        epoch_info += ' --<{0}: {1}\n'.format(_wanted, val_result_collection[_cv_type][-1][_wanted][-1])
+                        pass
+                    pass
+                print(Fore.RED + epoch_info)
+
                 train_epoch.append(_epoch)
                 pass
             # set the step for estimate
