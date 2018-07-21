@@ -3,6 +3,8 @@ from colorama import Fore
 import numpy as np
 import Putil.estimate.cv_estimate as cv_est
 import sys
+import os
+import json
 
 
 class TrainCommon:
@@ -46,7 +48,9 @@ class TrainCommon:
             pass
 
         # cross estimate calculation
+        cv = 0
         while True:
+            cv += 1
             # : generator cv index generator in every dat type one by one
             _index_generator = dict()
             for _cv_type in cv_collection.keys():
@@ -228,10 +232,8 @@ class TrainCommon:
                                 pass
 
                             # : release the memory
-                            for reset in _train_data_batch[_cv_type].items():
-                                for data in reset[1]:
-                                    data = list()
-                                    pass
+                            for input_type in _train_data_batch[_cv_type].keys():
+                                _train_data_batch[_cv_type][input_type] = list()
                                 pass
 
                             # collect result to the batch collection
@@ -250,13 +252,14 @@ class TrainCommon:
                     pass
 
                 # todo: train one epoch display
-                epoch_info = 'train_epoch: {0}\n'.format(_epoch)
+                epoch_info = 'cv: {1} train_epoch: {0}\n'.format(_epoch, cv)
                 for _cv_type in result_collection.keys():
                     epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
                     for _wanted in result_collection[_cv_type][-1].keys():
                         epoch_info += ' --<{0}: {1}\n'.format(_wanted, result_collection[_cv_type][-1][_wanted][-1])
                         pass
                     pass
+                train_epoch.append(_epoch)
                 print(Fore.RED + epoch_info)
 
                 # val
@@ -315,7 +318,7 @@ class TrainCommon:
                                 try:
                                     val_result = model.Val(_val_data_batch[_cv_type])
                                 except:
-                                    print(Fore.RED + 'train model exception')
+                                    print(Fore.RED + 'val model exception')
                                     # set the step for estimate
                                     for _cv_type in cv_collection.keys():
                                         val_result_collection[_cv_type][-1]['step'] = val_epoch
@@ -333,11 +336,9 @@ class TrainCommon:
                                     sys.exit()
                                     pass
 
-                                # : to release the memory
-                                for reset in _val_data_batch[_cv_type].items():
-                                    for data in reset[1]:
-                                        data = list()
-                                        pass
+                                # : release the memory
+                                for input_type in _val_data_batch[_cv_type].keys():
+                                    _val_data_batch[_cv_type][input_type] = list()
                                     pass
 
                                 if gen_result_estimate_result_reflect is not None:
@@ -358,7 +359,7 @@ class TrainCommon:
                     pass
 
                 # todo: val one epoch display
-                epoch_info = 'val_epoch: {0}\n'.format(_epoch)
+                epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
                 for _cv_type in val_result_collection.keys():
                     epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
                     for _wanted in val_result_collection[_cv_type][-1].keys():
@@ -367,7 +368,6 @@ class TrainCommon:
                     pass
                 print(Fore.RED + epoch_info)
 
-                train_epoch.append(_epoch)
                 pass
             # set the step for estimate
             for _cv_type in cv_collection.keys():
@@ -376,12 +376,28 @@ class TrainCommon:
                 pass
             pass
         pass
+
         # : save estimate result
         for _cv_type in result_collection.keys():
-            cv_est.mutual_exclusion_cv_estimate(
-                result_collection[_cv_type],
-                val_result_collection[_cv_type],
-                result_save=save_path,
-                prefix=_cv_type,
-            )
+            try:
+                cv_est.mutual_exclusion_cv_estimate(
+                    result_collection[_cv_type],
+                    val_result_collection[_cv_type],
+                    result_save=save_path,
+                    prefix=_cv_type,
+                )
+                pass
+            except:
+                # : id save failed , we want some effect data save
+                print(Fore.RED + 'generate {0} estimate figure failed, save cv data in {1}'.format(cv, save_path))
+                for cv in range(0, len(result_collection[_cv_type])):
+                    path = os.path.join(os.path.join(save_path, _cv_type), cv)
+                    print(Fore.RED + '{0}'.format(path))
+                    with open(path, 'w') as fp:
+                        info = json.dumps(result_collection[_cv_type][cv])
+                        fp.write(info)
+                        fp.close()
+                        pass
+                    pass
+                pass
     pass
