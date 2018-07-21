@@ -49,29 +49,35 @@ class yolo_cluster:
         miou = list()
         # fig = plt.figure()
         # plt.subplots(121)
+        acc_cluster = list()
         for i in range(1, self._MaxCluster + 1):
-            kmean = clu.KMeans(n_clusters=i, precompute_distances='auto', algorithm='auto', random_state=0)
-            kmean.fit(self._GT)
-            store_h_w_str = ''
-            for j in kmean.cluster_centers_:
-                store_h_w_str += '||' + str(j[0]) + ',' + str(j[1])
-            self.TotalPd.loc['k-means', i] = store_h_w_str[2: ]
-            m_iou = list()
-            for j in self._GT:
-                one_gt_iou = list()
-                for k in kmean.cluster_centers_:
-                    m_rect = np.concatenate([np.array([0, 0]), k], axis=0)
-                    gt_rect = np.concatenate([np.array([0, 0]), j], axis=0)
-                    one_gt_iou.append(es.calc_iou(m_rect, gt_rect, LHW=True))
+            try:
+                kmean = clu.KMeans(n_clusters=i, precompute_distances='auto', algorithm='auto', random_state=0)
+                kmean.fit(self._GT)
+                store_h_w_str = ''
+                for j in kmean.cluster_centers_:
+                    store_h_w_str += '||' + str(j[0]) + ',' + str(j[1])
+                self.TotalPd.loc['k-means', i] = store_h_w_str[2: ]
+                m_iou = list()
+                for j in self._GT:
+                    one_gt_iou = list()
+                    for k in kmean.cluster_centers_:
+                        m_rect = np.concatenate([np.array([0, 0]), k], axis=0)
+                        gt_rect = np.concatenate([np.array([0, 0]), j], axis=0)
+                        one_gt_iou.append(es.calc_iou(m_rect, gt_rect, LHW=True))
+                        pass
+                    m_iou.append(np.mean(one_gt_iou))
                     pass
-                m_iou.append(np.mean(one_gt_iou))
+                # sca = plt.scatter(np.transpose(self._GT, [1, 0])[0], np.transpose(self._GT, [1, 0])[1], marker='.', )
+                # plt.setp(sca, markersize=2)
+                miou.append(np.mean(m_iou))
+                acc_cluster.append(i)
+                self._IoUPd.loc['k-means', i] = np.mean(m_iou)
                 pass
-            # sca = plt.scatter(np.transpose(self._GT, [1, 0])[0], np.transpose(self._GT, [1, 0])[1], marker='.', )
-            # plt.setp(sca, markersize=2)
-            miou.append(np.mean(m_iou))
-            self._IoUPd.loc['k-means', i] = np.mean(m_iou)
-            pass
-        plt.plot(list(range(1, self._MaxCluster + 1)), miou)
+            except Exception:
+                print(Fore.RED + '{0} cluster is not run({1})'.format(i, Exception.args))
+                pass
+        plt.plot(acc_cluster, miou)
         plt.xlabel('n_cluster')
         plt.ylabel('mIoU')
         plt.savefig(os.path.join(self._AnalysisResultPath, 'n_cluster-mIoU.png'))
