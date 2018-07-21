@@ -477,16 +477,24 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
                 tf.multiply(
                     lambda_obj,
                     tf.reduce_sum(
-                        yx_loss,
-                        name='yx_sum'
+                        tf.reduce_mean(
+                            yx_loss,
+                            axis=0,
+                            name='batch_mean'
+                        ),
+                        name='yx_sum',
                     ),
                     name='apply_lambda_weight'
                 ),
                 tf.multiply(
                     lambda_obj,
                     tf.reduce_sum(
-                        hw_loss,
-                        name='hw_sum'
+                        tf.reduce_mean(
+                            hw_loss,
+                            axis=0,
+                            name='batch_mean'
+                        ),
+                        name='hw_sum',
                     ),
                     name='apply_lambda_weight'
                 ),
