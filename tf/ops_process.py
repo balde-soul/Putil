@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 
+
 def _get_operation(global_operation, name):
     for i in global_operation:
         if i.name == name:
@@ -10,6 +11,7 @@ def _get_operation(global_operation, name):
             pass
         pass
     pass
+
 
 def original_apply_moving(sess):
     sess = tf.Session()
@@ -21,10 +23,9 @@ def original_apply_moving(sess):
         pass
     return map
 
-def __main__ == '__main__':
+if __name__ == '__main__':
 
     print('------test original_apply_moving------')
     sess.close()
     tf.reset_default_graph()
-    
-    
+    pass

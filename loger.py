@@ -6,6 +6,31 @@ import logging
 import logging.handlers as logging_handlers
 from colorama import Fore
 
+"""
+logging 的打印机制是基于：树形结构的，上层的logger的等级以及handlers都会被下层继承
+除非下层重新设置等级与handlers等属性
+    loger usage:
+    logger主要是联合提供了接口以及静态全局的属性，让使用该程序接口生成的logger具有相同的
+    配置这在软件集成中是需要的，最上层设置输出属性，方便debug，查看等功能
+        import Putil.loger as plog
+        import logging
+        最为简单的方法：
+        plog.PutilLogConfig.config_handler(plog.file_method | plog.rotating_file_method | plog.stream_method)
+        plog.PutilLogConfig.config_log_level(file=logging.ERROR, stream=logging.DEBUG, rotating_file=logging.DEBUG)
+        logger = plog.PutilLogConfig("Test").logger()
+        到这里，logger是继承了logging.root的level属性(logging.ERROR)
+        我们可以重新设置属性
+        logger.setLevel(logging.DEBUG)
+        同时logger下层还可以继续生成子logger
+        logger2 = logger.getChild('sub1')
+        logger2.setLevel(logging.ERROR)
+        同样是属性继承的，这样我们可以树形有效明了的管理log信息
+"""
+
+DEBUG = logging.DEBUG
+INFO = logging.INFO
+ERROR = logging.ERROR
+FATAL = logging.FATAL
 
 HTTPHandler = logging_handlers.HTTPHandler
 SMTPHandler = logging_handlers.SMTPHandler
@@ -15,13 +40,16 @@ FileHandler = logging.FileHandler
 StreamHandler = logging.StreamHandler
 
 
+# logging.basicConfig(level=logging.INFO)
+
 # method
+no_log_handler = int('00', 16)
 file_method = int('01', 16)
 rotating_file_method = int('04', 16)
 stream_method = int('02', 16)
 handlers = int('0', 16)
 
-format = logging.BASIC_FORMAT
+Format = logging.BASIC_FORMAT
 
 # file name
 if sys.platform == 'win32':
@@ -33,33 +61,18 @@ elif sys.platform == 'linux':
 else:
     raise OSError("platform is not support")
 
-# handlers default
-file_method_default = logging.FileHandler('./{user}-{date}-{os}.log'.format(
-    user=user,
-    date=datetime.date.today(),
-    os=sys.platform
-))
-rotating_file_default = logging_handlers.RotatingFileHandler('./{user}-{date}-{os}.log'.format(
-    user=user,
-    date=datetime.date.today(),
-    os=sys.platform
-),
-    maxBytes=20000000,
-    encoding='utf-8'
-)
-
 # file param
 file_param = {
-    'file_path': './{user}-{date}-{os}.log'.format(
+    'filename': './{user}-{date}-{os}.log'.format(
         user=user,
         date=datetime.date.today(),
         os=sys.platform),
     'mode': 'a',
-    'encode': None,
+    'encoding': None,
     'delay': False
 }
 rotating_file_param = {
-    'file_path': './{user}-{date}-{os}.log'.format(
+    'filename': './{user}-{date}-{os}-r.log'.format(
         user=user,
         date=datetime.date.today(),
         os=sys.platform),
@@ -73,13 +86,8 @@ rotating_file_param = {
 log_level = {
     'file': logging.INFO,
     'stream': logging.WARNING,
-    'rotating_file': logging.INFO
+    'rotating_file': logging.DEBUG
 }
-
-
-def config_handle(logger, handle_code):
-
-    pass
 
 
 class method:
@@ -106,42 +114,41 @@ class PutilLogConfig:
             pass
         pass
 
-    # todo: generate handlers and pack into dict by the keys in global log_level
+    # : generate handlers and pack into dict by the keys in global log_level
     def __set_handlers(self):
-        global handlers, format, file_param
+        global handlers, Format, file_param, log_level
         handlers_dict = {}
         if handlers & file_method != 0:
             h_file = logging.FileHandler(**file_param)
-            h_file.setFormatter(format)
+            h_file.setFormatter(logging.Formatter(Format))
             h_file.setLevel(log_level['file'])
             handlers_dict['file'] = h_file
             pass
         else:
             handlers_dict['file'] = None
         if handlers & rotating_file_method != 0:
-            h_file = logging_handlers.RotatingFileHandler(**rotating_file_param)
-            h_file.setFormatter(format)
-            h_file.setLevel(log_level['rotating_file'])
-            handlers_dict['rotating_file'] = h_file
+            r_h_file = logging_handlers.RotatingFileHandler(**rotating_file_param)
+            r_h_file.setFormatter(logging.Formatter(Format))
+            r_h_file.setLevel(log_level['rotating_file'])
+            handlers_dict['rotating_file'] = r_h_file
             pass
         else:
             handlers_dict['rotating_file'] = None
         if handlers & stream_method != 0:
-            h_file = logging.StreamHandler()
-            h_file.setFormatter(format)
-            h_file.setLevel(log_level['stream'])
-            handlers_dict['stream'] = h_file
+            stream = logging.StreamHandler()
+            stream.setFormatter(logging.Formatter(Format))
+            stream.setLevel(log_level['stream'])
+            handlers_dict['stream'] = stream
             pass
         else:
             handlers_dict['stream'] = None
         return handlers_dict
         pass
 
-    # todo: config the handles log level
+    # : config the handles log level
     @staticmethod
     def config_log_level(**options):
         """
-
         :param options:
         :return:
         """
@@ -157,18 +164,18 @@ class PutilLogConfig:
             pass
         pass
 
-    # todo: config the log format
+    # : config the log format
     @staticmethod
     def config_format(logging_format):
         """
         :param logging_format: string
         :return:
         """
-        global format
-        format = logging.Formatter(logging_format)
+        global Format
+        Format = logging_format
         pass
 
-    # todo: config which handler to use
+    # : config which handler to use
     @staticmethod
     def config_handler(_handlers):
         """
@@ -180,7 +187,7 @@ class PutilLogConfig:
         handlers = _handlers
         pass
 
-    # todo: config the file handler param
+    # : config the file handler param
     @staticmethod
     def config_file_handler(**options):
         global file_param
@@ -195,7 +202,7 @@ class PutilLogConfig:
             pass
         pass
 
-    # todo: config the rotating file handler param
+    # : config the rotating file handler param
     @staticmethod
     def config_rotating_file_handlers(**options):
         global rotating_file_param
@@ -212,3 +219,36 @@ class PutilLogConfig:
 
     def logger(self):
         return self._logger
+    pass
+
+
+class LogReflect:
+    def __init__(self, _level):
+        """
+
+        :param _level: string
+        """
+        self._level = _level
+        self._reflect = {
+            'Notset': logging.NOTSET,
+            'Debug': logging.DEBUG,
+            'Info': logging.INFO,
+            'Warning': logging.WARNING,
+            'Error': logging.ERROR,
+            'Fatal': logging.FATAL
+        }
+        if self._level not in self._reflect.keys():
+            raise KeyError('{0} is illegal, please set {1}'.format(
+                self._level,
+                self._reflect.keys().__str__()
+            ))
+        pass
+
+    def level(self):
+        return self._reflect[self._level]
+        pass
+
+    @property
+    def Level(self):
+        return self.level()
+        pass

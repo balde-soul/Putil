@@ -1,0 +1,12 @@
+{
+  "ac1": {
+    "type": "PReLU",
+    "param_type": 0.32,
+    "alpha": 0.1,
+    "alpha_trainable": false
+  },
+
+  "ac2": {
+    "type": "ReLU"
+  }
+}

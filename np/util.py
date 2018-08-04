@@ -2,6 +2,13 @@
 
 import numpy as np
 from Putil.tf import util
+import Putil.loger as plog
+import sys
+root_logger = plog.PutilLogConfig("NpUtil").logger()
+root_logger.setLevel(plog.DEBUG)
+
+NpTypeLogger = root_logger.getChild("NpTypeLogger")
+NpTypeLogger.setLevel(plog.DEBUG)
 
 _np_type = {
     0.32: np.float32,
@@ -17,7 +24,11 @@ _np_type = {
 
 class np_type:
     def __init__(self, label):
-        self._type = _np_type[label]
+        try:
+            self._type = _np_type[label]
+        except KeyError as e:
+            NpTypeLogger.error('key : {0} is not supported\n{1}'.format(label, e))
+            sys.exit()
         self._label = label
         pass
 

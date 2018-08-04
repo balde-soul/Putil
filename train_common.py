@@ -2,9 +2,16 @@
 from colorama import Fore
 import numpy as np
 import Putil.estimate.cv_estimate as cv_est
+import Putil.tf.model_helper as mh
 import sys
 import os
 import json
+import Putil.loger as plog
+
+
+root_logger = plog.PutilLogConfig("TrainCommonRoot").logger()
+root_logger.setLevel(plog.DEBUG)
+TrainCommonLog = root_logger.getChild("TrainCommonLog")
 
 
 class TrainCommon:
@@ -21,10 +28,19 @@ class TrainCommon:
     # support for cv estimate :which kinds of data type should has the same cv num
     # support for specify batch epoch
     # support estimate visual cross epoch
-    def model_cv(self, model, cv_collection, index_to_data, epoch, val_epoch_step, batch, save_path, **options):
+    def model_cv(
+            self,
+            model,
+            cv_collection,
+            index_to_data,
+            epoch,
+            val_epoch_step,
+            batch,
+            save_path,
+            **options):
         """
         
-        :param model: 
+        :param model:
         :param cv_collection: 
         :param index_to_data: 
         :param epoch: 
@@ -36,9 +52,9 @@ class TrainCommon:
         # use to fix the result gen keys to the estimate wanted data keys{'result_key': 'estimate_key'}
         gen_result_estimate_result_reflect = options.pop('grerr', None)
         assert len(cv_collection) == len(index_to_data), \
-            print(Fore.RED + 'cv_collection should has the same length with index_to_data')
+            TrainCommonLog.error(Fore.RED + 'cv_collection should has the same length with index_to_data')
         assert (False in [i in index_to_data.keys() for i in cv_collection.keys()]) is False, \
-            print(Fore.RED + 'cv_collection should has thesame keys with index_to_data')
+            TrainCommonLog.error(Fore.RED + 'cv_collection should has thesame keys with index_to_data')
         # all cv result save space
         result_collection = dict()
         val_result_collection = dict()
@@ -53,7 +69,9 @@ class TrainCommon:
             cv += 1
             # : generator cv index generator in every dat type one by one
             _index_generator = dict()
+            TrainCommonLog.info("start generate cv_gen cross every type in the cv_step")
             for _cv_type in cv_collection.keys():
+
                 # explain: every _index_generator is {'train': this_cv_train_index_gen, 'val': this_cv_val_index_gen}
                 try:
                     _index_generator[_cv_type] = cv_collection[_cv_type].__next__()
@@ -80,22 +98,25 @@ class TrainCommon:
                         val_result_collection[_cv_type][-1][_model_result_name] = list()
                     pass
                 pass
+            TrainCommonLog.info("extract successful")
 
             # check if there are any cv in all type which do not finished
             # yes continue cv this type, no break and finish the while cv estimate
             if len(_index_generator.keys()) == 0:
                 print(Fore.GREEN + 'total cv finish')
-                # todo: generate cv estimate visual use result_collection
                 break
                 pass
 
             # every cv should re init the model
+            TrainCommonLog.info("re init the model")
             model.re_init()
+            TrainCommonLog.info("re init successful")
 
             # : set the data to feed(every kind of cv use the same feed_data_list)
             _train_data_batch = dict()
             _val_data_batch = dict()
             # fill the batch data use what index_to_data generates
+            TrainCommonLog.info('prepare the struct for store the data for thiw')
             for _cv_type in cv_collection.keys():
                 _train_data_batch[_cv_type] = dict()
                 _val_data_batch[_cv_type] = dict()
@@ -136,13 +157,15 @@ class TrainCommon:
                     pass
                 info_v += '\n'
                 pass
-            print(Fore.YELLOW + 'from train_common data feed to Model(actually the model used):\n'
-                                '{0}\n{1}'.format(info, info_v))
+            TrainCommonLog.info(
+                Fore.YELLOW + 'from train_common data feed to Model(actually the model used):\n'
+                              '{0}\n{1}'.format(info, info_v))
 
             train_epoch = list()
             val_epoch = list()
 
             # : train all epoch in one cv with all data type
+            TrainCommonLog.info("start {0} train".format(epoch))
             for _epoch in range(0, epoch):
                 # batch_train_result collection
                 epoch_result_with_cross_batch = dict()
@@ -212,8 +235,11 @@ class TrainCommon:
                             # use _train_data_batch to train the model, wanted!!: model train return a dict
                             try:
                                 _train_result = model.TrainCV(_train_data_batch[_cv_type])
-                            except:
-                                print(Fore.RED + 'train model exception')
+                            except Exception as e:
+                                TrainCommonLog.error(
+                                    Fore.RED +
+                                    'train model exception\n{0}'.format(
+                                        e))
                                 # set the step for estimate
                                 for _cv_type in cv_collection.keys():
                                     val_result_collection[_cv_type][-1]['step'] = val_epoch
@@ -251,7 +277,7 @@ class TrainCommon:
                         pass
                     pass
 
-                # todo: train one epoch display
+                # : train one epoch display
                 epoch_info = 'cv: {1} train_epoch: {0}\n'.format(_epoch, cv)
                 for _cv_type in result_collection.keys():
                     epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
@@ -358,7 +384,7 @@ class TrainCommon:
                     val_epoch.append(_epoch)
                     pass
 
-                # todo: val one epoch display
+                # : val one epoch display
                 epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
                 for _cv_type in val_result_collection.keys():
                     epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
@@ -400,4 +426,16 @@ class TrainCommon:
                         pass
                     pass
                 pass
+
+    def total_train(
+            self,
+            model,
+            cv_collection,
+            index_to_data,
+            epoch,
+            val_epoch_step,
+            batch,
+            **options
+    ):
+        pass
     pass

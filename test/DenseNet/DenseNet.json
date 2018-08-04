@@ -1,25 +1,97 @@
 {
-  "Static":{
-    "Init": ["mrsa", "zero"],
-    "Regularize": ["l2", "l1"]
-  },
-  "Arch":[
+  "DenseNet":[
     {
-      "Name": null,
-      "Grow": 3,
-      "Depth": 3,
-      "Weight": { "Height": 3, "Width": 3, "Init": 0 },
-      "Bias": { "Init": 0 },
-      "BatchNormal": true,
-      "MovingAverage": [true, 0.999],
-      "Dropout": [true, 0.1],
-      "Transition": {
-        "Compress":[true, 0.2]
+      "param_dtype": 0.32,
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+      "pool_kernel": [2, 2],
+      "pool_stride": [2, 2],
+      "pool_type": "max",
+      "layer_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        }
+      },
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param": {
+          "type": "ReLU"
+        },
+        "compress_rate": null,
+        "dropout_rate": 0.1
       }
     },
-
     {
-
+      "param_dtype": 0.32,
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+      "pool_kernel": [2, 2],
+      "pool_stride": [2, 2],
+      "pool_type": "max",
+      "layer_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        }
+      },
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param": {
+          "type": "ReLU"
+        },
+        "compress_rate": null,
+        "dropout_rate": 0.1
+      }
+    },
+    {
+      "param_dtype": 0.32,
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+      "pool_kernel": [2, 2],
+      "pool_stride": [2, 2],
+      "pool_type": "max",
+      "layer_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        }
+      },
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param": {
+          "type": "ReLU"
+        },
+        "compress_rate": null,
+        "dropout_rate": 0.1
+      }
+    },
+    {
+      "param_dtype": 0.32,
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+      "pool_kernel": [2, 2],
+      "pool_stride": [2, 2],
+      "pool_type": "max",
+      "layer_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        }
+      },
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param": {
+          "type": "ReLU"
+        },
+        "compress_rate": null,
+        "dropout_rate": 0.1
+      }
     }
   ]
+
 }
