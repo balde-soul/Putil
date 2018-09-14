@@ -16,6 +16,19 @@ InitializeParamLogger = root_logger.getChild('InitializeParam')
 InitializeParamLogger.setLevel(plog.DEBUG)
 
 
+"""
+this class is write to easy fix the param for initialize operation
+inherit from param.ParamProbe which provide the method to fix the input param with the default param
+
+this class provide three methods for initialize now , include { 'mrsa', 'zeros', 'xavier'}
+
+usage: 
+    at least we should provide 'method' in the param dict:
+    param = {'method': 'mrsa'}
+    param_fix = InitializeParam(param, default=param['method']).ShowDefault().complement(...).fix_with_default().ParamGenWithInfo()
+"""
+
+
 class InitializeParam(param.ParamProbe):
     def __init__(self, param_feed, **options):
         """
