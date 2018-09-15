@@ -55,9 +55,11 @@ def Ac(output_map, param, **options):
                 pass
             pass
         else:
-            logging.ERROR(Fore.RED('unsupported method: {method}'.format(
-                method=_method)))
+            logging.ERROR(Fore.RED('unsupported method: {0}'.format(
+               _method)))
             sys.exit()
+            pass
+        pass
     pass
 
 
