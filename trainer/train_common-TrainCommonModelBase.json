@@ -1,0 +1,8 @@
+{
+  "Training": {
+    "SummaryBatch": 0,
+    "DisplayBatch": 0,
+    "SavePath": "",
+    "MovingDecay": 0.999
+  }
+}
