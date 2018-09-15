@@ -1,0 +1,108 @@
+{
+  "DeDenseNet":[
+    {
+      "param_dtype": 0.32,
+
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+
+      "t_kernel": [3, 3],
+      "t_stride": [2, 2],
+      "compress_rate": 0.3,
+
+      "layer_param":{
+        "batch_normal": true,
+        "activate":{
+          "type": "ReLU"
+        }
+      },
+
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        },
+        "dropout_rate": 0.1
+      }
+    },
+    {
+      "param_dtype": 0.32,
+
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+
+      "t_kernel": [3, 3],
+      "t_stride": [2, 2],
+      "compress_rate": 0.3,
+
+      "layer_param":{
+        "batch_normal": true,
+        "activate":{
+          "type": "ReLU"
+        }
+      },
+
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        },
+        "dropout_rate": 0.1
+      }
+    },
+    {
+      "param_dtype": 0.32,
+
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+
+      "t_kernel": [3, 3],
+      "t_stride": [2, 2],
+      "compress_rate": 0.3,
+
+      "layer_param":{
+        "batch_normal": true,
+        "activate":{
+          "type": "ReLU"
+        }
+      },
+
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        },
+        "dropout_rate": 0.1
+      }
+    },
+    {
+      "param_dtype": 0.32,
+
+      "grows": [3, 3, 3],
+      "regularize_weight": 0.0001,
+      "kernels": [[3, 3], [3, 3], [3, 3]],
+
+      "t_kernel": [3, 3],
+      "t_stride": [2, 2],
+      "compress_rate": 0.3,
+
+      "layer_param":{
+        "batch_normal": true,
+        "activate":{
+          "type": "ReLU"
+        }
+      },
+
+      "transition_param":{
+        "batch_normal": true,
+        "activate_param":{
+          "type": "ReLU"
+        },
+        "dropout_rate": 0.1
+      }
+    }
+  ]
+}
