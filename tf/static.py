@@ -15,16 +15,16 @@ RegularizeExtractLogger = root_logger.getChild("RegularizeExtract")
 RegularizeExtractLogger.setLevel(plog.DEBUG)
 
 
-# todo: generate initialize method, coding
-def initialize(method, dtype):
-    """
-
-    :param type:
-    :return:
-    """
-    init = tf.zeros_initializer(dtype) if method == 'zero' else None
-    init = tf.ones_initializer(dtype=dtype) if method == 'one' else None
-
+# # todo: generate initialize method, coding
+# def initialize(method, dtype):
+#     """
+#
+#     :param type:
+#     :return:
+#     """
+#     init = tf.zeros_initializer(dtype) if method == 'zero' else None
+#     init = tf.ones_initializer(dtype=dtype) if method == 'one' else None
+#
 
 # padding way describe change
 class padding_convert:
