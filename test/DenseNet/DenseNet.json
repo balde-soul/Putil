@@ -9,13 +9,13 @@
       "pool_stride": [2, 2],
       "pool_type": "max",
       "layer_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param":{
           "type": "ReLU"
         }
       },
       "transition_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param": {
           "type": "ReLU"
         },
@@ -32,13 +32,13 @@
       "pool_stride": [2, 2],
       "pool_type": "max",
       "layer_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param":{
           "type": "ReLU"
         }
       },
       "transition_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param": {
           "type": "ReLU"
         },
@@ -55,13 +55,13 @@
       "pool_stride": [2, 2],
       "pool_type": "max",
       "layer_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param":{
           "type": "ReLU"
         }
       },
       "transition_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param": {
           "type": "ReLU"
         },
@@ -78,13 +78,13 @@
       "pool_stride": [2, 2],
       "pool_type": "max",
       "layer_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param":{
           "type": "ReLU"
         }
       },
       "transition_param":{
-        "batch_normal": true,
+        "batch_normal": false,
         "activate_param": {
           "type": "ReLU"
         },

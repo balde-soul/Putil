@@ -462,10 +462,10 @@ def DeDenseNetBlockTransition(
     """
     print(Fore.LIGHTGREEN_EX + '******************block_{0}_transition'.format(name))
     with tf.variable_scope(name) as block_transition_scope:
+        training = options.pop('training')
         # for batch normal
         print(Fore.LIGHTGREEN_EX + '-----------------bn-----------------')
         batch_normal = options.pop('batch_normal', True)
-        training = options.pop('training') if batch_normal is True else None
         # : print Arch Info
         print(Fore.LIGHTGREEN_EX + 'param type: {0}'.format(param_dtype.name))
         if batch_normal:
@@ -722,14 +722,40 @@ def DenseNetBlock(
         dense_net_provide=None
 ):
     """
-
-    :param output_map:
-    :param param_dtype:
-    :param grows:
-    :param name:
-    :param regularize_weight:
-    :param kernels:
-    :param pool_kernel:
+    Other-Net-Output--
+                      |
+     -----------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_0              \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+                                                         |
+     ----------------------------------------------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_1               \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+                                                         |
+     ----------------------------------------------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_1               \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+                                                        |
+                          ....some.....
+                                                         |
+     ----------------------------------------------------
+     \                     transition
+      -->BatchNormalization-->Conv-->Activate-->Dropout
+    :param output_map: the output tensor from other net , from batch normal(last layer） is not recommend, because
+        in this part, batch normal is applied, foregoing batch normal is redundant
+    :param param_dtype: tf.dtype
+    :param grows: [], specify the output channel in every block_n_i, whose length confirm the i in block_n_i
+    :param name: "", specify the name for sub graph
+    :param regularize_weight: float, specify the weight and bias regularize_weight
+    :param kernels: [[]], specify the kernel size for the conv in every block_n_i, whose lenght should be the same as
+        len(grows), and element should be [h, w]
+    :param pool_kernel:[h, w], specify the pool kernel size for the transition layer
     :param pool_stride:
     :param layer_param:
     :param transition_param:
@@ -783,7 +809,7 @@ def DenseNetBlockLayer(
         kernel,
         **options):
     """
-
+    Other-Net-Output-->BatchNormalization-->Conv-->Activate--Output
     :param output_map: tf.operation}feature from other net
     :param param_dtype: {tf.dtype}param type special
     :param name: {str}transition name
@@ -864,6 +890,36 @@ def DenseNetBlockLayers(
         layer_param,
         **options
 ):
+    """
+    Other-Net-Output--
+                      |
+     -----------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_0              \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+                                                         |
+     ----------------------------------------------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_1               \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+                                                         |
+     ----------------------------------------------------
+     \
+      \   ----------------------------------------
+       \ |                 block_n_1               \
+        -->BatchNormalization-->Conv-->Activate- Concat--
+    :param output_map:
+    :param param_dtype:
+    :param grows:
+    :param name:
+    :param regularize_weight:
+    :param kernels:
+    :param layer_param:
+    :param options:
+    :return:
+    """
     dense_net_provide = options.pop('dense_net_provide', None)
     block_layer_count = 0
     print(Fore.LIGHTGREEN_EX + 'XXXXXXXXXXXXXXXXXXXX block {0} XXXXXXXXXXXXXXXXX'.format(name))
@@ -919,10 +975,10 @@ def DenseNetBlockTransition(
     """
     print(Fore.LIGHTGREEN_EX + '******************block_{0}_transition****************'.format(name))
     with tf.variable_scope(name) as block_transition_scope:
+        training = options.pop('training')
         # for batch normal
         print(Fore.LIGHTGREEN_EX + '-----------------bn-----------------')
         batch_normal = options.pop('batch_normal', True)
-        training = options.pop('training') if batch_normal is True else None
         # : print Arch Info
         print(Fore.LIGHTGREEN_EX + 'param type: {0}'.format(param_dtype.name))
         if batch_normal:
