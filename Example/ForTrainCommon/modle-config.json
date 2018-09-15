@@ -1,0 +1,20 @@
+{
+  "BaseModel": "",
+  "ParamDtype": 0.32,
+  "RegularizeWeight": 0.0001,
+  "MovingDecay": 0.999,
+  "Opt":{
+    "Opt": "Adam",
+    "opt_param":{
+
+    }
+  },
+  "BaseModel1":{
+
+  },
+  "Training":{
+    "SummaryBatch": 10,
+    "DisplayBatch": 20,
+    "SaveBasicPath": ""
+  }
+}
