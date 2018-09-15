@@ -1,0 +1,21 @@
+{
+  "0":{
+    "param_type": 0.32,
+    "padding": "SAME",
+    "feature_map_amount": 3,
+    "weight":{
+      "height": 3,
+      "width": 3,
+      "stride_h": 1,
+      "stride_w": 1,
+      "initializer": "mrsa",
+      "initializer_param":{
+        "param_type": 0.32
+      }
+    },
+    "bias":{
+      "on": true,
+      "initializer": "mrsa"
+    }
+  }
+}
