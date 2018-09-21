@@ -43,10 +43,10 @@ def Ac(output_map, param, **options):
             if _alpha_trainable:
                 print(Fore.LIGHTGREEN_EX + '--->alpha trainable')
                 with tf.name_scope("alpha_trainable"):
-                    tf.Variable(_alpha, trainable=True, dtype=_type)
+                    alpha = tf.Variable(_alpha, trainable=True, dtype=_type)
                     p = tf.nn.relu(output_map, name='positive')
                     n = tf.subtract(output_map, p, name='sub_p_get_n')
-                    n_mul = tf.multiply(n, _alpha, name='n_mul')
+                    n_mul = tf.multiply(n, alpha, name='n_mul')
                     return tf.add(n_mul, p, name='PReLU')
             else:
                 print(Fore.LIGHTGREEN_EX + '---->alpha untrainable')
