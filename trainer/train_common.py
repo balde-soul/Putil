@@ -467,6 +467,7 @@ class TrainCommon:
                :param batch:
                :return:
                """
+        force_epoch = options.pop('force_epoch', False)
         self.val_epoch = val_epoch_step
         # use to fix the data_generator keys to the model data feed keys{'gen_key': 'feed_key'}
         gen_data_feed_data_reflect = options.pop('gdfdr', None)
@@ -590,11 +591,19 @@ class TrainCommon:
 
             # : train all epoch in one cv with all data type
             TrainCommonLog.info("start {0} train".format(epoch))
-            for _epoch in range(0, epoch):
+            _epoch = 0
+            while True:
+                _epoch += 1
+                self.epoch = _epoch
+                if force_epoch is True:
+                    if self.epoch > epoch:
+                        TrainCommonLog.info(Fore.LIGHTRED_EX + 'up to epoch{0}'.format(epoch) + Fore.RESET)
+                        break
+                        pass
                 if model.Stop is True:
                     TrainCommonLog.info(Fore.LIGHTRED_EX + 'model request for stop' + Fore.RESET)
                     break
-                self.epoch = _epoch
+
                 # batch_train_result collection
                 epoch_result_with_cross_batch = dict()
                 for _type_name in cv_collection.keys():

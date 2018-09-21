@@ -204,25 +204,25 @@ class TrainCommonModelBase(plogb.LoggerBase, TrainCommonModelBaseAbs):
         return self._result_val
         pass
 
-    def TrainEpochUpdate(self):
+    def TrainEpochUpdate(self, cv_trainer):
         self._logger.info(Fore.LIGHTRED_EX +
                           'this method is empty , trainer would not update!!!!!!'
                           + Fore.RESET)
         pass
 
-    def TrainBatchUpdate(self):
+    def TrainBatchUpdate(self, cv_trainer):
         self._logger.info(Fore.LIGHTRED_EX +
                           'this method is empty , trainer would not update!!!!!!'
                           + Fore.RESET)
         pass
 
-    def ValBatchUpdate(self):
+    def ValBatchUpdate(self, cv_trainer):
         self._logger.info(Fore.LIGHTRED_EX +
                           'this method is empty , trainer would not update!!!!!!'
                           + Fore.RESET)
         pass
 
-    def ValEpochUpdate(self):
+    def ValEpochUpdate(self, cv_trainer):
         self._logger.info(Fore.LIGHTRED_EX +
                           'this method is empty , trainer would not update!!!!!!'
                           + Fore.RESET)
@@ -355,19 +355,19 @@ class TrainCommonModelBaseWithUpdate(TrainCommonModelBase):
         self._stop = False
 
     @abc.abstractmethod
-    def TrainBatchUpdate(self):
+    def TrainBatchUpdate(self, cv_trainer):
         pass
 
     @abc.abstractmethod
-    def TrainEpochUpdate(self):
+    def TrainEpochUpdate(self, cv_trainer):
         pass
 
     @abc.abstractmethod
-    def ValEpochUpdate(self):
+    def ValEpochUpdate(self, cv_trainer):
         pass
 
     @abc.abstractmethod
-    def ValBatchUpdate(self):
+    def ValBatchUpdate(self, cv_trainer):
         pass
 
     @property
