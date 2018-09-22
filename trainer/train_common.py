@@ -598,7 +598,11 @@ class TrainCommon:
                 self.epoch = _epoch
                 if force_epoch is True:
                     if self.epoch > epoch:
-                        TrainCommonLog.info(Fore.LIGHTRED_EX + 'up to epoch{0}'.format(epoch) + Fore.RESET)
+                        TrainCommonLog.info(
+                            Fore.LIGHTRED_EX +
+                            'up to epoch{0}'.format(
+                                epoch)
+                            + Fore.RESET)
                         break
                         pass
                 if model.Stop is True:
