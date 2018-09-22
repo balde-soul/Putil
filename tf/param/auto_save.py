@@ -198,14 +198,14 @@ class ImproveSave(AutoSaveClass):
         return self
         pass
 
-    def SaveFlage(self):
-        """
-        this is the method which model call to check save or not
-        :return: bool, True: model can save the weight. False: model is not necessary to save the weight(decide by the
-        self._decision_generator
-        """
-        return self._decision_generator(self._indicator_get())
-        pass
+    # def SaveFlage(self):
+    #     """
+    #     this is the method which model call to check save or not
+    #     :return: bool, True: model can save the weight. False: model is not necessary to save the weight(decide by the
+    #     self._decision_generator
+    #     """
+    #     return self._decision_generator(self._indicator_get())
+    #     pass
 
     def UseDefaultDecider(self, **options):
         """
