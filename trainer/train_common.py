@@ -403,16 +403,17 @@ class TrainCommon:
                     val_epoch.append(_epoch)
                     pass
 
-                # : val one epoch display
-                epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
-                for _cv_type in val_result_collection.keys():
-                    epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
-                    for _wanted in val_result_collection[_cv_type][-1].keys():
-                        epoch_info += ' --<{0}: {1}\n'.format(_wanted, val_result_collection[_cv_type][-1][_wanted][-1])
+                    # : val one epoch display
+                    epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
+                    for _cv_type in val_result_collection.keys():
+                        epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
+                        for _wanted in val_result_collection[_cv_type][-1].keys():
+                            epoch_info += ' --<{0}: {1}\n'.format(_wanted, val_result_collection[_cv_type][-1][_wanted][-1])
+                            pass
                         pass
-                    pass
-                print(Fore.RED + epoch_info)
+                    print(Fore.RED + epoch_info)
 
+                    pass
                 pass
             # set the step for estimate
             for _cv_type in cv_collection.keys():
@@ -837,19 +838,18 @@ class TrainCommon:
                     self.valing_epoch.append(_epoch)
                     pass
 
-                # : val one epoch display
-                epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
-                for _cv_type in val_result_collection.keys():
-                    epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
-                    for _wanted in val_result_collection[_cv_type][-1].keys():
-                        epoch_info += ' --<{0}: {1}\n'.format(_wanted, val_result_collection[_cv_type][-1][_wanted][-1])
+                    # : val one epoch display
+                    epoch_info = 'cv: {1} val_epoch: {0}\n'.format(_epoch, cv)
+                    for _cv_type in val_result_collection.keys():
+                        epoch_info += '-->cv_type: {0}\n'.format(_cv_type)
+                        for _wanted in val_result_collection[_cv_type][-1].keys():
+                            epoch_info += ' --<{0}: {1}\n'.format(_wanted, val_result_collection[_cv_type][-1][_wanted][-1])
+                            pass
                         pass
-                    pass
-                print(Fore.RED + epoch_info)
+                    print(Fore.RED + epoch_info)
 
-                # model Update while ine val epoch done
-                model.ValEpochUpdate(self)
-
+                    # model Update while ine val epoch done
+                    model.ValEpochUpdate(self)
                 pass
             # set the step for estimate
             for _cv_type in cv_collection.keys():
