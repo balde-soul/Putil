@@ -140,6 +140,22 @@ class ValAccStop(EarlyStopClass):
         self._min = None
         pass
 
+    def Stop(self):
+        ValAccLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'old best indicator record:\n{0}'.format(
+                self._record)
+            + Fore.RESET
+        )
+        ValAccLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'now indicator:\n{0}'.format(
+                self.IndicatorGetter())
+            + Fore.RESET
+        )
+        return EarlyStopClass.Stop(self)
+        pass
+
     def UseDefaultDecider(self, **options):
         """
         set the Decider parameter
@@ -235,3 +251,22 @@ class ValAccStop(EarlyStopClass):
             pass
         return self
         pass
+
+    @property
+    def IndicatorGetter(self):
+        """
+        get the indicator getter
+        :return:
+        """
+        return self._indicator_getter
+        pass
+
+    @property
+    def DecisionGenerator(self):
+        """
+        get the decision_generator
+        :return:
+        """
+        return self._decider
+
+    pass

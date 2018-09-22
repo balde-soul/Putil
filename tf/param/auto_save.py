@@ -170,7 +170,23 @@ class ImproveSave(AutoSaveClass):
         # the saved weight indicator which is the same length of the self._model_keep_amount
         self._best_record = list()
         self._regular = None
+        self._now_indicator = None
         pass
+
+    def Save(self):
+        ImproveSaveLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'old best indicator record:\n{0}'.format(
+                self._best_record)
+            + Fore.RESET
+        )
+        ImproveSaveLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'now indicator:\n{0}'.format(
+                self.IndicatorGetter())
+            +Fore.RESET
+        )
+        return AutoSaveClass.Save(self)
 
     def CheckAutoSave(self):
         """
@@ -244,11 +260,12 @@ class ImproveSave(AutoSaveClass):
         """
         if len(self._best_record) != 0:
             if indicator < self._best_record[0]:
-                ImproveSaveLogger.info(Fore.LIGHTGREEN_EX + 'indicator reduce from {0} to {1}, '
-                                                            'set the ask to save the model weight'
-                                                            ''.format(
-                    self._best_record, indicator
-                ) + Fore.RESET)
+                ImproveSaveLogger.info(
+                    Fore.LIGHTGREEN_EX +
+                    'indicator reduce from {0} to {1}, '
+                    'set the ask to save the model weight'.format(
+                    self._best_record, indicator)
+                    + Fore.RESET)
                 if len(self._best_record) < self._model_keep_amount:
                     self._best_record.insert(0, indicator)
                 else:
@@ -272,11 +289,12 @@ class ImproveSave(AutoSaveClass):
         """
         if len(self._best_record) != 0:
             if indicator > self._best_record[0]:
-                ImproveSaveLogger.info(Fore.LIGHTGREEN_EX + 'indicator improve from {0} to {1}, '
-                                                            'set the ask to save the model weight'
-                                                            ''.format(
-                    self._best_record[0], indicator
-                ) + Fore.RESET)
+                ImproveSaveLogger.info(
+                    Fore.LIGHTGREEN_EX +
+                    'indicator improve from {0} to {1}, '
+                    'set the ask to save the model weight'.format(
+                    self._best_record[0], indicator)
+                    + Fore.RESET)
                 if len(self._best_record) < self._model_keep_amount:
                     self._best_record.insert(0, indicator)
                 else:
@@ -298,7 +316,7 @@ class ImproveSave(AutoSaveClass):
         get the indicator getter
         :return:
         """
-        return self._indicator_get
+        return self._indicator_getter
         pass
 
     @property
@@ -307,6 +325,6 @@ class ImproveSave(AutoSaveClass):
         get the decision_generator
         :return:
         """
-        return self._decision_generator
+        return self._decider
     pass
 

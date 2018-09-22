@@ -72,6 +72,8 @@ def __test_improve_save():
     print(th.information(0, 'start testing imrpove_save', Fore.GREEN) + Fore.RESET)
     m = model()
     print(m._auto_save._regular)
+    assert m._auto_save.IndicatorGetter == m.Output
+    assert m._auto_save.DecisionGenerator == m._auto_save._decider
     hit_target = [1, 2, 3, 4, 7, 8]
     for i in range(0, 11):
         m.TrainCv()
