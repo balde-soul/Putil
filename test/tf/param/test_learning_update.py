@@ -77,6 +77,8 @@ def __test_valacc_stop():
     one = 0
     two = 0
     stop_one_2_index = 22
+    assert m1.lru1.IndicatorGetter == m1.lru1._indicator_getter
+    assert m1.lru1.DecisionGenerator == m1.lru1._decider
     for i in range(0, 25):
         m1.TrainCV()
         if one == 0:

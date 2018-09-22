@@ -9,8 +9,8 @@ root_logger = plog.PutilLogConfig('tf/param/learning_update').logger()
 root_logger.setLevel(plog.DEBUG)
 ReduceROnPlateauClassLogger = root_logger.getChild('ReduceROnPlateauClass')
 ReduceROnPlateauClassLogger.setLevel(plog.DEBUG)
-TrainIndicatorLogger = root_logger.getChild('TrainIndicator')
-TrainIndicatorLogger.setLevel(plog.DEBUG)
+LrUpdateLogger = root_logger.getChild('LrUpdate')
+LrUpdateLogger.setLevel(plog.DEBUG)
 
 """
                         common api
@@ -145,6 +145,21 @@ class LrUpdate(ReduceROnPlateauClass):
         self._min = None
         pass
 
+    def Reduce(self):
+        LrUpdateLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'old best indicator record:\n{0}'.format(
+                self._best)
+            + Fore.RESET
+        )
+        LrUpdateLogger.info(
+            Fore.LIGHTGREEN_EX +
+            'now indicator:\n{0}'.format(
+                self.IndicatorGetter())
+            + Fore.RESET
+        )
+        return ReduceLROnPlateau.Reduce(self)
+
     def UseDefaultDecider(self, **options):
         """
         set the Decider parameter
@@ -166,7 +181,7 @@ class LrUpdate(ReduceROnPlateauClass):
         self._max = options.pop('max', self._max)
         self._min = options.pop('min', self._min)
         if self._max == self._min:
-            TrainIndicatorLogger.fatal(
+            LrUpdateLogger.fatal(
                 Fore.LIGHTGREEN_EX +
                 'max and min should not be True at the same time '
                 '\nyou should set min or max to True'
@@ -179,7 +194,13 @@ class LrUpdate(ReduceROnPlateauClass):
         pass
 
     def _default_decider(self, indicator):
+        LrUpdateLogger.info("-->decider")
         if self._cooldown_count <= self._cooldown:
+            LrUpdateLogger.info(
+                Fore.LIGHTRED_EX +
+                'cooling down'
+                +Fore.RESET
+            )
             self._cooldown_count += 1
             ret = False
             pass
@@ -197,7 +218,8 @@ class LrUpdate(ReduceROnPlateauClass):
                     pass
                 if self._interval_count >= self._interval:
                     self._interval_count = 0
-                    TrainIndicatorLogger.info(
+                    self._cooldown_count = 0
+                    LrUpdateLogger.info(
                         Fore.LIGHTGREEN_EX +
                         'learning rate reduce:'
                         '\nregular: {0}'
@@ -219,4 +241,23 @@ class LrUpdate(ReduceROnPlateauClass):
             pass
         return ret
         pass
+
+    @property
+    def IndicatorGetter(self):
+        """
+        get the indicator getter
+        :return:
+        """
+        return self._indicator_getter
+        pass
+
+    @property
+    def DecisionGenerator(self):
+        """
+        get the decision_generator
+        :return:
+        """
+        return self._decider
+
+    pass
 
