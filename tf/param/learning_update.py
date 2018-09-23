@@ -114,8 +114,10 @@ class ReduceROnPlateauClass(ReduceLROnPlateau):
 
 
 """
-usage:this class provide a more sample way to apply LrUpdate , is frequently-used
+usage:
+    this class provide a more sample way to apply LrUpdate , is frequently-used
     check in the test program
+    important: while in cool down the best is still recording and updating
 class model:
     def __init__(self):
         self._val_lr_update = LrUpdate().UseDefaultDecider(max=True, interval=5, epsilon=1.0, cooldown=3).SetIndicatorGet(self.Output).CheckReduceLROnPlateau()
@@ -158,7 +160,7 @@ class LrUpdate(ReduceROnPlateauClass):
                 self.IndicatorGetter())
             + Fore.RESET
         )
-        return ReduceLROnPlateau.Reduce(self)
+        return ReduceROnPlateauClass.Reduce(self)
 
     def UseDefaultDecider(self, **options):
         """
@@ -195,7 +197,7 @@ class LrUpdate(ReduceROnPlateauClass):
 
     def _default_decider(self, indicator):
         LrUpdateLogger.info("-->decider")
-        if self._cooldown_count <= self._cooldown:
+        if self._cooldown_count < self._cooldown:
             LrUpdateLogger.info(
                 Fore.LIGHTRED_EX +
                 'cooling down'
@@ -203,6 +205,16 @@ class LrUpdate(ReduceROnPlateauClass):
             )
             self._cooldown_count += 1
             ret = False
+            if self._best is None:
+                self._best = indicator
+                ret = False
+                pass
+            else:
+                if (indicator - self._best >= self._epsilon) == self._regular:
+                    self._interval_count = 0
+                    self._best = indicator
+                    pass
+                pass
             pass
         else:
             if self._best is None:

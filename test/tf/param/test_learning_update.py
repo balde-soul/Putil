@@ -74,16 +74,21 @@ def __test_valacc_stop():
     TestLrUpdateLogger.info(th.information(0, 'start test valacc_stop', Fore.GREEN) + Fore.RESET)
     m1 = model()
     stop_one_1_index = 12
+    stop_one_1_r_index = 20
     one = 0
+    one_r= 0
     two = 0
     stop_one_2_index = 22
     assert m1.lru1.IndicatorGetter == m1.lru1._indicator_getter
     assert m1.lru1.DecisionGenerator == m1.lru1._decider
     for i in range(0, 25):
         m1.TrainCV()
-        if one == 0:
+        if one == 0 or one_r == 0:
             if m1.ModelCheck1() is True:
-                one = i
+                if one == 0:
+                    one = i
+                else:
+                    one_r = i
             else:
                 pass
             pass
@@ -95,7 +100,7 @@ def __test_valacc_stop():
                 pass
             pass
         pass
-    if (one == stop_one_1_index and two == stop_one_2_index) is True:
+    if (one == stop_one_1_index and two == stop_one_2_index and one_r == stop_one_1_r_index) is True:
         TestLrUpdateLogger.info(th.information(0, 'test valacc_stop successful', Fore.GREEN) + Fore.RESET)
     else:
         TestLrUpdateLogger.info(th.information(0, 'test valacc_stop failed', Fore.LIGHTRED_EX) + Fore.RESET)
