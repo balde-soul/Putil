@@ -82,6 +82,9 @@ class __PlaceGT:
             # the mask frequently used in calc loss
             gt_place['p_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='p_mask')
             gt_place['n_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='n_mask')
+            # avoid learning illegal anchor
+            gt_place['anchor_mask'] = tf.placeholder(
+                dtype=tf.float32, shape=[None, None, None, cluster_object_count], name='anchor_mask')
             pass
         self._gt_place = gt_place
         pass
@@ -121,6 +124,10 @@ class __PlaceGT:
     @property
     def NMask(self):
         return self._gt_place['n_mask']
+
+    @property
+    def LegalAnchor(self):
+        return self._gt_place['anchor_mask']
     pass
 
 
@@ -256,6 +263,7 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
             axis=0
         )
         gt_process['class'] = tf.reshape(gt_process_one_hot, shape, name='one_hot_reshape')
+        gt_process['feed_class'] = gt_place_result['class']
         gt_process['y'] = gt_place_result['y']
         gt_process['x'] = gt_place_result['x']
         y_pro = tf.div(gt_place_result['y'], scalar)
@@ -272,8 +280,10 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
                        tf.reshape(h_pro, [-1, cluster_object_count, 1]),
                        tf.reshape(w_pro, [-1, cluster_object_count, 1])], axis=0),
             shape)
+        gt_process['anchor_obj_mask'] = tf.multiply(gt_place_result['p_mask'], gt_place_result['anchor_mask'])
         gt_process['p_mask'] = gt_place_result['p_mask']
         gt_process['n_mask'] = gt_place_result['n_mask']
+        gt_process['anchor_mask'] = gt_place_result['anchor_mask']
         pass
     return gt_process
 
@@ -301,17 +311,39 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
     xt = place_process_result['x']
     ht = place_process_result['h']
     wt = place_process_result['w']
+    p_mask = place_process_result['p_mask']
+    n_mask = place_process_result['n_mask']
     with tf.name_scope('calc_iou'):
-        yp = pro_result_read_result['y'] * scalar
-        xp = pro_result_read_result['x'] * scalar
-        hp = tf.multiply(tf.exp(pro_result_read_result['h']), prior_h)
-        wp = tf.multiply(tf.exp(pro_result_read_result['w']), prior_w)
-        cross_h = tf.multiply(
-            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(hp, ht))), tf.abs(tf.subtract(yp, yt)))),
-            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(wp, wt))), tf.abs(tf.subtract(xp, xt)))),
-            name='t_iou'
+        with tf.name_scope('p_iou'):
+            yp = pro_result_read_result['y'] * scalar
+            xp = pro_result_read_result['x'] * scalar
+            hp = tf.multiply(tf.exp(pro_result_read_result['h']), prior_h)
+            wp = tf.multiply(tf.exp(pro_result_read_result['w']), prior_w)
+            p_iou = tf.multiply(
+                tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(hp, ht))), tf.abs(tf.subtract(yp, yt)))),
+                tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(wp, wt))), tf.abs(tf.subtract(xp, xt)))),
+                name='p_iou'
+            )
+            pass
+        with tf.name_scope('n_iou'):
+            shape = p_iou.get_shape().as_list()
+            n_iou = tf.zeros(shape=shape, dtype=p_iou.dtype, name='n_iou')
+            pass
+        iou = tf.add(
+            tf.multiply(
+                p_iou,
+                p_mask,
+                name='apply_p_mask'
+            ),
+            tf.multiply(
+                n_iou,
+                n_mask,
+                name='apply_n_mask'
+            ),
+            'iou_label'
         )
-    return cross_h
+        pass
+    return iou
     pass
 
 
@@ -328,6 +360,8 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     class_pro = split_pro_result['class']
     p_mask = gt_process_result['p_mask']
     n_mask = gt_process_result['n_mask']
+    anchor_mask = gt_process_result['anchor_mask']
+    anchor_obj_mask = gt_process_result['anchor_obj_mask']
     gt_y = gt_process_result['y']
     gt_x = gt_process_result['x']
     gt_h = gt_process_result['h']
@@ -335,6 +369,14 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     gt_anchor = gt_process_result['anchor']
     # gt_precision = place_gt_result['precision']
     gt_class = gt_process_result['class']
+    gt_class_feed = gt_process_result['feed_class']
+
+    legal_anchor_amount = tf.reduce_sum(anchor_mask, name='legal_anchor_amount')
+    obj_amount = tf.reduce_sum(gt_process_result['p_mask'], name='obj_amount')
+    legal_anchor_obj_amount = tf.reduce_sum(
+        anchor_obj_mask,
+        name='legal_anchor_obj_amount'
+    )
     with tf.name_scope('loss'):
         with tf.name_scope('anchor_loss'):
             # yx loss part
@@ -476,29 +518,35 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             anchor_loss = tf.add(
                 tf.multiply(
                     lambda_obj,
-                    tf.reduce_sum(
-                        tf.reduce_mean(
-                            yx_loss,
-                            axis=0,
-                            name='batch_mean'
+                    tf.div(
+                        tf.reduce_sum(
+                            tf.multiply(
+                                yx_loss,
+                                gt_process_result['anchor_obj_mask']
+                            ),
+                            name='batch_sum'
                         ),
-                        name='yx_sum',
+                        legal_anchor_obj_amount,
+                        name='yx_anchor_obj_mean',
                     ),
                     name='apply_lambda_weight'
                 ),
                 tf.multiply(
                     lambda_obj,
-                    tf.reduce_sum(
-                        tf.reduce_mean(
-                            hw_loss,
-                            axis=0,
-                            name='batch_mean'
+                    tf.div(
+                        tf.reduce_sum(
+                            tf.multiply(
+                                hw_loss,
+                                gt_process_result['anchor_obj_mask']
+                            ),
+                            name='batch_sum'
                         ),
-                        name='hw_sum',
+                        legal_anchor_obj_amount,
+                        name='hw_anchor_obj_mean',
                     ),
                     name='apply_lambda_weight'
                 ),
-                name='anchor_sum'
+                name='anchor_loss_sum'
             )
             pass
         with tf.name_scope('precision_loss'):
@@ -524,49 +572,56 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
                         calc_iou_result
                     )
                 ),
-                p_mask,
+                anchor_mask,
                 name='p_precision'
             )
             p_precision_loss = tf.multiply(
-                tf.reduce_sum(tf.reduce_mean(p_precision, axis=0)),
+                tf.div(
+                    tf.reduce_sum(
+                        p_precision,
+                        name='batch_sum'
+                    ),
+                    legal_anchor_amount,
+                    name='pre_anchor_mean'
+                ),
                 lambda_obj,
-                name='p_loss'
+                name='apply_pre_lambda'
             )
             precision_loss = p_precision_loss
             # precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
             pass
         with tf.name_scope('class_loss'):
-            p_class = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        gt_class,
-                        class_pro
-                    )
+            anchor_amount = anchor_mask.get_shape().as_list()[3]
+            shape = tf.concat([[-1], [tf.div(tf.shape(gt_class)[-1], anchor_amount)]], axis=0)
+            # class_pro_reshape = class_pro.get_shape().as_list()[0:3] + [anchor_amount, class_amount]
+            class_loss_whole = tf.multiply(
+                tf.reshape(
+                    tf.square(
+                        tf.subtract(
+                            gt_class,
+                            class_pro
+                        )
+                    ),
+                    shape
                 ),
-                p_mask,
-                name='p_class'
+                tf.reshape(
+                    anchor_obj_mask,
+                    [-1, 1]
+                ),
+                name='class_loss'
             )
-            p_class_loss = tf.multiply(
+            class_loss = tf.multiply(
                 lambda_obj,
-                tf.reduce_sum(tf.reduce_mean(p_class, axis=0)),
-                name='p_loss'
-            )
-            n_class = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        gt_class,
-                        class_pro
-                    )
+                tf.div(
+                    tf.reduce_sum(
+                        class_loss_whole,
+                        name='batch_sum'
+                    ),
+                    legal_anchor_obj_amount,
+                    name='class_anchor_obj_mean'
                 ),
-                n_mask,
-                name='n_class'
+                name='apply_lambda_weight'
             )
-            n_class_loss = tf.multiply(
-                lambda_noobj,
-                tf.reduce_sum(tf.reduce_mean(n_class, axis=0)),
-                name='n_loss'
-            )
-            class_loss = tf.add(p_class_loss, n_class_loss, name='loss')
             pass
         total_loss = tf.add(anchor_loss, tf.add(precision_loss, class_loss), name='total_loss')
         pass
@@ -584,6 +639,7 @@ if __name__ == '__main__':
     x = np.zeros([10, 10, 10, 4], np.float32)
     h = np.zeros([10, 10, 10, 4], np.float32)
     w = np.zeros([10, 10, 10, 4], np.float32)
+    anchor_mask = np.zeros([10, 10, 10, 4], np.float32)
     yolo_feature = gen_pro(feature_feed, 3, 4)
     loss, place = append_yolo2_loss(yolo_feature, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
     tf.summary.FileWriter('../test/yolo/model_base-', tf.Session().graph).close()
@@ -597,6 +653,7 @@ if __name__ == '__main__':
         place['h']: h,
         place['w']: w,
         place['p_mask']: p_mask,
-        place['n_mask']: n_mask
+        place['n_mask']: n_mask,
+        place['anchor_mask']: anchor_mask
     }))
     pass
