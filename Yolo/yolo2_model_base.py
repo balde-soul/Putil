@@ -628,32 +628,3 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     return total_loss
     pass
 
-
-if __name__ == '__main__':
-    feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
-    f = np.zeros([10, 10, 10, 100], np.float32)
-    p_mask = np.zeros([10, 10, 10, 1], np.float32)
-    n_mask = np.ones([10, 10, 10, 1], np.float32)
-    cl = np.zeros([10, 10, 10, 4], np.int64)
-    y = np.zeros([10, 10, 10, 4], np.float32)
-    x = np.zeros([10, 10, 10, 4], np.float32)
-    h = np.zeros([10, 10, 10, 4], np.float32)
-    w = np.zeros([10, 10, 10, 4], np.float32)
-    anchor_mask = np.zeros([10, 10, 10, 4], np.float32)
-    yolo_feature = gen_pro(feature_feed, 3, 4)
-    loss, place = append_yolo2_loss(yolo_feature, 3, [10, 5, 3, 4], [2, 3, 4, 8], 32)
-    tf.summary.FileWriter('../test/yolo/model_base-', tf.Session().graph).close()
-    sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
-    print(sess.run([loss], feed_dict={
-        feature_feed: f,
-        place['class']: cl,
-        place['y']: y,
-        place['x']: x,
-        place['h']: h,
-        place['w']: w,
-        place['p_mask']: p_mask,
-        place['n_mask']: n_mask,
-        place['anchor_mask']: anchor_mask
-    }))
-    pass
