@@ -4,6 +4,20 @@ import tensorflow.contrib.layers as layers
 from colorama import Fore
 import numpy as np
 import random
+import Putil.np.util as npu
+import Putil.tf.util as tfu
+import base.logger as plog
+
+
+root_logger = plog.PutilLogConfig('yolo2ModelBase').logger()
+root_logger.setLevel(plog.DEBUG)
+
+Yolo2BuildLogger = root_logger.getChild('Yolo2Build')
+Yolo2BuildLogger.setLevel(plog.DEBUG)
+
+Yolo2GenerateFeedLogger = root_logger.getChild('Yolo2GenerateFeed')
+Yolo2GenerateFeedLogger.setLevel(plog.DEBUG)
+
 assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.6.0'
 
 
@@ -12,7 +26,8 @@ def append_yolo2_loss(
         class_num,
         prior_h,
         prior_w,
-        scalar
+        scalar,
+        _dtype=0.32
 ):
     """
     
@@ -21,6 +36,7 @@ def append_yolo2_loss(
     :param prior_h: prior height list or 1-D ndarray
     :param prior_w: prior width list or 1-D ndarray
     :param scalar: down sample scalar
+    :param _dtype: model parameter dtype, default 0.32
     :return: 
     """
     assert len(prior_w) == len(prior_h), Fore.RED + 'prior height should be same length with prior width'
@@ -30,13 +46,15 @@ def append_yolo2_loss(
     print(Fore.GREEN + 'prior_w : ', prior_w)
     print(Fore.GREEN + 'scalar : ', scalar)
     cluster_object_count = len(prior_w)
-    place_gt_result = __PlaceGT(cluster_object_count=cluster_object_count).Place
+    place_gt_result = __PlaceGT(cluster_object_count=cluster_object_count, _dtype=_dtype).Place
     place_process_result = __place_process(
         place_gt_result,
         class_num,
         prior_h,
         prior_w,
-        scalar=scalar)
+        scalar=scalar,
+        _dtype=_dtype
+    )
     pro_result_read_result = __pro_result_reader(
         split_pro_result=yolo2_net_feature,
         cluster_object_count=cluster_object_count)
@@ -45,7 +63,9 @@ def append_yolo2_loss(
         place_process_result=place_process_result,
         scalar=scalar,
         prior_h=prior_h,
-        prior_w=prior_w)
+        prior_w=prior_w,
+        _dtype=_dtype
+    )
     loss = __calc_loss(
         split_pro_result=yolo2_net_feature,
         gt_process_result=place_process_result,
@@ -63,28 +83,29 @@ def append_yolo2_loss(
 # 'x': object center location x shift from the top left point int the cell, set 0.0 which cell does not contain object
 # relationship between real (center_y, center_x, height, width) and (y_shift, x_shift, h_shift, w_shift):
 class __PlaceGT:
-    def __init__(self, cluster_object_count):
+    def __init__(self, cluster_object_count, _dtype):
         gt_place = dict()
+        dtype = tfu.tf_type(_dtype).Type
         with tf.name_scope('GT'):
             gt_place['class'] = tf.placeholder(dtype=tf.int32, shape=[None, None, None, cluster_object_count],
                                                name='class')
             # set 0.0 in the cell which does not contain any object except background
-            gt_place['y'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+            gt_place['y'] = tf.placeholder(dtype=dtype, shape=[None, None, None, cluster_object_count],
                                            name='y')
-            gt_place['x'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+            gt_place['x'] = tf.placeholder(dtype=dtype, shape=[None, None, None, cluster_object_count],
                                            name='x')
             # !!!!important: because of the follow process in (__place_process), hw should not contain negative and zero
             # !!!!suggest fill prior value in the cell location which does not contain any object
-            gt_place['h'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+            gt_place['h'] = tf.placeholder(dtype=dtype, shape=[None, None, None, cluster_object_count],
                                            name='h')
-            gt_place['w'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, cluster_object_count],
+            gt_place['w'] = tf.placeholder(dtype=dtype, shape=[None, None, None, cluster_object_count],
                                            name='w')
             # the mask frequently used in calc loss
-            gt_place['p_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='p_mask')
-            gt_place['n_mask'] = tf.placeholder(dtype=tf.float32, shape=[None, None, None, 1], name='n_mask')
+            gt_place['p_mask'] = tf.placeholder(dtype=dtype, shape=[None, None, None, 1], name='p_mask')
+            gt_place['n_mask'] = tf.placeholder(dtype=dtype, shape=[None, None, None, 1], name='n_mask')
             # avoid learning illegal anchor
             gt_place['anchor_mask'] = tf.placeholder(
-                dtype=tf.float32, shape=[None, None, None, cluster_object_count], name='anchor_mask')
+                dtype=dtype, shape=[None, None, None, cluster_object_count], name='anchor_mask')
             pass
         self._gt_place = gt_place
         pass
@@ -205,7 +226,7 @@ def __split_pro_ac(pro, class_num, cluster_object_count):
 # : this function is used to generate the standard pro in yolo-version2 network, which split into
 # {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
 #            'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
-def gen_pro(other_new_feature, class_num, cluster_object_count):
+def gen_pro(other_new_feature, class_num, cluster_object_count, _dtype=0.32):
     """
     pro = {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
             'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
@@ -218,13 +239,19 @@ def gen_pro(other_new_feature, class_num, cluster_object_count):
     print(Fore.GREEN + 'class_num : ', class_num)
     print(Fore.GREEN + 'cluster_object_count : ', cluster_object_count)
     feature_chanel = other_new_feature.shape.as_list()[-1]
+    dtype = tfu.tf_type(_dtype).Type
     with tf.name_scope('yolo_pro'):
         weight = tf.get_variable(
-            name='compress_w', shape=[1, 1, feature_chanel, cluster_object_count * (class_num + 4 + 1)],
-            initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'), dtype=tf.float32)
+            name='compress_w',
+            shape=[1, 1, feature_chanel, cluster_object_count * (class_num + 4 + 1)],
+            initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'),
+            dtype=dtype
+        )
         bias = tf.get_variable(
-            name='compress_b', shape=[cluster_object_count * (class_num + 4 + 1)],
-            initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG')
+            name='compress_b',
+            shape=[cluster_object_count * (class_num + 4 + 1)],
+            initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'),
+            dtype=dtype
         )
         conv = tf.nn.conv2d(other_new_feature, weight, [1, 1, 1, 1], padding='SAME', name='conv')
         add = tf.nn.bias_add(conv, bias, name='bias_add')
@@ -235,7 +262,7 @@ def gen_pro(other_new_feature, class_num, cluster_object_count):
 
 
 # : the result of place_gt are not easy to used to calc loss, make some process in the function
-def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
+def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar, _dtype):
     """
     process the placeholder for using in the network easier
     :param gt_place_result: the result of placeholder
@@ -245,12 +272,19 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar):
     :param scalar: down sample scalar
     :return: 
     """
+    dtype = tfu.tf_type(_dtype).Type
     gt_process = dict()
     assert len(prior_h) == len(prior_w), Fore.RED + 'len of the prior_h and prior_w should be the same'
     cluster_object_count = len(prior_h)
     with tf.name_scope('gt_place_process'):
         before_one_hot = tf.shape(gt_place_result['class'])
-        gt_process_one_hot = tf.one_hot(gt_place_result['class'], class_num, 1.0, 0.0, name='one_hot')
+        gt_process_one_hot = tf.one_hot(
+            gt_place_result['class'],
+            class_num,
+            1.0,
+            0.0,
+            name='one_hot',
+            dtype=dtype)
         after_one_hot = tf.shape(gt_process_one_hot)
         reshape_last = tf.multiply(after_one_hot[-1], after_one_hot[-2])
         shape = tf.concat(
@@ -306,13 +340,14 @@ def __pro_result_reader(split_pro_result, cluster_object_count):
 
 
 # :use gt_anchor and anchor_pro to calc iou， output for calc precision loss
-def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w):
+def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w, _dtype):
     yt = place_process_result['y']
     xt = place_process_result['x']
     ht = place_process_result['h']
     wt = place_process_result['w']
     p_mask = place_process_result['p_mask']
     n_mask = place_process_result['n_mask']
+    dtype = tfu.tf_type(_dtype).Type
     with tf.name_scope('calc_iou'):
         with tf.name_scope('p_iou'):
             yp = pro_result_read_result['y'] * scalar
@@ -327,7 +362,7 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
             pass
         with tf.name_scope('n_iou'):
             shape = p_iou.get_shape().as_list()
-            n_iou = tf.zeros(shape=shape, dtype=p_iou.dtype, name='n_iou')
+            n_iou = tf.zeros(shape=shape, dtype=dtype, name='n_iou')
             pass
         iou = tf.add(
             tf.multiply(
@@ -628,3 +663,182 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     return total_loss
     pass
 
+
+import six
+import abc
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Yolo2GenerateI(object):
+    """
+    use normal information to generate the tensor feeding into the network build with above function
+    generate: y, x, w, h, class, obj_mask, nobj_mask, anchor_mask
+    """
+    @abc.abstractmethod
+    def _default_generate_feed_function(self, param):
+        pass
+
+    @abc.abstractmethod
+    def CheckGenerateFeedParamFit(self, param):
+        pass
+
+    @abc.abstractmethod
+    def _default_generate_result_function(self, param):
+        pass
+
+    @abc.abstractmethod
+    def CheckGenerateResultParamFit(self, param):
+        pass
+
+    pass
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Yolo2Generate(Yolo2GenerateI):
+    def __init__(self):
+        self._generate_feed_function = None
+        self._generate_result_function = None
+        pass
+
+    def GenerateFeed(self, param):
+        return self._generate_feed_function(param)
+        pass
+
+    def GenerateResult(self, param):
+        return self._generate_result_function(param)
+        pass
+
+    def InstallGenerateFeedFunction(self, analysis_function):
+        self._generate_feed_function = analysis_function
+        pass
+
+    def InstallGenerateResultFunction(self, analysis_function):
+        self._generate_result_function = analysis_function
+        pass
+
+
+class StandardYolo2Generate(Yolo2Generate):
+    def __init__(self):
+        Yolo2Generate.__init__(self)
+        pass
+
+    def _default_generate_feed_function(self, param):
+        """
+
+        :param param: dict
+            gt_box: support batch [[obj_0_yxhwc, obj_1_yxhwc, ...obj_n_yxhwc..., ], sample_1, sample_2, ....]
+            prior_hw: [[h0, w0], prior_1_h2, ...prior_n_hw...]
+            dtype: data type , float , base on np.np_type
+            scalar: net work pool scalar , static parameter: int
+            anchor_reject_base_iou: a value while the prior box IoU gt box lower than it and not the max iou prior box,
+                the prior would be reject to be added to training, float
+            image_height: batch accordant: int
+            image_width: batch accordant: int
+            shape_policy: batch accordant: string {'down_clip', 'up_clip', 'down_fit', 'up_fit'}
+        :return:
+        """
+        ret = dict()
+        gt_box = param['gt_box']
+        prior_hw = param['prior_hw']
+        dtype = npu.np_type(param['dtype']).Type
+        scalar = param['scalar']
+        iou_reject = param['iou_reject']
+        image_height = param['image_height']
+        image_width = param['image_width']
+        shape_policy = param['shape_policy']
+        anchor_amount = len(param['prior_hw'])
+
+        batch = len(gt_box)
+        if shape_policy == 'down_clip':
+            feed_height = np.floor(image_height / scalar)
+            feed_width = np.floor(image_width / scalar)
+
+            ret['y'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+            ret['x'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+            ret['h'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+            ret['w'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+            ret['anchor_mask'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+            ret['obj_mask'] = np.zeros(shape=[batch, feed_height, feed_width, 1], dtype=dtype)
+            ret['nobj_mask'] = np.ones(shape=[batch, feed_height, feed_width, 1], dtype=dtype)
+            ret['class'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+
+            gt_format = self.__find_same_cell_location(scalar=scalar, gt_box=gt_box)
+
+            for i in gt_format:
+
+            pass
+        elif shape_policy == 'up_clip':
+            pass
+        elif shape_policy == 'up_fit':
+            pass
+        elif shape_policy == 'down_fit':
+            pass
+        pass
+
+    @property
+    def FindSameCellLocation(self):
+        return self.__find_same_cell_location
+        pass
+
+    def __divide_anchor(self, gt_format_item):
+        """
+        use the output of __find_same_cell_location to divide anchor's owner
+        :param gt_format:
+        :return:
+        """
+
+        pass
+
+    def __find_same_cell_location(self, scalar, gt_box):
+        """
+        use scalar and gt_box to generate same cell format
+        [[[gt_box, ...](the box in the same cell, [cell]], [[offset]]...]
+        gt_box: [y, x, h, w]; cell: [cell_y=gt_box.y//scalar, cell_x=gt_box.x//scalar];
+        offset: [offset_y=gt_box.y%scalar, offset_x=gt_box.x%scalar]
+        :param scalar:
+        :param gt_box:
+        :return:
+        """
+        format = list()
+        # sort by y**2 + x**2 get the index
+        array_gt_box = np.array(gt_box)
+        order = (array_gt_box[:, 0]**2 + array_gt_box[:, 1]**2).argsort()
+        killed = []
+        for i in range(0, len(order)):
+            if i in killed:
+                continue
+            cell_y = gt_box[i][0]//scalar
+            cell_x = gt_box[i][1]//scalar
+            offset_y = gt_box[i][0]%scalar
+            offset_x = gt_box[i][1] % scalar
+            format.append([[]])
+            format[-1][0].append(gt_box[i])
+            format[-1].append([cell_y, cell_x])
+            format[-1].append([])
+            format[-1][-1].append([offset_y, offset_x])
+            for j in range(i + 1, len(order)):
+                if (gt_box[i][0]//scalar == gt_box[j][0]//scalar) & (gt_box[i][1]//scalar == gt_box[j][1]//scalar):
+                    # add to the format and add to killed
+                    offset_y = gt_box[j][0] % scalar
+                    offset_x = gt_box[j][1] % scalar
+                    format[-1][0].append(gt_box[j])
+                    format[-1][-1].append([offset_y, offset_x])
+                    killed.append(j)
+                    pass
+                else:
+                    break
+                    pass
+                pass
+            pass
+        return format
+        pass
+
+    def CheckGenerateFeedParamFit(self, param):
+        pass
+
+    def _default_generate_result_function(self, param):
+        pass
+
+    def CheckGenerateResultParamFit(self, param):
+        pass
+    pass
