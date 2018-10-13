@@ -1,4 +1,4 @@
-model_base.py:
+yolo2_model_base.py:
     gen_pro:
         provide method to generate the pro of yolo2
     append_yolo2_loss:
@@ -94,6 +94,16 @@ model_base.py:
                 three losses has a lambda parameter, we multiply it and then make the sum , get the final loss
 
                 this loss is being verified and has some difference with the yolo2 paper
+
+
+    StandardYolo2Feed:
+        a standard program to generate the feed for the network built by this file;
+
+        apply new prior box reject:
+            rule1: prior box cross edge of image: reject
+            rule2: prior box IoU gt box < iou_reject & prior box IoU gt box != Max(ALL[prior box IoU gt box]): reject
+            rule3: while more than one obj in one cell, prior box_x IoU gt box_1 > prior box_x IoU gt box_2, prior box_x
+                belong to gt box_1, apply rule1 and rule2
 
 
 
