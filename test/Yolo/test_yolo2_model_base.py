@@ -22,6 +22,13 @@ parser.add_option(
     dest='TestYolo2Build',
     help='set this flag while you want to test TestYolo2Build'
 )
+parser.add_option(
+    '--test___find_same_cell_location',
+    action='store_true',
+    default=False,
+    dest='TestFindSameCellLocation',
+    help='set this flag while you want to test TestFindSameCellLocation'
+)
 (options, args) = parser.parse_args()
 plog.PutilLogConfig.config_log_level(stream=plog.LogReflect(options.Level).Level)
 plog.PutilLogConfig.config_handler(plog.stream_method)
@@ -71,8 +78,19 @@ def __tes_yolo2_build():
     pass
 
 
+def __test___find_same_cell_location():
+    scalar = 10
+    gt_box = [[0, 0, 0, 0], [9, 9, 0, 0], [10, 10, 0, 0], [20, 20, 0, 0]]
+    base = yolo2b.StandardYolo2Generate()
+    format = base.FindSameCellLocation(scalar, gt_box)
+    pass
+
+
 if __name__ == '__main__':
     if options.TestYolo2Build:
         __tes_yolo2_build()
+        pass
+    if options.TestFindSameCellLocation:
+        __test___find_same_cell_location()
     pass
 
