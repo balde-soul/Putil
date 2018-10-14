@@ -18,6 +18,15 @@ Yolo2BuildLogger.setLevel(plog.DEBUG)
 Yolo2GenerateFeedLogger = root_logger.getChild('Yolo2GenerateFeed')
 Yolo2GenerateFeedLogger.setLevel(plog.DEBUG)
 
+StandardYolo2GenerateLogger = root_logger.getChild('StandardYolo2Generate')
+StandardYolo2GenerateLogger.setLevel(plog.DEBUG)
+
+Yolo2GenerateLogger = root_logger.getChild('Yolo2Generate')
+Yolo2GenerateLogger.setLevel(plog.DEBUG)
+
+Yolo2GenerateILogger = root_logger.getChild('Yolo2GenerateI')
+Yolo2GenerateILogger.setLevel(plog.DEBUG)
+
 assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.6.0'
 
 
@@ -165,59 +174,36 @@ def __split_pro_ac(pro, class_num, cluster_object_count):
         step = 4 + 1 + class_num
         # generate all part y x: sigmoid; h w: None; precision: sigmoid; class: part softmax
         with tf.name_scope('total_split'):
-            for i in range(0, cluster_object_count):
-                y_part = pro[:, :, :, step * i + 0: step * i + 1]
-                anchor_y_list.append(tf.nn.sigmoid(y_part, name='y_{0}_sigmoid'.format(i)))
-                x_part = pro[:, :, :, step * i + 1: step * i + 2]
-                anchor_x_list.append(tf.nn.sigmoid(x_part, name='x_{0}_sigmoid'.format(i)))
-                h_part = pro[:, :, :, step * i + 2: step * i + 3]
-                anchor_h_list.append(h_part)
-                w_part = pro[:, :, :, step * i + 3: step * i + 4]
-                anchor_w_list.append(w_part)
-                precision_part = pro[:, :, :, step * i + 4: step * i + 5]
-                precision_list.append(tf.nn.sigmoid(precision_part, name='precision_{0}_sigmoid'.format(i)))
-                class_part = pro[:, :, :, step * i + 5: step * i + 5 + class_num]
-                class_list.append(tf.nn.softmax(class_part, axis=-1, name='class_{0}_softmax'.format(i)))
+            with tf.name_scope('y_part'):
+                y_part = pro[:, :, :, 0: ((cluster_object_count - 1) * (4 + 1 + class_num) + 1): 4 + 1 + class_num]
+                y_pro = y_part
+                pass
+            with tf.name_scope('x_part'):
+                x_part = pro[:, :, :, 1: ((cluster_object_count - 1) * (4 + 1 + class_num) + 2): 4 + 1 + class_num]
+                x_pro = x_part
+                pass
+            with tf.name_scope('h_part'):
+                h_part = pro[:, :, :, 2: ((cluster_object_count - 1) * (4 + 1 + class_num) + 3): 4 + 1 + class_num]
+                h_pro = h_part
+                pass
+            with tf.name_scope('w_part'):
+                w_part = pro[:, :, :, 3: ((cluster_object_count - 1) * (4 + 1 + class_num) + 4): 4 + 1 + class_num]
+                w_pro = w_part
+                pass
+            with tf.name_scope('precision_part'):
+                precision_part = pro[:, :, :, 4: ((cluster_object_count - 1) * (4 + 1 + class_num) + 5): 4 + 1 + class_num]
+                precision_pro = precision_part
+                pass
+            with tf.name_scope('class_part'):
+                class_part = tf.reshape(pro, [-1, 4 + 1 + class_num])
+                class_part = class_part[:, 5::]
+                class_pro = class_part
                 pass
             pass
-        # generate y x h w pro
-        with tf.name_scope('y-x-h-w_pro'):
-            y_pro = tf.concat(anchor_y_list, axis=-1, name='y_pro')
-            x_pro = tf.concat(anchor_x_list, axis=-1, name='x_pro')
-            h_pro = tf.concat(anchor_h_list, axis=-1, name='h_pro')
-            w_pro = tf.concat(anchor_w_list, axis=-1, name='w_pro')
-
-        pro_part_list = list()
-        anchor_list = list()
-        # generate anchor list
         with tf.name_scope('anchor_pro'):
-            for i in range(0, cluster_object_count):
-                anchor_list.append(
-                    tf.concat([anchor_y_list[i], anchor_x_list[i], anchor_h_list[i], anchor_w_list[i]],
-                              axis=-1,
-                              name='anchor_{0}_concat'.format(i)))
-                pass
-            anchor_pro = tf.concat(anchor_list, axis=-1, name='anchor_pro')
-            pass
-        with tf.name_scope('pro'):
-            for i in range(0, cluster_object_count):
-                pro_part_list.append(
-                    tf.concat(
-                        [anchor_list[i], precision_list[i], class_list[i]],
-                        axis=-1,
-                        name='{0}_prediction_gen'.format(i)
-                    )
-                )
-                pass
-            pro = tf.concat(pro_part_list, axis=-1, name='pro')
-            pass
-        with tf.name_scope('class_pro'):
-            class_pro = tf.concat(class_list, axis=-1, name='class_pro')
-            pass
-        with tf.name_scope('precision_pro'):
-            precision_pro = tf.concat(precision_list, axis=-1, name='precision_pro')
-            pass
-        pass
+            anchor_pro = tf.concat(
+                [tf.expand_dims(y_pro, axis=-1), tf.expand_dims(x_pro, -1), tf.expand_dims(h_pro, -1), tf.expand_dims(w_pro, -1)],
+                axis=-1)
     return {'pro': pro, 'anchor': anchor_pro, 'precision': precision_pro, 'class': class_pro,
             'y': y_pro, 'x': x_pro, 'h': h_pro, 'w': w_pro}
     pass
@@ -277,7 +263,6 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar, _dtype
     assert len(prior_h) == len(prior_w), Fore.RED + 'len of the prior_h and prior_w should be the same'
     cluster_object_count = len(prior_h)
     with tf.name_scope('gt_place_process'):
-        before_one_hot = tf.shape(gt_place_result['class'])
         gt_process_one_hot = tf.one_hot(
             gt_place_result['class'],
             class_num,
@@ -285,38 +270,20 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar, _dtype
             0.0,
             name='one_hot',
             dtype=dtype)
-        after_one_hot = tf.shape(gt_process_one_hot)
-        reshape_last = tf.multiply(after_one_hot[-1], after_one_hot[-2])
-        shape = tf.concat(
-            [tf.slice(
-                before_one_hot,
-                [0],
-                [tf.rank(gt_place_result['class']) - 1]
-            ),
-                [reshape_last]],
-            axis=0
-        )
-        gt_process['class'] = tf.reshape(gt_process_one_hot, shape, name='one_hot_reshape')
+        gt_process['class'] = tf.reshape(gt_process_one_hot, [-1, class_num], name='one_hot_reshape')
+
         gt_process['feed_class'] = gt_place_result['class']
-        gt_process['y'] = gt_place_result['y']
-        gt_process['x'] = gt_place_result['x']
-        y_pro = tf.div(gt_place_result['y'], scalar)
-        x_pro = tf.div(gt_place_result['x'], scalar)
-        gt_process['h'] = gt_place_result['h']
-        gt_process['w'] = gt_place_result['w']
-        h_pro = tf.log(tf.div(gt_place_result['h'], prior_h))
-        w_pro = tf.log(tf.div(gt_place_result['w'], prior_w))
-        # generate entirety anchor
-        shape = tf.concat([tf.slice(tf.shape(gt_process['h']), [0], [3]), [4 * cluster_object_count]], axis=0)
-        gt_process['anchor'] = tf.reshape(
-            tf.concat([tf.reshape(y_pro, [-1, cluster_object_count, 1]),
-                       tf.reshape(x_pro, [-1, cluster_object_count, 1]),
-                       tf.reshape(h_pro, [-1, cluster_object_count, 1]),
-                       tf.reshape(w_pro, [-1, cluster_object_count, 1])], axis=0),
-            shape)
-        gt_process['anchor_obj_mask'] = tf.multiply(gt_place_result['p_mask'], gt_place_result['anchor_mask'])
-        gt_process['p_mask'] = gt_place_result['p_mask']
-        gt_process['n_mask'] = gt_place_result['n_mask']
+        gt_process['y_offset'] = tf.floormod(gt_place_result['y'], scalar)
+        gt_process['y'] = tf.div(gt_process['y_offset'], scalar)
+        gt_process['y_feed'] = gt_place_result['y']
+        gt_process['x_offset'] = tf.floormod(gt_place_result['x'], scalar)
+        gt_process['x'] = tf.div(gt_process['x_offset'], scalar)
+        gt_process['x_feed'] = gt_place_result['x']
+        gt_process['h'] = tf.log(tf.div(gt_place_result['h'], prior_h))
+        gt_process['h_feed'] = gt_place_result['h']
+        gt_process['w'] = tf.log(tf.div(gt_place_result['w'], prior_w))
+        gt_process['w_feed'] = gt_place_result['w']
+
         gt_process['anchor_mask'] = gt_place_result['anchor_mask']
         pass
     return gt_process
@@ -341,43 +308,22 @@ def __pro_result_reader(split_pro_result, cluster_object_count):
 
 # :use gt_anchor and anchor_pro to calc iou， output for calc precision loss
 def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, prior_w, _dtype):
-    yt = place_process_result['y']
-    xt = place_process_result['x']
-    ht = place_process_result['h']
-    wt = place_process_result['w']
+    yt = place_process_result['y_offset']
+    xt = place_process_result['x_offset']
+    ht = place_process_result['h_feed']
+    wt = place_process_result['w_feed']
     anchor_mask = place_process_result['anchor_mask']
-    p_mask = place_process_result['p_mask']
-    n_mask = place_process_result['n_mask']
-    dtype = tfu.tf_type(_dtype).Type
     with tf.name_scope('calc_iou'):
-        with tf.name_scope('p_iou'):
-            yp = pro_result_read_result['y'] * scalar
-            xp = pro_result_read_result['x'] * scalar
-            hp = tf.multiply(tf.exp(pro_result_read_result['h']), prior_h)
-            wp = tf.multiply(tf.exp(pro_result_read_result['w']), prior_w)
-            p_iou = tf.multiply(
-                tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(hp, ht))), tf.abs(tf.subtract(yp, yt)))),
-                tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(wp, wt))), tf.abs(tf.subtract(xp, xt)))),
-                name='p_iou'
-            )
-            pass
-        with tf.name_scope('n_iou'):
-            shape = p_iou.get_shape().as_list()
-            n_iou = tf.zeros(shape=shape, dtype=dtype, name='n_iou')
-            pass
-        iou = tf.add(
-            tf.multiply(
-                p_iou,
-                anchor_mask,
-                name='apply_p_mask'
-            ),
-            tf.multiply(
-                n_iou,
-                -1 * (1 - anchor_mask),
-                name='apply_n_mask'
-            ),
-            'iou_label'
+        yp = pro_result_read_result['y'] * scalar
+        xp = pro_result_read_result['x'] * scalar
+        hp = tf.multiply(tf.exp(pro_result_read_result['h']), prior_h)
+        wp = tf.multiply(tf.exp(pro_result_read_result['w']), prior_w)
+        all_iou = tf.multiply(
+            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(hp, ht))), tf.abs(tf.subtract(yp, yt)))),
+            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(wp, wt))), tf.abs(tf.subtract(xp, xt)))),
+            name='p_iou'
         )
+        iou = tf.multiply(all_iou, anchor_mask, name='apply_p_mask'),
         pass
     return iou
     pass
@@ -387,7 +333,7 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
 def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     anchor_loss_weight = 1.0
     precision_loss_weight = 1.0
-    class_loss_weight = 1,0
+    class_loss_weight = 1.0
     lambda_obj = 1.0
     lambda_noobj = 0.1
     y_pro = split_pro_result['y']
@@ -403,7 +349,7 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     gt_w = gt_process_result['w']
     gt_class = gt_process_result['class']
 
-    legal_anchor_amount = tf.reduce_sum(anchor_mask, name='legal_anchor_amount')
+    legal_anchor_amount = tf.multiply(tf.reduce_sum(anchor_mask, name='legal_anchor_amount'), 1.0e-17, name='avoid_zero')
 
     with tf.name_scope('loss'):
         with tf.name_scope('anchor_loss'):
@@ -417,18 +363,8 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             # hw loss part
             with tf.name_scope('hw_loss'):
                 hw_loss = tf.add(
-                    tf.square(
-                        tf.subtract(
-                            tf.sqrt(tf.multiply(h_pro, anchor_mask, name='h_pro_apply_p_mask'), name='h_pro_sqrt'),
-                            tf.sqrt(tf.multiply(gt_h, anchor_mask, name='gt_h_apply_p_mask'), name='gt_h_sqrt'),
-                            name='h_sub'),
-                        name='h_square'),
-                    tf.square(
-                        tf.subtract(
-                            tf.sqrt(tf.multiply(w_pro, anchor_mask, name='w_pro_apply_p_mask'), name='w_pro_sqrt'),
-                            tf.sqrt(tf.multiply(gt_w, anchor_mask, name='gt_w_apply_p_mask'), name='gt_w_sqrt'),
-                            name='w_sub'),
-                        name='w_square'),
+                    tf.square(tf.subtract(tf.sqrt(h_pro, name='h_pro_sqrt'), tf.sqrt(gt_h, name='gt_h_sqrt'), name='h_sub'), name='h_square'),
+                    tf.square(tf.subtract(tf.sqrt(w_pro, name='w_pro_sqrt'), tf.sqrt(gt_w, name='gt_w_sqrt'), name='w_sub'), name='w_square'),
                     name='hw_add')
                 pass
 
@@ -436,17 +372,11 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             anchor_loss = tf.add(
                 tf.multiply(
                     lambda_obj,
-                    tf.div(
-                        tf.reduce_sum(tf.multiply(yx_loss, gt_process_result['anchor_obj_mask']), name='batch_sum'),
-                        legal_anchor_amount,
-                        name='yx_anchor_obj_mean'),
+                    tf.div(tf.reduce_sum(tf.multiply(yx_loss, anchor_mask), name='batch_sum'), legal_anchor_amount, name='yx_anchor_obj_mean'),
                     name='apply_lambda_weight'),
                 tf.multiply(
                     lambda_obj,
-                    tf.div(
-                        tf.reduce_sum(tf.multiply(hw_loss, gt_process_result['anchor_obj_mask']), name='batch_sum'),
-                        legal_anchor_amount,
-                        name='hw_anchor_obj_mean'),
+                    tf.div(tf.reduce_sum(tf.multiply(hw_loss, anchor_mask), name='batch_sum'), legal_anchor_amount, name='hw_anchor_obj_mean'),
                     name='apply_lambda_weight'),
                 name='anchor_loss_sum'
             )
@@ -458,18 +388,24 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             # precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
             pass
         with tf.name_scope('class_loss'):
-            anchor_amount = anchor_mask.get_shape().as_list()[3]
-            shape = tf.concat([[-1], [tf.div(tf.shape(gt_class)[-1], anchor_amount)]], axis=0)
-            # class_pro_reshape = class_pro.get_shape().as_list()[0:3] + [anchor_amount, class_amount]
+            # anchor_amount = anchor_mask.get_shape().as_list()[3]
+            # shape = tf.concat([[-1], [tf.div(tf.shape(gt_class)[-1], anchor_amount)]], axis=0)
+
+            # # class_pro_reshape = class_pro.get_shape().as_list()[0:3] + [anchor_amount, class_amount]
+            # class_loss_whole = tf.multiply(
+            #     tf.reshape(tf.square(tf.subtract(gt_class, class_pro)), shape),
+            #     tf.reshape(anchor_mask, [-1, 1]),
+            #     name='class_loss')
             class_loss_whole = tf.multiply(
-                tf.reshape(tf.square(tf.subtract(gt_class, class_pro)), shape),
+                tf.nn.softmax_cross_entropy_with_logits_v2(labels=gt_class, logits=class_pro),
                 tf.reshape(anchor_mask, [-1, 1]),
                 name='class_loss')
-            class_loss = tf.multiply(
+            _class_loss = tf.multiply(
                 lambda_obj,
-                tf.div(tf.reduce_sum(class_loss_whole, name='batch_sum'), legal_anchor_amount, name='class_anchor_obj_mean'),
+                tf.div(tf.reduce_sum(class_loss_whole, name='batch_sum'), legal_anchor_amount,
+                       name='class_anchor_obj_mean'),
                 name='apply_lambda_weight')
-            class_loss = tf.multiply(class_loss, class_loss_weight, name='apply_class_loss_weight')
+            class_loss = tf.multiply(_class_loss, class_loss_weight, name='apply_class_loss_weight')
             pass
         total_loss = tf.add(anchor_loss, tf.add(precision_loss, class_loss), name='total_loss')
         pass
@@ -509,24 +445,17 @@ class Yolo2GenerateI(object):
 @six.add_metaclass(abc.ABCMeta)
 class Yolo2Generate(Yolo2GenerateI):
     def __init__(self):
-        self._generate_feed_function = None
-        self._generate_result_function = None
+        self._generate_feed_function = self._default_generate_feed_function
+        self._generate_result_function = self._default_generate_result_function
         pass
 
     def GenerateFeed(self, param):
+        Yolo2GenerateLogger.info('-->GenerateFeed')
         return self._generate_feed_function(param)
         pass
 
     def GenerateResult(self, param):
         return self._generate_result_function(param)
-        pass
-
-    def InstallGenerateFeedFunction(self, analysis_function):
-        self._generate_feed_function = analysis_function
-        pass
-
-    def InstallGenerateResultFunction(self, analysis_function):
-        self._generate_result_function = analysis_function
         pass
     pass
 
@@ -579,13 +508,11 @@ class StandardYolo2Generate(Yolo2Generate):
 
         self.feed_height = None
         self.feed_width = None
-        self.batch = None
 
         self.y = None
         self.x = None
         self.h = None
         self.w = None
-        self.cross_anchor_reject = None
         self.anchor_mask = None
         self.classify = None
         self.obj_mask = None
@@ -594,10 +521,10 @@ class StandardYolo2Generate(Yolo2Generate):
         self.scalar = scalar
         self._dtype = _dtype
         self.prior_hw = prior_hw
-        self.anchor_mask = len(prior_hw)
+        self.anchor_amount = len(prior_hw)
         pass
 
-    def __update_feed_shape(self, batch, feed_height, feed_width, anchor_amount, _dtype):
+    def __update_feed_shape(self, feed_height, feed_width, anchor_amount, _dtype):
         """
         while any parameter include batch, feed_height, feed_width, anchor_amount, _dtype
         changed, the tensor shape or type should be changed
@@ -605,22 +532,19 @@ class StandardYolo2Generate(Yolo2Generate):
         :return:
         """
         self._dtype = _dtype
-        self.batch = batch
         self.feed_height = feed_height
         self.feed_width = feed_width
         self.anchor_amount = anchor_amount
         dtype = npu.np_type(self._dtype).Type
-        self.y = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.x = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.h = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.w = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.anchor_mask = np.ones(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.obj_mask = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, 1], dtype=dtype)
-        self.nobj_mask = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, 1], dtype=dtype)
-        self.classify = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
-        self.cross_anchor_reject = self.__cross_edge_anchor_reject()
+        self.y = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.x = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.h = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.w = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.anchor_mask = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.classify = np.zeros(shape=[1, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
         pass
 
+    # unused
     def __cross_edge_anchor_reject(self):
         """
         process the anchor mask to make the anchor which cross the edge of image zero
@@ -656,10 +580,10 @@ class StandardYolo2Generate(Yolo2Generate):
         return rejected
         pass
 
-    def __find_same_cell_location(self, scalar, gt_box):
+    def __find_same_cell_location(self, scalar, gt_box, classify):
         """
         use scalar and gt_box to generate same cell format
-        [[[gt_box, ...](the box in the same cell, [cell]], [[offset]]...]
+        [[gt_box, ...](the box in the same cell, [cell], [offset, ...]...]
         gt_box: [y, x, h, w]; cell: [cell_y=gt_box.y//scalar, cell_x=gt_box.x//scalar];
         offset: [offset_y=gt_box.y%scalar, offset_x=gt_box.x%scalar]
         :param scalar:
@@ -682,15 +606,18 @@ class StandardYolo2Generate(Yolo2Generate):
             format[-1][0].append(gt_box[i])
             format[-1].append([cell_y, cell_x])
             format[-1].append([])
-            format[-1][-1].append([offset_y, offset_x])
+            format[-1][2].append([offset_y, offset_x])
+            format[-1].append([])
+            format[-1][3].append(classify[i])
             for j in range(i + 1, len(order)):
                 if (gt_box[i][0] // scalar == gt_box[j][0] // scalar) & (
                         gt_box[i][1] // scalar == gt_box[j][1] // scalar):
                     # add to the format and add to killed
-                    offset_y = gt_box[j][0] % scalar
-                    offset_x = gt_box[j][1] % scalar
+                    offset_y = gt_box[j][0] % (scalar - 1)
+                    offset_x = gt_box[j][1] % (scalar - 1)
                     format[-1][0].append(gt_box[j])
-                    format[-1][-1].append([offset_y, offset_x])
+                    format[-1][2].append([offset_y, offset_x])
+                    format[-1][3].append(classify[j])
                     killed.append(j)
                     pass
                 else:
@@ -706,32 +633,24 @@ class StandardYolo2Generate(Yolo2Generate):
 
         :param param: dict
             gt_box: support batch [[obj_0_yxhwc, obj_1_yxhwc, ...obj_n_yxhwc..., ], sample_1, sample_2, ....]
-            prior_hw: [[h0, w0], prior_1_h2, ...prior_n_hw...]
-            dtype: data type , float , base on np.np_type
-            scalar: net work pool scalar , static parameter: int
-            anchor_reject_base_iou: a value while the prior box IoU gt box lower than it and not the max iou prior box,
-                the prior would be reject to be added to training, float
-            image_height: batch accordant: int
-            image_width: batch accordant: int
-            shape_policy: batch accordant: string {'down_clip', 'up_clip', 'down_fit', 'up_fit'}
+            feed_height:
+            feed_width:
+            class:
         :return:
         """
-        ret = dict()
+        StandardYolo2GenerateLogger.debug('-->_default_generate_feed_function')
         gt_box = param['gt_box']
-        iou_reject = param['iou_reject']
         feed_height = param['feed_height']
         feed_width = param['feed_width']
-        batch = len(gt_box)
+        classify = param['class']
 
-        if (batch != self.batch) \
-                or (feed_height != self.feed_height or feed_width != self.feed_width) \
+        if (feed_height != self.feed_height or feed_width != self.feed_width) \
                 or (self.feed_height is None and self.feed_width is None):
-            self.__update_feed_shape(batch, feed_height, feed_width, self.anchor_amount, self._dtype)
+            self.__update_feed_shape(feed_height, feed_width, self.anchor_amount, self._dtype)
 
-        gt_format = self.__find_same_cell_location(scalar=self.scalar, gt_box=gt_box)
+        gt_format = self.__find_same_cell_location(scalar=self.scalar, gt_box=gt_box, classify=classify)
 
         for i in gt_format:
-            cell_obj_amount = len(i[0])
             ohw = np.concatenate([i[0], i[2]], -1)
             iou_matrix = es.calc_iou_matrix_ohw(
                 self.prior_hw,
@@ -743,14 +662,32 @@ class StandardYolo2Generate(Yolo2Generate):
                 group2_h_index=2,
                 group2_w_index=3
             )
-            anchor_activate = []
+
+            box__ = i[0]
+            cell__ = i[1]
+            offset__ = i[2]
+            classify__ = i[3]
+            cell_obj_amount = len(i[0])
+            cell_y__ = cell__[0]
+            cell_x__ = cell__[1]
+
             for j in range(0, cell_obj_amount):
                 max_iou = np.max(iou_matrix)
-                if max_iou == 0.0:
-                    break
-                location = np.where(iou_matrix == np.max(iou_matrix))
+
+                location = np.where(iou_matrix == max_iou)
                 for k in zip(location[0], location[1]):
-                    iou_matrix
+                    anchor__ = k[0][0]
+                    obj__ = k[1][0]
+                    box_item__ = box__[obj__]
+                    prior_box_ = self.prior_hw[anchor__]
+                    offset_ = offset__[obj__]
+                    self.anchor_mask[0, cell_y__, cell_x__, anchor__] = 1.0
+                    self.y[0, cell_y__, cell_x__, anchor__] = box_item__[0]
+                    self.x[0, cell_y__, cell_x__, anchor__] = box_item__[1]
+                    self.h[0, cell_y__, cell_x__, anchor__] = box_item__[2]
+                    self.w[0, cell_y__, cell_x__, anchor__] = box_item__[3]
+                    self.classify[0, cell_y__, cell_x__, anchor__] = classify__[obj__]
+                    # self.anchor_mask[]
                     pass
                 pass
             pass
@@ -771,11 +708,47 @@ class StandardYolo2Generate(Yolo2Generate):
         pass
 
     def CheckGenerateFeedParamFit(self, param):
+        return True
         pass
 
     def _default_generate_result_function(self, param):
+        """
+
+        :param tensor_pro:
+        :param param:
+        :return:
+        """
+        threshold = param['threshold']
+        y_pro__ = param['y']
+        x_pro__ = param['x']
+        h_pro__ = param['h']
+        w_pro__ = param['w']
+        precision_pro__ = param['precision']
+        class_pro__ = param['class']
+        anchor_pro__ = param['anchor']
+
+        ret = list()
+
+        cell_accept = np.where(precision_pro__ >= threshold)
+        for location in zip(cell_accept[0], cell_accept[1], cell_accept[2], cell_accept[3]):
+            batch_l = location[0]
+            cell_height_l = location[1]
+            cell_width_l = location[2]
+            anchor_l = location[3]
+
+            pre_l = precision_pro__[batch_l, cell_height_l, cell_width_l, anchor_l]
+            y_l = self.scalar * (cell_height_l + y_pro__[batch_l, cell_height_l, cell_width_l, anchor_l])
+            x_l = self.scalar * (cell_width_l + x_pro__[batch_l, cell_height_l, cell_width_l, anchor_l])
+            h_l = self.prior_hw[anchor_l][0] * np.exp(h_pro__[batch_l, cell_height_l, cell_width_l, anchor_l])
+            w_l = self.prior_hw[anchor_l][1] * np.exp(w_pro__[batch_l, cell_height_l, cell_width_l, anchor_l])
+            class_get = class_pro__[batch_l * cell_height_l + cell_width_l + anchor_l, :]
+            class_l = class_get[class_get == np.max(class_get)]
+            ret.append({'y': y_l, 'x': x_l, 'h': h_l, 'w': w_l, 'class': class_l, 'pre': pre_l})
+            pass
+        return ret
         pass
 
     def CheckGenerateResultParamFit(self, param):
+        return True
         pass
     pass

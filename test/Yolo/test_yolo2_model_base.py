@@ -27,7 +27,14 @@ parser.add_option(
     action='store_true',
     default=False,
     dest='TestFindSameCellLocation',
-    help='set this flag while you want to test TestFindSameCellLocation'
+    help='set this flag while you want to test FindSameCellLocation'
+)
+parser.add_option(
+    '--test__standard_yolo2_generate_feed',
+    action='store_true',
+    default=False,
+    dest='TestStandardYolo2GenerateFeed',
+    help='set this flag while you want to test StandardYolo2GenerateFeed'
 )
 (options, args) = parser.parse_args()
 plog.PutilLogConfig.config_log_level(stream=plog.LogReflect(options.Level).Level)
@@ -50,8 +57,6 @@ def __tes_yolo2_build():
     print(th.information(0, 'start testing Yolo2Build', Fore.GREEN) + Fore.RESET)
     feature_feed = tf.placeholder(dtype=tf.float32, shape=[10, 10, 10, 100], name='other_net_feature')
     f = np.zeros([10, 10, 10, 100], np.float32)
-    p_mask = np.zeros([10, 10, 10, 1], np.float32)
-    n_mask = np.ones([10, 10, 10, 1], np.float32)
     cl = np.zeros([10, 10, 10, 4], np.int64)
     y = np.zeros([10, 10, 10, 4], np.float32)
     x = np.zeros([10, 10, 10, 4], np.float32)
@@ -70,8 +75,6 @@ def __tes_yolo2_build():
         place['x']: x,
         place['h']: h,
         place['w']: w,
-        place['p_mask']: p_mask,
-        place['n_mask']: n_mask,
         place['anchor_mask']: anchor_mask
     }))
     print(th.information(0, 'test Yolo2Build successful', Fore.LIGHTGREEN_EX) + Fore.RESET)
@@ -81,8 +84,23 @@ def __tes_yolo2_build():
 def __test___find_same_cell_location():
     scalar = 10
     gt_box = [[0, 0, 0, 0], [9, 9, 0, 0], [10, 10, 0, 0], [20, 20, 0, 0]]
-    base = yolo2b.StandardYolo2Generate()
-    format = base.FindSameCellLocation(scalar, gt_box)
+    classify = [1, 2, 3, 4]
+    base = yolo2b.StandardYolo2Generate([[1, 2]], 32, 0.32)
+    format = base.FindSameCellLocation(scalar, gt_box, classify)
+    pass
+
+
+def __test__standard_yolo2_generate_feed():
+    prior_hw = [[100, 100], [200, 200]]
+    scalar = 32
+    _dtype = 0.32
+    yolo2_gen = yolo2b.StandardYolo2Generate(prior_hw, scalar, _dtype)
+    feed_height = 32
+    feed_width = 32
+    gt_box = [[50, 50, 100, 100], [256, 256, 200, 200]]
+    class_label = [1, 2, 3]
+    feed = yolo2_gen.GenerateFeed(
+        {'gt_box': gt_box, 'feed_height': feed_height, 'feed_width': feed_width, 'class': class_label})
     pass
 
 
@@ -92,5 +110,8 @@ if __name__ == '__main__':
         pass
     if options.TestFindSameCellLocation:
         __test___find_same_cell_location()
+        pass
+    if options.TestStandardYolo2GenerateFeed:
+        __test__standard_yolo2_generate_feed()
     pass
 
