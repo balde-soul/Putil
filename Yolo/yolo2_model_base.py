@@ -345,6 +345,7 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
     xt = place_process_result['x']
     ht = place_process_result['h']
     wt = place_process_result['w']
+    anchor_mask = place_process_result['anchor_mask']
     p_mask = place_process_result['p_mask']
     n_mask = place_process_result['n_mask']
     dtype = tfu.tf_type(_dtype).Type
@@ -367,12 +368,12 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
         iou = tf.add(
             tf.multiply(
                 p_iou,
-                p_mask,
+                anchor_mask,
                 name='apply_p_mask'
             ),
             tf.multiply(
                 n_iou,
-                n_mask,
+                -1 * (1 - anchor_mask),
                 name='apply_n_mask'
             ),
             'iou_label'
@@ -384,245 +385,76 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
 
 # : generate the loss op
 def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
+    anchor_loss_weight = 1.0
+    precision_loss_weight = 1.0
+    class_loss_weight = 1,0
     lambda_obj = 1.0
     lambda_noobj = 0.1
     y_pro = split_pro_result['y']
     x_pro = split_pro_result['x']
     h_pro = split_pro_result['h']
     w_pro = split_pro_result['w']
-    anchor_pro = split_pro_result['anchor']
     precision_pro = split_pro_result['precision']
     class_pro = split_pro_result['class']
-    p_mask = gt_process_result['p_mask']
-    n_mask = gt_process_result['n_mask']
     anchor_mask = gt_process_result['anchor_mask']
-    anchor_obj_mask = gt_process_result['anchor_obj_mask']
     gt_y = gt_process_result['y']
     gt_x = gt_process_result['x']
     gt_h = gt_process_result['h']
     gt_w = gt_process_result['w']
-    gt_anchor = gt_process_result['anchor']
-    # gt_precision = place_gt_result['precision']
     gt_class = gt_process_result['class']
-    gt_class_feed = gt_process_result['feed_class']
 
     legal_anchor_amount = tf.reduce_sum(anchor_mask, name='legal_anchor_amount')
-    obj_amount = tf.reduce_sum(gt_process_result['p_mask'], name='obj_amount')
-    legal_anchor_obj_amount = tf.reduce_sum(
-        anchor_obj_mask,
-        name='legal_anchor_obj_amount'
-    )
+
     with tf.name_scope('loss'):
         with tf.name_scope('anchor_loss'):
             # yx loss part
             with tf.name_scope('yx_loss'):
                 yx_loss = tf.add(
-                    tf.square(
-                        tf.multiply(
-                            tf.subtract(
-                                y_pro,
-                                gt_y,
-                                name='y_sub'
-                            ),
-                            p_mask,
-                            name='apply_p_mask'
-                        ),
-                        name='y_square'
-                    ),
-                    tf.square(
-                        tf.multiply(
-                            tf.subtract(
-                                x_pro,
-                                gt_x,
-                                name='x_sub'
-                            ),
-                            p_mask,
-                            name='apply_p_mask'
-                        ),
-                        name='x_square'
-                    ),
-                    name='y_x_add'
-                )
-                # yx_loss = tf.multiply(
-                #     tf.add(
-                #         tf.square(
-                #             tf.subtract(
-                #                 y_pro,
-                #                 gt_y,
-                #                 name='y_sub'
-                #             ),
-                #             name='y_square'
-                #         ),
-                #         tf.square(
-                #             tf.subtract(
-                #                 x_pro,
-                #                 gt_x,
-                #                 name='x_sub'
-                #             ),
-                #             name='x_square'
-                #         ),
-                #         name='y_x_add'
-                #     ),
-                #     p_mask,
-                #     name='apply_p_mask'
-                # )
+                    tf.square(tf.multiply(tf.subtract(y_pro, gt_y, name='y_sub'), anchor_mask, name='apply_p_mask'), name='y_square'),
+                    tf.square(tf.multiply(tf.subtract(x_pro, gt_x, name='x_sub'), anchor_mask, name='apply_p_mask'),name='x_square'),
+                    name='y_x_add')
                 pass
             # hw loss part
             with tf.name_scope('hw_loss'):
                 hw_loss = tf.add(
                     tf.square(
                         tf.subtract(
-                            tf.sqrt(
-                                tf.multiply(
-                                    h_pro,
-                                    p_mask,
-                                    name='h_pro_apply_p_mask'
-                                ),
-                                name='h_pro_sqrt'
-                            ),
-                            tf.sqrt(
-                                tf.multiply(
-                                    gt_h,
-                                    p_mask,
-                                    name='gt_h_apply_p_mask'
-                                ),
-                                name='gt_h_sqrt'
-                            ),
-                            name='h_sub'
-                        ),
-                        name='h_square'
-                    ),
+                            tf.sqrt(tf.multiply(h_pro, anchor_mask, name='h_pro_apply_p_mask'), name='h_pro_sqrt'),
+                            tf.sqrt(tf.multiply(gt_h, anchor_mask, name='gt_h_apply_p_mask'), name='gt_h_sqrt'),
+                            name='h_sub'),
+                        name='h_square'),
                     tf.square(
                         tf.subtract(
-                            tf.sqrt(
-                                tf.multiply(
-                                    w_pro,
-                                    p_mask,
-                                    name='w_pro_apply_p_mask'
-                                ),
-                                name='w_pro_sqrt'
-                            ),
-                            tf.sqrt(
-                                tf.multiply(
-                                    gt_w,
-                                    p_mask,
-                                    name='gt_w_apply_p_mask'
-                                ),
-                                name='gt_w_sqrt'
-                            ),
-                            name='w_sub'
-                        ),
-                        name='w_square'
-                    ),
-                    name='hw_add'
-                )
+                            tf.sqrt(tf.multiply(w_pro, anchor_mask, name='w_pro_apply_p_mask'), name='w_pro_sqrt'),
+                            tf.sqrt(tf.multiply(gt_w, anchor_mask, name='gt_w_apply_p_mask'), name='gt_w_sqrt'),
+                            name='w_sub'),
+                        name='w_square'),
+                    name='hw_add')
                 pass
-            # p_anchor = tf.multiply(
-            #     tf.square(
-            #         tf.subtract(
-            #             gt_anchor,
-            #             anchor_pro
-            #         )
-            #     ),
-            #     p_mask,
-            #     name='p_anchor'
-            # )
-            # p_anchor_loss = tf.multiply(
-            #     lambda_obj,
-            #     tf.reduce_sum(tf.reduce_mean(p_anchor, axis=0)),
-            #     name='p_loss'
-            # )
-            # n_anchor = tf.multiply(
-            #     tf.square(
-            #         tf.subtract(
-            #             gt_anchor,
-            #             anchor_pro
-            #         )
-            #     ),
-            #     n_mask,
-            #     name='n_anchor'
-            # )
-            # n_anchor_loss = tf.multiply(
-            #     lambda_noobj,
-            #     tf.reduce_sum(tf.reduce_mean(n_anchor, axis=0)),
-            #     name='n_loss'
-            # )
-            # anchor_loss = tf.add(p_anchor_loss, n_anchor_loss, name='loss')
 
             # anchor loss
             anchor_loss = tf.add(
                 tf.multiply(
                     lambda_obj,
                     tf.div(
-                        tf.reduce_sum(
-                            tf.multiply(
-                                yx_loss,
-                                gt_process_result['anchor_obj_mask']
-                            ),
-                            name='batch_sum'
-                        ),
-                        legal_anchor_obj_amount,
-                        name='yx_anchor_obj_mean',
-                    ),
-                    name='apply_lambda_weight'
-                ),
+                        tf.reduce_sum(tf.multiply(yx_loss, gt_process_result['anchor_obj_mask']), name='batch_sum'),
+                        legal_anchor_amount,
+                        name='yx_anchor_obj_mean'),
+                    name='apply_lambda_weight'),
                 tf.multiply(
                     lambda_obj,
                     tf.div(
-                        tf.reduce_sum(
-                            tf.multiply(
-                                hw_loss,
-                                gt_process_result['anchor_obj_mask']
-                            ),
-                            name='batch_sum'
-                        ),
-                        legal_anchor_obj_amount,
-                        name='hw_anchor_obj_mean',
-                    ),
-                    name='apply_lambda_weight'
-                ),
+                        tf.reduce_sum(tf.multiply(hw_loss, gt_process_result['anchor_obj_mask']), name='batch_sum'),
+                        legal_anchor_amount,
+                        name='hw_anchor_obj_mean'),
+                    name='apply_lambda_weight'),
                 name='anchor_loss_sum'
             )
+            anchor_loss = tf.multiply(anchor_loss, anchor_loss_weight, name='apply_anchor_loss_weight')
             pass
         with tf.name_scope('precision_loss'):
-            # n_precision = tf.multiply(
-            #     tf.square(
-            #         tf.subtract(
-            #             precision_pro,
-            #             0
-            #         )
-            #     ),
-            #     n_mask,
-            #     name='n_precision'
-            # )
-            # n_precision_loss = tf.multiply(
-            #     tf.reduce_sum(tf.reduce_mean(n_precision, axis=0)),
-            #     lambda_noobj,
-            #     name='n_loss'
-            # )
-            p_precision = tf.multiply(
-                tf.square(
-                    tf.subtract(
-                        precision_pro,
-                        calc_iou_result
-                    )
-                ),
-                anchor_mask,
-                name='p_precision'
-            )
-            p_precision_loss = tf.multiply(
-                tf.div(
-                    tf.reduce_sum(
-                        p_precision,
-                        name='batch_sum'
-                    ),
-                    legal_anchor_amount,
-                    name='pre_anchor_mean'
-                ),
-                lambda_obj,
-                name='apply_pre_lambda'
-            )
-            precision_loss = p_precision_loss
+            precision_loss = tf.reduce_mean(tf.square(tf.subtract(precision_pro, calc_iou_result)))
+            precision_loss = tf.multiply(precision_loss, precision_loss_weight, name='apply_precision_loss_weight')
             # precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
             pass
         with tf.name_scope('class_loss'):
@@ -630,33 +462,14 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             shape = tf.concat([[-1], [tf.div(tf.shape(gt_class)[-1], anchor_amount)]], axis=0)
             # class_pro_reshape = class_pro.get_shape().as_list()[0:3] + [anchor_amount, class_amount]
             class_loss_whole = tf.multiply(
-                tf.reshape(
-                    tf.square(
-                        tf.subtract(
-                            gt_class,
-                            class_pro
-                        )
-                    ),
-                    shape
-                ),
-                tf.reshape(
-                    anchor_obj_mask,
-                    [-1, 1]
-                ),
-                name='class_loss'
-            )
+                tf.reshape(tf.square(tf.subtract(gt_class, class_pro)), shape),
+                tf.reshape(anchor_mask, [-1, 1]),
+                name='class_loss')
             class_loss = tf.multiply(
                 lambda_obj,
-                tf.div(
-                    tf.reduce_sum(
-                        class_loss_whole,
-                        name='batch_sum'
-                    ),
-                    legal_anchor_obj_amount,
-                    name='class_anchor_obj_mean'
-                ),
-                name='apply_lambda_weight'
-            )
+                tf.div(tf.reduce_sum(class_loss_whole, name='batch_sum'), legal_anchor_amount, name='class_anchor_obj_mean'),
+                name='apply_lambda_weight')
+            class_loss = tf.multiply(class_loss, class_loss_weight, name='apply_class_loss_weight')
             pass
         total_loss = tf.add(anchor_loss, tf.add(precision_loss, class_loss), name='total_loss')
         pass
@@ -715,11 +528,177 @@ class Yolo2Generate(Yolo2GenerateI):
     def InstallGenerateResultFunction(self, analysis_function):
         self._generate_result_function = analysis_function
         pass
+    pass
+
+
+"""
+StandardYolo2Generate: 
+    the paper use:
+        the center of prior anchor is locate at (i * scalar, j * scalar)
+        
+        anchor mask:[batch, cell_height, cell_width, prior_anchor_amount]
+            every obj get one and only one nearest anchor to predict
+            any anchor does not hold an obj would be rejected, place zero
+            any anchor cross the edge of image was reject， place zero
+*************************************important*************************************            
+            (some conditions:
+                if more than one prior anchor Iou gt_x, get the same maximum value,
+                they would be hold to the gt_x at the same time
+                if no more prior to provide gt_prediction this gt would be abandon)
+#####################################important#####################################
+
+        obj mask:[batch, cell_height, cell_width, prior_anchor_amount] 
+            any cell does not hold any obj place zero
+            any cell does hold any obj place one
+            
+        nobj mask:[batch, cell_height, cell_width, prior_anchor_amount]
+            any cell does not hold any obj place one
+            any cell does hold any obj place zero
+            
+        y:[batch, cell_height, cell_width, prior_anchor_amount]
+            y = (real_center_y % scalar) / scalar
+            
+        x:[batch, cell_height, cell_width, prior_anchor_amount]
+            x = (real_center_x % scalar) / scalar
+            
+        h:[batch, cell_height, cell_width, prior_anchor_amount]
+            h = ln(real_height / prior_height)
+            
+        w:[batch, cell_height, cell_width, prior_anchor_amount]
+            w = ln(real_width / prior_width)
+            
+        class:[batch, cell_height, cell_width, prior_anchor_amount]
+            class = obj_represent_int
+"""
+import Putil.calc.estimate as es
 
 
 class StandardYolo2Generate(Yolo2Generate):
-    def __init__(self):
+    def __init__(self, prior_hw, scalar, _dtype):
         Yolo2Generate.__init__(self)
+
+        self.feed_height = None
+        self.feed_width = None
+        self.batch = None
+
+        self.y = None
+        self.x = None
+        self.h = None
+        self.w = None
+        self.cross_anchor_reject = None
+        self.anchor_mask = None
+        self.classify = None
+        self.obj_mask = None
+        self.nobj_mask = None
+
+        self.scalar = scalar
+        self._dtype = _dtype
+        self.prior_hw = prior_hw
+        self.anchor_mask = len(prior_hw)
+        pass
+
+    def __update_feed_shape(self, batch, feed_height, feed_width, anchor_amount, _dtype):
+        """
+        while any parameter include batch, feed_height, feed_width, anchor_amount, _dtype
+        changed, the tensor shape or type should be changed
+        this is the function for updating the tensor
+        :return:
+        """
+        self._dtype = _dtype
+        self.batch = batch
+        self.feed_height = feed_height
+        self.feed_width = feed_width
+        self.anchor_amount = anchor_amount
+        dtype = npu.np_type(self._dtype).Type
+        self.y = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.x = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.h = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.w = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.anchor_mask = np.ones(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.obj_mask = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, 1], dtype=dtype)
+        self.nobj_mask = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, 1], dtype=dtype)
+        self.classify = np.zeros(shape=[self.batch, self.feed_height, self.feed_width, self.anchor_amount], dtype=dtype)
+        self.cross_anchor_reject = self.__cross_edge_anchor_reject()
+        pass
+
+    def __cross_edge_anchor_reject(self):
+        """
+        process the anchor mask to make the anchor which cross the edge of image zero
+        :param batch:
+        :param feed_height:
+        :param feed_width:
+        :param anchor_amount:
+        :param _dtype:
+        :return:
+        """
+        anchor_mask_shape = self.anchor_mask.shape
+        # calculate the allowed band for box to expand in the anchor mask[batch, feed_height, feed_width, anchor_amount, 4]
+        # 4: [top_height_band, bottom_height_band, left_width_band, right_width_band]
+        max_band_h = anchor_mask_shape[1]
+        max_band_w = anchor_mask_shape[2]
+        top_height_band = np.expand_dims(np.linspace(0, max_band_h - 1, num=max_band_h).repeat(max_band_w).reshape([max_band_h, max_band_w]), -1)
+        bottom_height_band = np.expand_dims(np.linspace(0, max_band_h - 1, num=max_band_h)[::-1].repeat(max_band_w).reshape([max_band_h, max_band_w]), -1)
+        left_width_band = np.expand_dims(np.linspace(0, max_band_w - 1, num=max_band_w).repeat(max_band_h).reshape([max_band_w, max_band_h]).T, -1)
+        right_width_band = np.expand_dims(np.linspace(0, max_band_w - 1, num=max_band_w)[::-1].repeat(max_band_h).reshape([max_band_w, max_band_h]).T, -1)
+        band_t_b_l_r = np.concatenate((top_height_band, bottom_height_band, left_width_band, right_width_band), -1)
+        # calculate the prior wh expand in the anchor mask[batch, feed_height, feed_width, anchor_amount, 4]
+        # subtract, replace negative by zero, multiply, and then concat
+        prior_expand_t_b_1_r_list = []
+        rejected = []
+        for i in self.prior_hw:
+            expand = np.array([0.5 * i[0], 0.5 * i[0], 0.5 * i[1], 0.5 * i[1]]).repeat(max_band_h * max_band_w).reshape(max_band_h, max_band_w, 4)
+            expanded = band_t_b_l_r - expand
+            expanded[expanded < 0] = 0
+            rejected.append(expanded[:, :, 0] * expanded[:, :, 1] * expanded[:, :, 2] * expanded[:, :, 3])
+            pass
+        rejected = np.concatenate(rejected)
+        # multiply the anchor mask
+        return rejected
+        pass
+
+    def __find_same_cell_location(self, scalar, gt_box):
+        """
+        use scalar and gt_box to generate same cell format
+        [[[gt_box, ...](the box in the same cell, [cell]], [[offset]]...]
+        gt_box: [y, x, h, w]; cell: [cell_y=gt_box.y//scalar, cell_x=gt_box.x//scalar];
+        offset: [offset_y=gt_box.y%scalar, offset_x=gt_box.x%scalar]
+        :param scalar:
+        :param gt_box:
+        :return:
+        """
+        format = list()
+        # sort by y**2 + x**2 get the index
+        array_gt_box = np.array(gt_box)
+        order = (array_gt_box[:, 0] ** 2 + array_gt_box[:, 1] ** 2).argsort()
+        killed = []
+        for i in range(0, len(order)):
+            if i in killed:
+                continue
+            cell_y = gt_box[i][0] // scalar
+            cell_x = gt_box[i][1] // scalar
+            offset_y = gt_box[i][0] % scalar
+            offset_x = gt_box[i][1] % scalar
+            format.append([[]])
+            format[-1][0].append(gt_box[i])
+            format[-1].append([cell_y, cell_x])
+            format[-1].append([])
+            format[-1][-1].append([offset_y, offset_x])
+            for j in range(i + 1, len(order)):
+                if (gt_box[i][0] // scalar == gt_box[j][0] // scalar) & (
+                        gt_box[i][1] // scalar == gt_box[j][1] // scalar):
+                    # add to the format and add to killed
+                    offset_y = gt_box[j][0] % scalar
+                    offset_x = gt_box[j][1] % scalar
+                    format[-1][0].append(gt_box[j])
+                    format[-1][-1].append([offset_y, offset_x])
+                    killed.append(j)
+                    pass
+                else:
+                    break
+                    pass
+                pass
+            pass
+        return format
         pass
 
     def _default_generate_feed_function(self, param):
@@ -739,39 +718,41 @@ class StandardYolo2Generate(Yolo2Generate):
         """
         ret = dict()
         gt_box = param['gt_box']
-        prior_hw = param['prior_hw']
-        dtype = npu.np_type(param['dtype']).Type
-        scalar = param['scalar']
         iou_reject = param['iou_reject']
-        image_height = param['image_height']
-        image_width = param['image_width']
-        shape_policy = param['shape_policy']
-        anchor_amount = len(param['prior_hw'])
-
+        feed_height = param['feed_height']
+        feed_width = param['feed_width']
         batch = len(gt_box)
-        if shape_policy == 'down_clip':
-            feed_height = np.floor(image_height / scalar)
-            feed_width = np.floor(image_width / scalar)
 
-            ret['y'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
-            ret['x'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
-            ret['h'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
-            ret['w'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
-            ret['anchor_mask'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
-            ret['obj_mask'] = np.zeros(shape=[batch, feed_height, feed_width, 1], dtype=dtype)
-            ret['nobj_mask'] = np.ones(shape=[batch, feed_height, feed_width, 1], dtype=dtype)
-            ret['class'] = np.zeros(shape=[batch, feed_height, feed_width, anchor_amount], dtype=dtype)
+        if (batch != self.batch) \
+                or (feed_height != self.feed_height or feed_width != self.feed_width) \
+                or (self.feed_height is None and self.feed_width is None):
+            self.__update_feed_shape(batch, feed_height, feed_width, self.anchor_amount, self._dtype)
 
-            gt_format = self.__find_same_cell_location(scalar=scalar, gt_box=gt_box)
+        gt_format = self.__find_same_cell_location(scalar=self.scalar, gt_box=gt_box)
 
-            for i in gt_format:
-
-            pass
-        elif shape_policy == 'up_clip':
-            pass
-        elif shape_policy == 'up_fit':
-            pass
-        elif shape_policy == 'down_fit':
+        for i in gt_format:
+            cell_obj_amount = len(i[0])
+            ohw = np.concatenate([i[0], i[2]], -1)
+            iou_matrix = es.calc_iou_matrix_ohw(
+                self.prior_hw,
+                ohw,
+                group1_h_index=2,
+                group1_w_index=3,
+                group2_y_index=4,
+                group2_x_index=5,
+                group2_h_index=2,
+                group2_w_index=3
+            )
+            anchor_activate = []
+            for j in range(0, cell_obj_amount):
+                max_iou = np.max(iou_matrix)
+                if max_iou == 0.0:
+                    break
+                location = np.where(iou_matrix == np.max(iou_matrix))
+                for k in zip(location[0], location[1]):
+                    iou_matrix
+                    pass
+                pass
             pass
         pass
 
@@ -787,50 +768,6 @@ class StandardYolo2Generate(Yolo2Generate):
         :return:
         """
 
-        pass
-
-    def __find_same_cell_location(self, scalar, gt_box):
-        """
-        use scalar and gt_box to generate same cell format
-        [[[gt_box, ...](the box in the same cell, [cell]], [[offset]]...]
-        gt_box: [y, x, h, w]; cell: [cell_y=gt_box.y//scalar, cell_x=gt_box.x//scalar];
-        offset: [offset_y=gt_box.y%scalar, offset_x=gt_box.x%scalar]
-        :param scalar:
-        :param gt_box:
-        :return:
-        """
-        format = list()
-        # sort by y**2 + x**2 get the index
-        array_gt_box = np.array(gt_box)
-        order = (array_gt_box[:, 0]**2 + array_gt_box[:, 1]**2).argsort()
-        killed = []
-        for i in range(0, len(order)):
-            if i in killed:
-                continue
-            cell_y = gt_box[i][0]//scalar
-            cell_x = gt_box[i][1]//scalar
-            offset_y = gt_box[i][0]%scalar
-            offset_x = gt_box[i][1] % scalar
-            format.append([[]])
-            format[-1][0].append(gt_box[i])
-            format[-1].append([cell_y, cell_x])
-            format[-1].append([])
-            format[-1][-1].append([offset_y, offset_x])
-            for j in range(i + 1, len(order)):
-                if (gt_box[i][0]//scalar == gt_box[j][0]//scalar) & (gt_box[i][1]//scalar == gt_box[j][1]//scalar):
-                    # add to the format and add to killed
-                    offset_y = gt_box[j][0] % scalar
-                    offset_x = gt_box[j][1] % scalar
-                    format[-1][0].append(gt_box[j])
-                    format[-1][-1].append([offset_y, offset_x])
-                    killed.append(j)
-                    pass
-                else:
-                    break
-                    pass
-                pass
-            pass
-        return format
         pass
 
     def CheckGenerateFeedParamFit(self, param):
