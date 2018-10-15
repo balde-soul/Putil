@@ -30,6 +30,203 @@ Yolo2GenerateILogger.setLevel(plog.DEBUG)
 assert tf.__version__ == '1.6.0', Fore.RED + 'version of tensorflow should be 1.6.0'
 
 
+class Yolo2Build:
+    def __init__(self, net_output, class_num, prior_h, prior_w, scalar, _dtype):
+        self._net_output = net_output
+        self._class_amount = class_num
+        self.__check_prior(prior_h, prior_w)
+        self._prior_height = prior_h
+        self._prior_width = prior_w
+        self._cluster_object_count = len(prior_h)
+        self._scalar = scalar
+        self._dtype = _dtype
+
+        self._pro__ = self.GeneratePro()
+        self._output_tensor = self._pro__['pro']
+        self._anchor_pro__ = self._pro__['anchor']
+        self._precision_pro__ = self._pro__['precision']
+        self._class_pro__ = self._pro__['class']
+        self._y_pro__ = self._pro__['y']
+        self._x_pro__ = self._pro__['x']
+        self._h_pro__ = self._pro__['h']
+        self._w_pro__ = self._pro__['w']
+
+        self._output_loss__, self._place_gt_result__, self._iou_result__ = self.AppendLoss()
+
+        self._gt_one_hot_class__ = self._place_gt_result__['class']
+        self._gt_feed_class__ = self._place_gt_result__['feed_class']
+        self._gt_y_offset__ = self._place_gt_result__['y_offset']
+        self._gt_y__ = self._place_gt_result__['y']
+        self._gt_y_feed__ = self._place_gt_result__['y_feed']
+        self._gt_x_offset__ = self._place_gt_result__['x_offset']
+        self._gt_x__ = self._place_gt_result__['x']
+        self._gt_x_feed__ = self._place_gt_result__['x_feed']
+        self._gt_h__ = self._place_gt_result__['h']
+        self._gt_h_feed__ = self._place_gt_result__['h_feed']
+        self._gt_w__ = self._place_gt_result__['w']
+        self.__gt_w_feed__ = self._place_gt_result__['w_feed']
+        self._anchor_mask__ = self._place_gt_result__['anchor_mask']
+        self._negative_anchor_mask__ = self._place_gt_result__['negative_anchor_mask']
+
+        self._total_loss__ = self._output_loss__['total_loss']
+        self._anchor_loss__ = self._output_loss__['anchor_loss']
+        self._precision_loss__ = self._output_loss__['precision_loss']
+        self._class_loss__ = self._output_loss__['class_loss']
+
+        self._gt_iou__ = self._iou_result__
+        pass
+
+    @property
+    def NewOutput(self):
+        return self._net_output
+
+    @property
+    def ClassAmount(self):
+        return self._class_amount
+
+    @property
+    def PriorHeight(self):
+        return self._prior_height
+
+    @property
+    def PriorWidth(self):
+        return self._prior_width
+
+    @property
+    def ClusterObjectAmount(self):
+        return self._cluster_object_count
+
+    @property
+    def Scalar(self):
+        return self._scalar
+
+    @property
+    def Dtype(self):
+        return self._dtype
+
+    @property
+    def Pro(self):
+        return self._output_tensor
+
+    @property
+    def AnchorPro(self):
+        return self._anchor_pro__
+
+    @property
+    def PrecisionPro(self):
+        return self._precision_pro__
+
+    @property
+    def ClassPro(self):
+        return self._class_pro__
+
+    @property
+    def YPro(self):
+        return self._y_pro__
+
+    @property
+    def XPro(self):
+        return self._x_pro__
+
+    @property
+    def HPro(self):
+        return self._h_pro__
+
+    @property
+    def WPro(self):
+        return self._w_pro__
+
+    @property
+    def GtOneHotClass(self):
+        return self._gt_one_hot_class__
+
+    @property
+    def GtClassFeed(self):
+        return self._gt_feed_class__
+
+    @property
+    def GtYOffset(self):
+        return self._gt_y_offset__
+
+    @property
+    def GtY(self):
+        return self._gt_y__
+
+    @property
+    def GtYFeed(self):
+        return self._gt_y_feed__
+
+    @property
+    def GtXOffset(self):
+        return self._gt_x_offset__
+
+    @property
+    def GtX(self):
+        return self._gt_x__
+
+    @property
+    def GtxFeed(self):
+        return self._gt_x_feed__
+
+    @property
+    def GtH(self):
+        return self._gt_h__
+
+    @property
+    def GtHFeed(self):
+        return self._gt_h_feed__
+
+    @property
+    def GtW(self):
+        return self._gt_w__
+
+    @property
+    def GtWFeed(self):
+        return self.__gt_w_feed__
+
+    @property
+    def AnchorMask(self):
+        return self._anchor_mask__
+
+    @property
+    def NegativateAnchorMask(self):
+        return self._negative_anchor_mask__
+
+    @property
+    def TotalLoss(self):
+        return self._total_loss__
+
+    @property
+    def AnchorLoss(self):
+        return self._anchor_loss__
+
+    @property
+    def PrecisionLoss(self):
+        return self._precision_loss__
+
+    @property
+    def ClassLoss(self):
+        return self._class_loss__
+
+    @property
+    def GtIou(self):
+        return self._gt_iou__
+
+    def __check_prior(self, prior_h, prior_w):
+        # check failed throw exception
+        return True
+        pass
+
+    def GeneratePro(self):
+        return gen_pro(self._net_output, self._class_amount, self._cluster_object_count, self._dtype)
+        pass
+
+    def AppendLoss(self):
+        return append_yolo2_loss(self._pro__, self._class_amount, self._prior_height, self._prior_width, self._scalar, self._dtype)
+        pass
+    pass
+
+
 def append_yolo2_loss(
         yolo2_net_feature,
         class_num,
@@ -65,8 +262,7 @@ def append_yolo2_loss(
         _dtype=_dtype
     )
     pro_result_read_result = __pro_result_reader(
-        split_pro_result=yolo2_net_feature,
-        cluster_object_count=cluster_object_count)
+        split_pro_result=yolo2_net_feature)
     calc_iou_result = __calc_iou(
         pro_result_read_result=pro_result_read_result,
         place_process_result=place_process_result,
@@ -80,7 +276,7 @@ def append_yolo2_loss(
         gt_process_result=place_process_result,
         calc_iou_result=calc_iou_result)
     print(Fore.YELLOW + '-------generate yolo2 loss done---------')
-    return loss, place_gt_result
+    return loss, place_process_result, calc_iou_result
 
 
 # generator placeholder for total feed, designed to easy used and generate
@@ -233,14 +429,15 @@ def gen_pro(other_new_feature, class_num, cluster_object_count, _dtype=0.32):
             initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'),
             dtype=dtype
         )
-        bias = tf.get_variable(
-            name='compress_b',
-            shape=[cluster_object_count * (class_num + 4 + 1)],
-            initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'),
-            dtype=dtype
-        )
+        # bias = tf.get_variable(
+        #     name='compress_b',
+        #     shape=[cluster_object_count * (class_num + 4 + 1)],
+        #     initializer=layers.variance_scaling_initializer(seed=0.5, mode='FAN_AVG'),
+        #     dtype=dtype
+        # )
         conv = tf.nn.conv2d(other_new_feature, weight, [1, 1, 1, 1], padding='SAME', name='conv')
-        add = tf.nn.bias_add(conv, bias, name='bias_add')
+        # add = tf.nn.bias_add(conv, bias, name='bias_add')
+        add = conv
         pass
     pro = __split_pro_ac(add, class_num, cluster_object_count)
     return pro
@@ -261,7 +458,6 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar, _dtype
     dtype = tfu.tf_type(_dtype).Type
     gt_process = dict()
     assert len(prior_h) == len(prior_w), Fore.RED + 'len of the prior_h and prior_w should be the same'
-    cluster_object_count = len(prior_h)
     with tf.name_scope('gt_place_process'):
         gt_process_one_hot = tf.one_hot(
             gt_place_result['class'],
@@ -279,22 +475,22 @@ def __place_process(gt_place_result, class_num, prior_h, prior_w, scalar, _dtype
         gt_process['x_offset'] = tf.floormod(gt_place_result['x'], scalar)
         gt_process['x'] = tf.div(gt_process['x_offset'], scalar)
         gt_process['x_feed'] = gt_place_result['x']
-        gt_process['h'] = tf.log(tf.div(gt_place_result['h'], prior_h))
+        gt_process['h'] = tf.log(tf.div(gt_place_result['h'] + 1.0e-32, prior_h))
         gt_process['h_feed'] = gt_place_result['h']
-        gt_process['w'] = tf.log(tf.div(gt_place_result['w'], prior_w))
+        gt_process['w'] = tf.log(tf.div(gt_place_result['w'] + 1.0e-32, prior_w))
         gt_process['w_feed'] = gt_place_result['w']
 
         gt_process['anchor_mask'] = gt_place_result['anchor_mask']
+        gt_process['negative_anchor_mask'] = 1 - gt_place_result['anchor_mask']
         pass
     return gt_process
 
 
 # : to read the pro result, avoid the gradient propagate from precision loss to the network twice
-def __pro_result_reader(split_pro_result, cluster_object_count):
+def __pro_result_reader(split_pro_result):
     """
     read the pro result, avoid the gradient propagate from precision loss to the network twice
     :param split_pro_result: __split_pro result
-    :param cluster_object_count: prior cluster count
     :return: 
     """
     pro_result_read = dict()
@@ -318,24 +514,27 @@ def __calc_iou(pro_result_read_result, place_process_result, scalar, prior_h, pr
         xp = pro_result_read_result['x'] * scalar
         hp = tf.multiply(tf.exp(pro_result_read_result['h']), prior_h)
         wp = tf.multiply(tf.exp(pro_result_read_result['w']), prior_w)
-        all_iou = tf.multiply(
-            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(hp, ht))), tf.abs(tf.subtract(yp, yt)))),
-            tf.nn.relu(tf.subtract(tf.multiply(2.0, tf.abs(tf.subtract(wp, wt))), tf.abs(tf.subtract(xp, xt)))),
-            name='p_iou'
-        )
-        iou = tf.multiply(all_iou, anchor_mask, name='apply_p_mask'),
+        min_bottom = tf.reduce_min(
+            tf.concat([tf.expand_dims(yp + 0.5 * hp, -1), tf.expand_dims(yt + 0.5 * ht, -1)], axis=-1), axis=-1)
+        max_top = tf.reduce_max(
+            tf.concat([tf.expand_dims(yp - 0.5 * hp, -1), tf.expand_dims(yt - 0.5 * ht, -1)], axis=-1), axis=-1)
+        min_right = tf.reduce_min(
+            tf.concat([tf.expand_dims(xp + 0.5 * wp, -1), tf.expand_dims(xt + 0.5 * wt, -1)], axis=-1), axis=-1)
+        max_left = tf.reduce_max(
+            tf.concat([tf.expand_dims(xp - 0.5 * wp, -1), tf.expand_dims(xt - 0.5 * wt, -1)], axis=-1), axis=-1)
+        cross_area = tf.multiply(tf.nn.relu(min_right - max_left), tf.nn.relu(min_bottom - max_top), name='cross_area')
         pass
+    all_iou = tf.div(
+        cross_area,
+        tf.subtract(tf.add(tf.multiply(ht, wt, name='gt_area'), tf.multiply(hp, wp, name='pre_area')), cross_area),
+        name='all_iou')
+    iou = tf.multiply(all_iou, anchor_mask, name='iou_apply_anchor_mask')
     return iou
     pass
 
 
 # : generate the loss op
-def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
-    anchor_loss_weight = 1.0
-    precision_loss_weight = 1.0
-    class_loss_weight = 1.0
-    lambda_obj = 1.0
-    lambda_noobj = 0.1
+def __calc_loss(split_pro_result, gt_process_result, calc_iou_result, anchor_loss_weight=1.0, precision_loss_weight=1.0, class_loss_weight=1.0, lambda_obj=1.0, lambda_nobj=1.0):
     y_pro = split_pro_result['y']
     x_pro = split_pro_result['x']
     h_pro = split_pro_result['h']
@@ -343,28 +542,31 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
     precision_pro = split_pro_result['precision']
     class_pro = split_pro_result['class']
     anchor_mask = gt_process_result['anchor_mask']
+    negative_anchor_mask = gt_process_result['negative_anchor_mask']
     gt_y = gt_process_result['y']
     gt_x = gt_process_result['x']
     gt_h = gt_process_result['h']
     gt_w = gt_process_result['w']
     gt_class = gt_process_result['class']
 
-    legal_anchor_amount = tf.multiply(tf.reduce_sum(anchor_mask, name='legal_anchor_amount'), 1.0e-17, name='avoid_zero')
+    legal_anchor_amount = tf.add(tf.reduce_sum(anchor_mask, name='legal_anchor_amount'), 1.0e-32, name='avoid_zero')
+    negative_anchor_amount = tf.add(tf.reduce_sum(negative_anchor_mask, name='negative_anchor_amount'), 1.0e-32, name='avoid_zero')
 
     with tf.name_scope('loss'):
         with tf.name_scope('anchor_loss'):
             # yx loss part
             with tf.name_scope('yx_loss'):
                 yx_loss = tf.add(
-                    tf.square(tf.multiply(tf.subtract(y_pro, gt_y, name='y_sub'), anchor_mask, name='apply_p_mask'), name='y_square'),
-                    tf.square(tf.multiply(tf.subtract(x_pro, gt_x, name='x_sub'), anchor_mask, name='apply_p_mask'),name='x_square'),
+                    tf.square(tf.subtract(y_pro, gt_y, name='y_sub') * anchor_mask, name='y_square'),
+                    tf.square(tf.subtract(x_pro, gt_x, name='x_sub') * anchor_mask, name='x_square'),
                     name='y_x_add')
                 pass
             # hw loss part
             with tf.name_scope('hw_loss'):
+
                 hw_loss = tf.add(
-                    tf.square(tf.subtract(tf.sqrt(h_pro, name='h_pro_sqrt'), tf.sqrt(gt_h, name='gt_h_sqrt'), name='h_sub'), name='h_square'),
-                    tf.square(tf.subtract(tf.sqrt(w_pro, name='w_pro_sqrt'), tf.sqrt(gt_w, name='gt_w_sqrt'), name='w_sub'), name='w_square'),
+                    tf.square(tf.subtract(tf.sqrt(h_pro * anchor_mask, name='h_pro_sqrt'), tf.sqrt(gt_h * anchor_mask, name='gt_h_sqrt'), name='h_sub'), name='h_square'),
+                    tf.square(tf.subtract(tf.sqrt(w_pro * anchor_mask, name='w_pro_sqrt'), tf.sqrt(gt_w * anchor_mask, name='gt_w_sqrt'), name='w_sub'), name='w_square'),
                     name='hw_add')
                 pass
 
@@ -372,18 +574,28 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             anchor_loss = tf.add(
                 tf.multiply(
                     lambda_obj,
-                    tf.div(tf.reduce_sum(tf.multiply(yx_loss, anchor_mask), name='batch_sum'), legal_anchor_amount, name='yx_anchor_obj_mean'),
+                    tf.div(
+                        tf.reduce_sum(yx_loss, name='batch_sum'),
+                        legal_anchor_amount,
+                        name='yx_anchor_obj_mean'),
                     name='apply_lambda_weight'),
                 tf.multiply(
                     lambda_obj,
-                    tf.div(tf.reduce_sum(tf.multiply(hw_loss, anchor_mask), name='batch_sum'), legal_anchor_amount, name='hw_anchor_obj_mean'),
+                    tf.div(
+                        tf.reduce_sum(hw_loss, name='batch_sum'),
+                        legal_anchor_amount,
+                        name='hw_anchor_obj_mean'),
                     name='apply_lambda_weight'),
                 name='anchor_loss_sum'
             )
             anchor_loss = tf.multiply(anchor_loss, anchor_loss_weight, name='apply_anchor_loss_weight')
+            # anchor_loss = gt_w
             pass
         with tf.name_scope('precision_loss'):
-            precision_loss = tf.reduce_mean(tf.square(tf.subtract(precision_pro, calc_iou_result)))
+            precision_loss_all = tf.square(tf.subtract(precision_pro, calc_iou_result))
+            p_precision_loss = lambda_obj * tf.div(tf.reduce_sum(tf.multiply(precision_loss_all, anchor_mask, name='apply_anchor_mask')), legal_anchor_amount)
+            n_precision_loss = lambda_nobj * tf.div(tf.reduce_sum(tf.multiply(precision_loss_all, negative_anchor_mask, name='apply_negative_anchor_mask')), negative_anchor_amount)
+            precision_loss = tf.add(p_precision_loss, n_precision_loss, name='sum')
             precision_loss = tf.multiply(precision_loss, precision_loss_weight, name='apply_precision_loss_weight')
             # precision_loss = tf.add(p_precision_loss, n_precision_loss, name='loss')
             pass
@@ -398,18 +610,20 @@ def __calc_loss(split_pro_result, gt_process_result, calc_iou_result):
             #     name='class_loss')
             class_loss_whole = tf.multiply(
                 tf.nn.softmax_cross_entropy_with_logits_v2(labels=gt_class, logits=class_pro),
-                tf.reshape(anchor_mask, [-1, 1]),
+                tf.reshape(anchor_mask, [-1]),
                 name='class_loss')
             _class_loss = tf.multiply(
                 lambda_obj,
                 tf.div(tf.reduce_sum(class_loss_whole, name='batch_sum'), legal_anchor_amount,
                        name='class_anchor_obj_mean'),
                 name='apply_lambda_weight')
+            # _class_loss = class_loss_whole
+            # _class_loss = legal_anchor_amount
             class_loss = tf.multiply(_class_loss, class_loss_weight, name='apply_class_loss_weight')
             pass
         total_loss = tf.add(anchor_loss, tf.add(precision_loss, class_loss), name='total_loss')
         pass
-    return total_loss
+    return {'total_loss': total_loss, 'anchor_loss': anchor_loss, 'precision_loss': precision_loss, 'class_loss': class_loss}
     pass
 
 
@@ -595,23 +809,26 @@ class StandardYolo2Generate(Yolo2Generate):
         array_gt_box = np.array(gt_box)
         order = (array_gt_box[:, 0] ** 2 + array_gt_box[:, 1] ** 2).argsort()
         killed = []
-        for i in range(0, len(order)):
-            if i in killed:
+        for i in zip(order, range(0, len(order))):
+            index_ = i[0]
+            order_index_ = i[1]
+            if index_ in killed:
                 continue
-            cell_y = gt_box[i][0] // scalar
-            cell_x = gt_box[i][1] // scalar
-            offset_y = gt_box[i][0] % scalar
-            offset_x = gt_box[i][1] % scalar
+                pass
+            cell_y = gt_box[index_][0] // scalar
+            cell_x = gt_box[index_][1] // scalar
+            offset_y = gt_box[index_][0] % scalar
+            offset_x = gt_box[index_][1] % scalar
             format.append([[]])
-            format[-1][0].append(gt_box[i])
+            format[-1][0].append(gt_box[index_])
             format[-1].append([cell_y, cell_x])
             format[-1].append([])
             format[-1][2].append([offset_y, offset_x])
             format[-1].append([])
-            format[-1][3].append(classify[i])
-            for j in range(i + 1, len(order)):
-                if (gt_box[i][0] // scalar == gt_box[j][0] // scalar) & (
-                        gt_box[i][1] // scalar == gt_box[j][1] // scalar):
+            format[-1][3].append(classify[index_])
+            for j in order[order_index_ + 1:]:
+                if (gt_box[index_][0] // scalar == gt_box[j][0] // scalar) & (
+                        gt_box[index_][1] // scalar == gt_box[j][1] // scalar):
                     # add to the format and add to killed
                     offset_y = gt_box[j][0] % (scalar - 1)
                     offset_x = gt_box[j][1] % (scalar - 1)
@@ -655,8 +872,8 @@ class StandardYolo2Generate(Yolo2Generate):
             iou_matrix = es.calc_iou_matrix_ohw(
                 self.prior_hw,
                 ohw,
-                group1_h_index=2,
-                group1_w_index=3,
+                group1_h_index=0,
+                group1_w_index=1,
                 group2_y_index=4,
                 group2_x_index=5,
                 group2_h_index=2,
@@ -676,8 +893,8 @@ class StandardYolo2Generate(Yolo2Generate):
 
                 location = np.where(iou_matrix == max_iou)
                 for k in zip(location[0], location[1]):
-                    anchor__ = k[0][0]
-                    obj__ = k[1][0]
+                    anchor__ = k[0]
+                    obj__ = k[1]
                     box_item__ = box__[obj__]
                     prior_box_ = self.prior_hw[anchor__]
                     offset_ = offset__[obj__]
@@ -691,6 +908,7 @@ class StandardYolo2Generate(Yolo2Generate):
                     pass
                 pass
             pass
+        return {'y': self.y, 'x': self.x, 'h': self.h, 'w': self.w, 'class': self.classify, 'anchor_mask': self.anchor_mask}
         pass
 
     @property
