@@ -204,14 +204,14 @@ def calc_iou_matrix_ohw(
     g_2_left_x_matrix_cross_col = (g_2_matrix[:, group2_x_index] - 0.5 * g_2_matrix[:, group2_x_index]).repeat(
         group_1_amount).reshape(group_2_amount, group_1_amount).T
     # calculate the overlap box
-    min_bottom = np.min(((np.expand_dims(g_1_top_y_matrix_cross_row, -1),
-                          np.expand_dims(g_2_top_y_matrix_cross_col, -1)), -1), -1)
-    max_top = np.max(((np.expand_dims(g_1_bottom_y_matrix_cross_row, -1),
-                       np.expand_dims(g_2_bottom_y_matrix_cross_col, -1)), -1), -1)
-    min_right = np.min(((np.expand_dims(g_1_right_x_matrix_cross_row, -1),
-                         np.expand_dims(g_2_right_x_matrix_cross_col, -1)), -1), -1)
-    max_left = np.max(((np.expand_dims(g_1_left_x_matrix_cross_row, -1),
-                        np.expand_dims(g_2_left_x_matrix_cross_col, -1)), -1), -1)
+    max_top = np.max(np.concatenate((np.expand_dims(g_1_top_y_matrix_cross_row, -1),
+                                        np.expand_dims(g_2_top_y_matrix_cross_col, -1)), -1), -1)
+    min_bottom = np.min(np.concatenate((np.expand_dims(g_1_bottom_y_matrix_cross_row, -1),
+                                     np.expand_dims(g_2_bottom_y_matrix_cross_col, -1)), -1), -1)
+    min_right = np.min(np.concatenate((np.expand_dims(g_1_right_x_matrix_cross_row, -1),
+                                       np.expand_dims(g_2_right_x_matrix_cross_col, -1)), -1), -1)
+    max_left = np.max(np.concatenate((np.expand_dims(g_1_left_x_matrix_cross_row, -1),
+                                      np.expand_dims(g_2_left_x_matrix_cross_col, -1)), -1), -1)
     # calculate cross area
     crossed_height = min_bottom - max_top
     crossed_width = min_right - max_left
@@ -302,7 +302,7 @@ def calc_iou_matrix_thw(
         group_1_amount).reshape(group_2_amount, group_1_amount).T
     g_1_bottom_y_matrix_cross_row = (g_1_matrix[:, group1_y_index] + g_1_matrix[:, group1_h_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
-    g_1_left_y_matrix_cross_row = (g_1_matrix[:, group1_y_index]).repeat(
+    g_1_top_y_matrix_cross_row = (g_1_matrix[:, group1_y_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
     g_1_right_x_matrix_cross_row = (g_1_matrix[:, group1_x_index] + g_1_matrix[:, group1_w_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
@@ -310,7 +310,7 @@ def calc_iou_matrix_thw(
         group_2_amount).reshape([group_1_amount, group_2_amount])
     g_2_bottom_y_matrix_cross_col = (g_2_matrix[:, group2_y_index] + g_2_matrix[:, group2_h_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
-    g_2_left_y_matrix_cross_col = (g_2_matrix[:, group2_y_index]).repeat(
+    g_2_top_y_matrix_cross_col = (g_2_matrix[:, group2_y_index]).repeat(
         group_1_amount).reshape(group_2_amount, group_1_amount).T
     g_2_right_x_matrix_cross_col = (g_2_matrix[:, group2_x_index] + g_2_matrix[:, group2_w_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
@@ -327,8 +327,8 @@ def calc_iou_matrix_thw(
     )
     max_top = np.max(
         np.concatenate(
-            (np.expand_dims(g_1_left_y_matrix_cross_row, -1),
-             np.expand_dims(g_2_left_y_matrix_cross_col, -1)),
+            (np.expand_dims(g_1_top_y_matrix_cross_row, -1),
+             np.expand_dims(g_2_top_y_matrix_cross_col, -1)),
             -1
         ),
         -1
@@ -437,27 +437,27 @@ def calc_iou_matrix_chw(
         group_2_amount).reshape([group_1_amount, group_2_amount])
     g_2_area_cross_col = (g_2_matrix[:, group2_h_index] * g_2_matrix[:, group2_w_index]).repeat(
         group_1_amount).reshape(group_2_amount, group_1_amount).T
-    g_1_y_add_half_h_matrix_cross_row = (g_1_matrix[:, group1_y_index] + 0.5 * g_1_matrix[:, group1_h_index]).repeat(
+    g_1_bottom_y_matrix_cross_row = (g_1_matrix[:, group1_y_index] + 0.5 * g_1_matrix[:, group1_h_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
-    g_1_y_sub_half_h_matrix_cross_row = (g_1_matrix[:, group1_y_index] - 0.5 * g_1_matrix[:, group1_h_index]).repeat(
+    g_1_top_y_matrix_cross_row = (g_1_matrix[:, group1_y_index] - 0.5 * g_1_matrix[:, group1_h_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
-    g_1_x_add_half_w_matrix_cross_row = (g_1_matrix[:, group1_x_index] + 0.5 * g_1_matrix[:, group1_w_index]).repeat(
+    g_1_right_x_matrix_cross_row = (g_1_matrix[:, group1_x_index] + 0.5 * g_1_matrix[:, group1_w_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
-    g_1_x_sub_half_w_matrix_cross_row = (g_1_matrix[:, group1_x_index] - 0.5 * g_1_matrix[:, group1_w_index]).repeat(
+    g_1_left_x_matrix_cross_row = (g_1_matrix[:, group1_x_index] - 0.5 * g_1_matrix[:, group1_w_index]).repeat(
         group_2_amount).reshape([group_1_amount, group_2_amount])
-    g_2_y_add_half_h_matrix_cross_col = (g_2_matrix[:, group2_y_index] + 0.5 * g_2_matrix[:, group2_h_index]).repeat(
+    g_2_bottom_y_matrix_cross_col = (g_2_matrix[:, group2_y_index] + 0.5 * g_2_matrix[:, group2_h_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
-    g_2_y_sub_half_h_matrix_cross_col = (g_2_matrix[:, group2_y_index] - 0.5 * g_2_matrix[:, group2_h_index]).repeat(
+    g_2_top_y_matrix_cross_col = (g_2_matrix[:, group2_y_index] - 0.5 * g_2_matrix[:, group2_h_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
-    g_2_x_add_half_w_matrix_cross_col = (g_2_matrix[:, group2_x_index] + 0.5 * g_2_matrix[:, group2_w_index]).repeat(
+    g_2_right_x_matrix_cross_col = (g_2_matrix[:, group2_x_index] + 0.5 * g_2_matrix[:, group2_w_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
-    g_2_x_sub_half_w_matrix_cross_col = (g_2_matrix[:, group2_x_index] - 0.5 * g_2_matrix[:, group2_w_index]).repeat(
+    g_2_left_x_matrix_cross_col = (g_2_matrix[:, group2_x_index] - 0.5 * g_2_matrix[:, group2_w_index]).repeat(
         group_1_amount).reshape([group_2_amount, group_1_amount]).T
     # calculate the overlap box
-    min_bottom = np.min(np.concatenate((np.expand_dims(g_1_y_add_half_h_matrix_cross_row, -1), np.expand_dims(g_2_y_add_half_h_matrix_cross_col, -1)), -1), -1)
-    max_top = np.max(np.concatenate((np.expand_dims(g_1_y_sub_half_h_matrix_cross_row, -1), np.expand_dims(g_2_y_sub_half_h_matrix_cross_col, -1)), -1), -1)
-    min_right = np.min(np.concatenate((np.expand_dims(g_1_x_add_half_w_matrix_cross_row, -1), np.expand_dims(g_2_x_add_half_w_matrix_cross_col, -1)), -1), -1)
-    max_left = np.max(np.concatenate((np.expand_dims(g_1_x_sub_half_w_matrix_cross_row, -1), np.expand_dims(g_2_x_sub_half_w_matrix_cross_col, -1)), -1), -1)
+    min_bottom = np.min(np.concatenate((np.expand_dims(g_1_bottom_y_matrix_cross_row, -1), np.expand_dims(g_2_bottom_y_matrix_cross_col, -1)), -1), -1)
+    max_top = np.max(np.concatenate((np.expand_dims(g_1_top_y_matrix_cross_row, -1), np.expand_dims(g_2_top_y_matrix_cross_col, -1)), -1), -1)
+    min_right = np.min(np.concatenate((np.expand_dims(g_1_right_x_matrix_cross_row, -1), np.expand_dims(g_2_right_x_matrix_cross_col, -1)), -1), -1)
+    max_left = np.max(np.concatenate((np.expand_dims(g_1_left_x_matrix_cross_row, -1), np.expand_dims(g_2_left_x_matrix_cross_col, -1)), -1), -1)
     # calculate cross area
     crossed_height = min_bottom - max_top
     crossed_width = min_right - max_left

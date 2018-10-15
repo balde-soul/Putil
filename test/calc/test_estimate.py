@@ -115,7 +115,7 @@ def __test_calc_iou_matrix_ohw():
     TestCalcIouLogger.info(th.information(0, 'test_calc_iou_matrix_ohw', Fore.GREEN))
     rect1 = [[0, 0, 10, 10], [0, 0, 20, 20]]
     rect2 = [[5, 5, 40, 40], [5, 5, 80, 80]]
-    iou = es.calc_iou_matrix_thw(rect1, rect2)
+    iou = es.calc_iou_matrix_ohw(rect1, rect2)
     correct = np.array([[25.0 / 1675, 25.0 / 6475], [225.0 / 1475, 225.0 / 6575]])
     try:
         assert iou.all() == correct.all()
