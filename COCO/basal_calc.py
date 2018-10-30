@@ -33,8 +33,29 @@ parser.add_option(
     help='specify the annotation file name list which would be calc'
          'sefault: {0}'.format(ann_file_name_default)
 )
+calc_default = 'all'
+parser.add_option(
+    '--calc',
+    action='store',
+    dest='Calc',
+    type=str,
+    default=calc_default,
+    help='specify which kind of indicator to calculation'
+         'default: {0}'.format(calc_default)
+)
+store_dir = ''
+parser.add_option(
+    '--store_dir',
+    action='store',
+    dest='StoreDir',
+    type=str,
+    default=store_dir,
+    help='specify the path which used to store the indicator'
+         'default: {0}'.format('')
+)
 
 import Putil.loger as plog
+import os
 (options, args) = parser.parse_args()
 plog.PutilLogConfig.config_log_level(stream=plog.LogReflect(options.Level).Level)
 plog.PutilLogConfig.config_handler(plog.stream_method)
@@ -47,14 +68,47 @@ root_logger.setLevel(plog.DEBUG)
 coco = None
 
 
-def __load_coco_dataset():
+class CocoBox:
+    def __init__(self, ann_file, store_dir):
+        self._coco = COCO(ann_file)
+        self._store_dir = store_dir
+        self._image_id = self._coco.getImgIds()
+        pass
 
-    pass
+    def Calc(self):
+        for imgId in self._image_id:
+            ann = self._coco.loadAnns(self._coco.getAnnIds(imgIds=self._coco.loadImgs(imgId)))
+            
+        pass
 
 
 def __calc_size_distribution():
+
     pass
 
 
+def __calc_box_indicator(ann_file, store_dir):
+    cb = CocoBox(ann_file, store_dir)
+
+    pass
+
+
+class CcoColass:
+    def __init__(self, ann_file, store_file):
+        self._coco = COCO(ann_file)
+        self._store_dir = store_dir
+        pass
+
+
 if __name__ == '__main__':
+    ann_file = os.path.join(options.CocoDir, options.AnnFileName)
+    if options.StoreDir == '':
+        store_dir_box = os.path.join(options.CocoDir, 'box')
+        pass
+    else:
+        store_dir_box = os.path.join(options.StoreDir, 'box')
+        pass
+    if options.Calc == 'all':
+        CocoBox(ann_file, store_dir_box)
+        pass
     pass
