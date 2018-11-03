@@ -1,6 +1,5 @@
 # coding='utf-8'
 from optparse import OptionParser
-import Putil.loger as plog
 from colorama import Fore
 import functools
 import Putil.test.test_helper as th
@@ -58,6 +57,7 @@ parser.add_option(
     help='set this flag while you want to test StandardYolo2GenerateFeed'
 )
 (options, args) = parser.parse_args()
+import Putil.loger as plog
 plog.PutilLogConfig.config_log_level(stream=plog.LogReflect(options.Level).Level)
 plog.PutilLogConfig.config_handler(plog.stream_method)
 plog.PutilLogConfig.config_format(
