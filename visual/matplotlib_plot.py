@@ -1,17 +1,5 @@
 # coding=utf-8
 import random
-from optparse import OptionParser
-
-parser = OptionParser(usage="usage:%prog [options] arg1 arg2")
-
-parser.add_option(
-    '--trt',
-    '--TestRandomType',
-    action='store_true',
-    default=False,
-    dest='TestRandomType',
-    help='set this if you wan to test: random_type'
-)
 
 
 class random_type:
@@ -58,35 +46,4 @@ class random_type:
         else:
             return False
         pass
-    pass
-
-
-def __test_random_type():
-    type = random_type()
-    for i in range(0, 20):
-        _type = type.type_gen(color='r')
-        assert _type[0] == 'r'
-        pass
-    for i in range(0, 20):
-        _type = type.type_gen(marker='o')
-        assert _type[1] == 'o'
-        pass
-    for i in range(0, 20):
-        _type = type.type_gen(line='--')
-        assert _type[2:] == '--'
-        pass
-    pass
-
-
-def __test(**options):
-    test_random_type = options.pop('test_random_type', False)
-    __test_random_type() if test_random_type else None
-    __test_random_type()
-
-
-if __name__ == '__main__':
-    (options, args) = parser.parse_args()
-    __test(
-        test_random_type=options.TestRandomType
-    )
     pass
