@@ -48,10 +48,22 @@ class Model(threading.Thread):
         except Exception as ex:
             return None
         pass
+    pass
 
 
-one_path = '../../data/tf/test_mutil_model/1'
-two_path = '../../data/tf/test_mutil_model/2'
+data_path = '../../data/tf'
+if not osp.exists(data_path):
+    os.mkdir(data_path)
+    pass
+
+mutil_model_test_path = osp.join(data_path, 'test_mutil_model')
+if not osp.exists(mutil_model_test_path):
+    os.mkdir(mutil_model_test_path)
+    pass
+
+
+one_path = osp.join(mutil_model_test_path, '1')
+two_path = osp.join(mutil_model_test_path, '2')
 if not osp.exists(one_path):
     os.mkdir(one_path)
     pass
@@ -150,4 +162,6 @@ print('----------------------------')
 thread1.get_result()[1].save(thread1.get_result()[0], osp.join(one_path, 'model'))
 thread2.get_result()[1].save(thread2.get_result()[0], osp.join(two_path, 'model'))
 
+thread1.get_result()[0].close()
+thread2.get_result()[0].close()
 
