@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-data/
 # C extensions
 *.so
 
@@ -107,3 +106,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# vim
+*.*.swp
