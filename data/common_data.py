@@ -1,4 +1,5 @@
 # coding=utf-8
+import colorama
 import Putil.base.logger as plog
 from abc import ABC, abstractmethod
 import threading
@@ -11,6 +12,14 @@ logger = plog.PutilLogConfig('common_data').logger()
 logger.setLevel(plog.DEBUG)
 CommonDataLogger = logger.getChild('CommonData')
 CommonDataLogger.setLevel(plog.DEBUG)
+GeneratorLogger = logger.getChild('Generator')
+GeneratorLogger.setLevel(plog.DEBUG)
+DataPutProcessLogger = logger.getChild('DataPutProcess')
+DataPutProcessLogger.setLevel(plog.DEBUG)
+
+
+class CommonDataManager(BaseManager):
+    pass
 
 
 class CommonData(ABC):
@@ -30,9 +39,11 @@ class CommonData(ABC):
     def _restart_process(self, restart_param):
         pass
 
-    def restart_data(self, restart_param):
-        assert 'device_batch' in restart_param.keys(), CommonDataLogger.error('restart_param should contain {device_batch}')
-        self._device_batch = restart_param['device_batch']
+    def restart_data(self, restart_param=None):
+        # assert 'device_batch' in restart_param.keys(), CommonDataLogger.error('restart_param should contain {device_batch}')
+        # self._device_batch = restart_param['device_batch']
+        self._restart_process(restart_param)
+        self._epoch_done = False
         pass
 
     def device_batch_operation(self):
@@ -43,10 +54,25 @@ class CommonData(ABC):
 
     @abstractmethod
     def _generate_from_one_sample(self):
+        '''
+        this function is call in the generate_data
+        generate_data from one sample
+        '''
+        pass
+
+    @abstractmethod
+    def _status_update(self):
+        '''
+        this function is call in the generate_data
+        update the status of the dataset after one sample is generate
+        such as update the self._epoch_done: if the sample is the last of the dataset, we should set the sale._epoch_done to True, ortherwise, set to False
+        '''
         pass
 
     def generate_data(self):
-        return self._generate_from_one_sample()
+        data = self._generate_from_one_sample()
+        self._status_update()
+        return data
         pass
 
     @property
@@ -56,54 +82,63 @@ class CommonData(ABC):
     pass
 
 
-class CommonDataManager(BaseManager):
-    pass
-
-
 class CommonDataProxy(NamespaceProxy):
     _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', 'restart_data', 'generate_data', 'generate_epoch_done')
 
-    def restart_data(self, restart_param):
+    def restart_data(self, restart_param=None):
         callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.restart_data(restart_param))
+        return callmethod(self.restart_data.__name__, (restart_param, ))
         pass
 
     def generate_data(self):
         callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.generate_data())
+        return callmethod(self.generate_data.__name__, ())
         pass
 
-    def generate_epoch_done(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.generate_epoch_done())
-        pass
+    # @property
+    # def generate_epoch_done(self):
+    #     callmethod = object.__getattribute__(self, '_callmethod')
+    #     return callmethod(self.generate_epoch_done.__name__)
+    #     pass
     pass
 
 
-def generator(**argv):
-    count = argv.pop('count')
-    stop_generation = argv.pop('stop_generation')
-    epoch_done_cond = argv.pop('epoch_done_cond')
-    epoch_done_flag = argv.pop('epoch_done_flag')
-    data = argv.pop('data')
-    data_queue = argv.pop('data_queue')
+# def generator(param):
+def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
+    plog.api_function_log(GeneratorLogger, 'generator start')
+    # count = param['count']
+    # stop_generation = param['stop_generation']
+    # epoch_done_cond = param['epoch_done_cond']
+    # epoch_done_flag = param['epoch_done_flag']
+    # data = param['data']
+    # data_queue = param['data_queue']
+    # flag_sync_mutex = param['flag_sync_mutex']
     count = 0
     while stop_generation.value is False:
         epoch_done_cond.acquire()
-        if data.generate_epoch_done():
+        if data.generate_epoch_done:
             count = 0
             pass
         epoch_done_cond.wait_for(lambda: data.generate_epoch_done is False)
         get_data = data.generate_data()
+        flag_sync_mutex.acquire()
         data_queue.put(get_data)
+        epoch_done_flag.value = data.generate_epoch_done
+        flag_sync_mutex.release()
         count += 1
-        epoch_done_flag.value = data.generate_epoch_done()
         epoch_done_cond.release()
         pass
+    plog.api_function_log(GeneratorLogger, 'data put process end')
     pass
 
 
-class DataPutProcess(ABC):
+def a(count, stop_generation, epoch_done_cond, epoch_done_flag, data, data_queue):
+    print(count)
+    print('sdasdasdasda')
+    pass
+
+
+class DataPutProcess:
     def __init__(self, data, manager, pool, *argc, **argv):
         '''
         data: the CommonData Object
@@ -111,8 +146,8 @@ class DataPutProcess(ABC):
         pool: the multiprocessing.Manager().Pool()
         'queue_size': the size of the data queue
         '''
-        self._pool = pool
-        self._manager = manager
+        plog.api_function_log(DataPutProcessLogger, 'DataPutProcess')
+
         self._data = data
 
         if 'queue_size' in argv.keys():
@@ -122,24 +157,30 @@ class DataPutProcess(ABC):
             self._queue_size = 32
             pass
 
-        self._epoch_done_cond = self._manager.Condition()
-        self._epoch_done_flag = self._manager.Value(bool, False)
-        self._stop_generation = self._manager.Value(bool, False)
-        self._data_queue = self._manager.Queue(maxsize=self._queue_size)
+        self._epoch_done_cond = manager.Condition()
+        self._epoch_done_flag = manager.Value(bool, False)
+        self._flag_sync_mutex = manager.Lock()
+        self._stop_generation = manager.Value(bool, False)
+        self._data_queue = manager.Queue(maxsize=self._queue_size)
 
-        self._count = self._manager.Value(int, 0)
+        self._count = manager.Value(int, 0)
 
         self._epoch_done_cond.acquire()
         self._first_init = True
 
-        argv = self._manager.dict()
-        argv['count'] = self._count
-        argv['stop_generation'] = self._stop_generation
-        argv['epoch_done_cond'] = self._epoch_done_cond
-        argv['epoch_done_flag'] = self._epoch_done_flag
-        argv['data'] = self._data
-        argv['data_queue'] = self._data_queue
-        self._ret = self._pool.apply_async(generator, args=(argv))
+        # param = manager.dict()
+        # param['count'] = self._count
+        # param['stop_generation'] = self._stop_generation
+        # param['epoch_done_cond'] = self._epoch_done_cond
+        # param['epoch_done_flag'] = self._epoch_done_flag
+        # param['flag_sync_mutex'] = self._flag_sync_mutex
+        # param['data'] = self._data
+        # param['data_queue'] = self._data_queue
+        # print(param)
+        # self._ret = pool.apply_async(generator, args=(param,))
+        self._ret = pool.apply_async(generator, args=(self._count, self._stop_generation, self._epoch_done_cond, self._epoch_done_flag, self._flag_sync_mutex, self._data, self._data_queue))
+        # self._ret = pool.apply_async(generator, args=())
+        # self._ret = pool.apply_async(a, args=(self._count, self._stop_generation, self._epoch_done_cond, self._epoch_done_flag, self._data, self._data_queue))
         pass
 
     def pause_queue(self):
@@ -153,8 +194,26 @@ class DataPutProcess(ABC):
         self._paused = False
         pass
 
-    def restart(self, restart_param):
-        self._epoch_done_cond.acquire() if self._first_init is False else None
+    @property
+    def has_next(self):
+        self._flag_sync_mutex.acquire()
+        # print(self._data_queue.empty())
+        # print(self._epoch_done_flag.value)
+        flag = (self._data_queue.empty() is False or self._epoch_done_flag.value is False)
+        self._flag_sync_mutex.release()
+        return flag
+        pass
+
+    def restart(self, restart_param=None):
+        plog.api_function_log(DataPutProcessLogger, 'restart')
+        if self._first_init is False:
+            # print('a')
+            self._epoch_done_cond.acquire()
+            pass
+        else:
+            self._first_init = False
+            # print('b')
+            pass
         self._data.restart_data(restart_param)
         self._epoch_done_flag.value = False
         self._epoch_done_cond.notify_all()
@@ -162,9 +221,10 @@ class DataPutProcess(ABC):
         pass
 
     def stop_generation(self):
+        plog.api_function_log(DataPutProcessLogger, 'stop_generation')
         self._epoch_done_cond.acquire()
         self._data.restart_data()
-        self._epoch_done_flag.value = True
+        self._stop_generation.value = True
         self._epoch_done_cond.notify_all()
         self._epoch_done_cond.release()
         while self._data_queue.empty() is False:
@@ -174,7 +234,7 @@ class DataPutProcess(ABC):
 
     @property
     def Count(self):
-        return self._count
+        return self._count.value
         pass
 
     @property
@@ -191,4 +251,61 @@ class DataPutProcess(ABC):
     def EpochDoneFlag(self):
         return self._epoch_done_flag
         pass
+
+    @property
+    def queue_process_ret(self):
+        return self._ret
+        pass
     pass
+
+
+class DataPutProcessProxy(NamespaceProxy):
+    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', 'pause_queue', 'continue_queue', 'restart', 'stop_generation', 'Count', 'DataQueue', 'EpochDoneCond', 'EpochDoneFlag')
+
+    def pause_queue(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.pause_queue())
+        pass
+
+    def continue_queue(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.continue_queue())
+        pass
+
+    def restart(self, restart_param):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.restart(restart_param))
+        pass
+
+    def stop_generation(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.stop_operation())
+        pass
+
+    @property
+    def Count(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.Count)
+        pass
+
+    @property
+    def DataQueue(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.DataQueue)
+        pass
+
+    @property
+    def EpochDoneCond(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.EpochDoneCond)
+        pass
+
+    @property
+    def EpochDoneFlag(self):
+        callmethod = object.__getattribute__(self, '_callmethod')
+        return callmethod(self.EpochDoneFlag)
+        pass
+    pass
+
+
+CommonDataManager.register('DataPutProcess', DataPutProcess, proxytype=DataPutProcessProxy)
