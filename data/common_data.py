@@ -39,9 +39,11 @@ class CommonData(ABC):
     def _restart_process(self, restart_param):
         pass
 
-    def restart_data(self, restart_param=None):
-        # assert 'device_batch' in restart_param.keys(), CommonDataLogger.error('restart_param should contain {device_batch}')
-        # self._device_batch = restart_param['device_batch']
+    def restart_data(self, restart_param):
+        '''
+        '''
+        assert 'device_batch' in restart_param.keys(), CommonDataLogger.fatal('device_batch should be found in the restart_param vs. {0}'.format(restart_param))
+        self._device_batch = restart_param['device_batch']
         self._restart_process(restart_param)
         self._epoch_done = False
         pass
@@ -204,8 +206,18 @@ class DataPutProcess:
         return flag
         pass
 
-    def restart(self, restart_param=None):
+    def restart(self, **kwargs):
         plog.api_function_log(DataPutProcessLogger, 'restart')
+        restart_param = mlp.Manager().dict()
+        if 'device_batch' not in kwargs:
+            restart_param['device_batch'] = [1]
+            pass
+        else:
+            restart_param['debice_batch'] = kwargs['device_batch']
+            pass
+        for key in kwargs.keys():
+            restart_param[key] = kwargs[key]
+            pass
         if self._first_init is False:
             # print('a')
             self._epoch_done_cond.acquire()
@@ -222,8 +234,10 @@ class DataPutProcess:
 
     def stop_generation(self):
         plog.api_function_log(DataPutProcessLogger, 'stop_generation')
+        restart_param = mlp.Manager().dict()
+        restart_param['device_batch'] = [1]
         self._epoch_done_cond.acquire()
-        self._data.restart_data()
+        self._data.restart_data(restart_param)
         self._stop_generation.value = True
         self._epoch_done_cond.notify_all()
         self._epoch_done_cond.release()

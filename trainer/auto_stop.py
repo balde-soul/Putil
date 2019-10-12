@@ -8,7 +8,7 @@ class auto_stop(ABC):
     main function:
     
     '''
-    def __init__(self, indicator_getter, patience  improve=True):
+    def __init__(self, indicator_getter, patience, improve=True):
         self._indicator_getter = indicator_getter
         self._esp
         pass

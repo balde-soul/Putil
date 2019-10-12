@@ -15,10 +15,10 @@ import multiprocessing
 class TestCommonData(pcd.CommonData):
     def __init__(self):
         pcd.CommonData.__init__(self)
-        self._restart_process()
+        self._field = list(range(0, 100))
         pass
 
-    def _restart_process(self, restart_param=None):
+    def _restart_process(self, restart_param):
         self._field = list(range(0, 100))
         pass
 
@@ -44,7 +44,6 @@ if __name__ == '__main__':
     manager = multiprocessing.Manager()
     pool = multiprocessing.Pool()
 
-    restart_param = manager.dict()
     dpq = pcd.DataPutProcess(data, manager, pool)
     pool.close()
 
@@ -53,7 +52,8 @@ if __name__ == '__main__':
     # pool.join()
     # print(dpq.queue_process_ret.get())
 
-    dpq.restart(restart_param)
+    restart_param = dict()
+    dpq.restart(**restart_param)
     count = 0
     while dpq.has_next:
         # print('s')
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         count += 1
         pass
     assert count == 100
-    dpq.restart(restart_param)
+    dpq.restart(**restart_param)
     count = 0
     while dpq.has_next:
         dq.get()
