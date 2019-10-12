@@ -267,3 +267,8 @@ def Log(logger, level):
     else:
         raise ValueError('logger level: {0}, is not supported'.format(level))
     pass
+
+
+def api_function_log(logger, str):
+    logger.info(Fore.GREEN + str + Fore.RESET)
+    pass
