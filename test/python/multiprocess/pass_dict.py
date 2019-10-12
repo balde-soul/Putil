@@ -25,3 +25,19 @@ pool.join()
 print(empty_dict_test.get())
 print(normal_type_test.get())
 print(manager_type_test.get())
+
+
+def error_detect(argv):
+    print(argv['t'])
+    pass
+
+
+pool = mlp.Pool()
+manager = mlp.Manager()
+
+argv = manager.dict()
+error_detection = pool.apply_async(error_detect, args=(argv,))
+
+pool.close()
+pool.join()
+print(error_detection.get())
