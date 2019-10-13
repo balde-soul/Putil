@@ -63,6 +63,20 @@ class CommonData(ABC):
         pass
 
     @abstractmethod
+    def _generate_from_specified(self, index):
+        '''
+        this function is call in the generate_data, using the specified id from the data_set_field to get the data from the id
+        '''
+        pass
+
+    @abstractmethod
+    def _data_set_field(seld):
+        '''
+        this function return the data_set_field, which contain the id of all data
+        '''
+        pass
+
+    @abstractmethod
     def _status_update(self):
         '''
         this function is call in the generate_data
@@ -105,7 +119,6 @@ class CommonDataProxy(NamespaceProxy):
     pass
 
 
-# def generator(param):
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
     plog.api_function_log(GeneratorLogger, 'generator start')
     # count = param['count']
@@ -170,18 +183,7 @@ class DataPutProcess:
         self._epoch_done_cond.acquire()
         self._first_init = True
 
-        # param = manager.dict()
-        # param['count'] = self._count
-        # param['stop_generation'] = self._stop_generation
-        # param['epoch_done_cond'] = self._epoch_done_cond
-        # param['epoch_done_flag'] = self._epoch_done_flag
-        # param['flag_sync_mutex'] = self._flag_sync_mutex
-        # param['data'] = self._data
-        # param['data_queue'] = self._data_queue
-        # print(param)
-        # self._ret = pool.apply_async(generator, args=(param,))
         self._ret = pool.apply_async(generator, args=(self._count, self._stop_generation, self._epoch_done_cond, self._epoch_done_flag, self._flag_sync_mutex, self._data, self._data_queue))
-        # self._ret = pool.apply_async(generator, args=())
         # self._ret = pool.apply_async(a, args=(self._count, self._stop_generation, self._epoch_done_cond, self._epoch_done_flag, self._data, self._data_queue))
         pass
 
@@ -215,9 +217,8 @@ class DataPutProcess:
         else:
             restart_param['debice_batch'] = kwargs['device_batch']
             pass
-        for key in kwargs.keys():
-            restart_param[key] = kwargs[key]
-            pass
+        for key, value in kwargs.items():
+            restart_param[key] = value
         if self._first_init is False:
             # print('a')
             self._epoch_done_cond.acquire()

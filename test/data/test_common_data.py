@@ -53,6 +53,7 @@ if __name__ == '__main__':
     # print(dpq.queue_process_ret.get())
 
     restart_param = dict()
+    restart_param['a'] = 2
     dpq.restart(**restart_param)
     count = 0
     while dpq.has_next:
