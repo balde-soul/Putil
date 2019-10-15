@@ -280,6 +280,7 @@ class ILSVRC(pcd.CommonData):
         self._generated_epoch_done = True    # bool
         self._data_remain = list()    # list
         self._data_reset_mutex = threading.Condition()
+        self._index = None
         pass
 
     def __restart_data(self, train_data, ilsvrc_root, shuffle=True):
@@ -291,6 +292,7 @@ class ILSVRC(pcd.CommonData):
         self._generated_epoch_done = False
         self._train_generated_epoch = 1 if self._train_generated_epoch is None else self._train_generated_epoch + 1 if self._target_type_is_train else self._train_generated_epoch
         self._evaluate_generated_epoch = 1 if self._evaluate_generated_epoch is None else self._evaluate_generated_epoch + 1 if self._target_type_is_train else self._evaluate_generated_epoch
+        self._index = 0
         self._data_reset_mutex.notify_all()
         self._data_reset_mutex.release()
         pass
@@ -304,9 +306,6 @@ class ILSVRC(pcd.CommonData):
         pass
 
     def _generate_from_one_sample(self):
-        data = self._field[self._index]
-        self._index += 1
-        return np.array([[data]])
         pass
 
     def _generate_from_specified(self, index):

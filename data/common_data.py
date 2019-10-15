@@ -69,6 +69,21 @@ class CommonData(ABC):
         self._device_batch_mutex.release()
         pass
 
+    # @abstractmethod
+    # def _inject_operation(self, inject_param):
+    #     pass
+
+    # def inject_operation(self, inject_param):
+    #     '''
+    #     this method can be call between every data generation
+    #     '''
+    #     CommonDataLogger.fatal('unsupported method')
+    #     assert 'type' in inject_param.keys(), CommonDataLogger.fatal('type should be found in the inject_param vs. {0}'.format(inject_param))
+    #     self._inject_operation_type = inject_param['type']
+    #     if self._inject_operation == 'restart':
+    #         pass
+    #     pass
+
     @abstractmethod
     def _generate_from_one_sample(self):
         '''
