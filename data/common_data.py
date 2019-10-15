@@ -1,4 +1,8 @@
 # coding=utf-8
+import inspect
+import traceback
+import copy
+import numpy as np
 import colorama
 import Putil.base.logger as plog
 from abc import ABC, abstractmethod
@@ -22,6 +26,11 @@ class CommonDataManager(BaseManager):
     pass
 
 
+class ProxyBase(NamespaceProxy):
+    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
+    pass
+
+
 class CommonData(ABC):
     '''
     this class provide a common method to read the data
@@ -29,6 +38,7 @@ class CommonData(ABC):
     def __init__(self):
         self._device_batch_mutex = threading.Lock()
         self._device_batch = None
+        self._critical_process = None
         self._epoch_done = False
         pass
 
@@ -41,9 +51,14 @@ class CommonData(ABC):
 
     def restart_data(self, restart_param):
         '''
+        restart_param:
+            'device_batch': batch size for every device, list with int
+            'critical_process': the method while epoch_done got during one data_batch is generating, string, support 'allow_low', 'random_fill'
         '''
         assert 'device_batch' in restart_param.keys(), CommonDataLogger.fatal('device_batch should be found in the restart_param vs. {0}'.format(restart_param))
         self._device_batch = restart_param['device_batch']
+        assert 'critical_process' in restart_param.keys(), CommonDataLogger.fatal('critical_process should be found in the restart_param vs. {0}'.format(restart_param))
+        self._critical_process = restart_param['critical_process']
         self._restart_process(restart_param)
         self._epoch_done = False
         pass
@@ -59,6 +74,7 @@ class CommonData(ABC):
         '''
         this function is call in the generate_data
         generate_data from one sample
+        return the ndarray
         '''
         pass
 
@@ -70,7 +86,7 @@ class CommonData(ABC):
         pass
 
     @abstractmethod
-    def _data_set_field(seld):
+    def _data_set_field(self):
         '''
         this function return the data_set_field, which contain the id of all data
         '''
@@ -86,36 +102,69 @@ class CommonData(ABC):
         pass
 
     def generate_data(self):
-        data = self._generate_from_one_sample()
-        self._status_update()
+        '''
+        this function return the data follow the format: 'D, B, *, *'
+        the first dimesion is the device
+        the second dimesion is the batch
+        return the ndarray
+        '''
+        func_for_deal_with_epoch_done = None
+        devices_data = []
+        need_batch = copy.deepcopy(self._device_batch)
+        [devices_data.append([]) for device in self._device_batch]
+        while np.sum(need_batch) > 0:
+            for ergodic_device in zip(need_batch, range(0, len(need_batch))):
+                batch = ergodic_device[0]
+                device_order = ergodic_device[1]
+                if batch > 0:
+                    # get the data
+                    if self._epoch_done is False:
+                        data = self._generate_from_one_sample()
+                        self._status_update()
+                        need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
+                        devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                        pass
+                    else:
+                        def deal_with_epoch_done():
+                            field = self._data_set_field()
+
+                            def func():
+                                random_sample = np.random.choice(field)
+                                return self._generate_from_specified(random_sample)
+                                pass
+                            return func
+                            pass
+                        func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
+                        if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
+                            need_batch[device_order] = 0
+                            pass
+                        elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
+                            data = func_for_deal_with_epoch_done()
+                            need_batch[device_order] = 0
+                            devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                            pass
+                        elif self._critical_process == 'random_fill':
+                            data = func_for_deal_with_epoch_done()
+                            need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
+                            devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                            pass
+                        else:
+                            CommonDataLogger.fatal('this should not happen')
+                            pass
+                        pass
+                    # add the data to the
+                    pass
+                else:
+                    pass
+                pass
+            pass
+        data = [np.concatenate(device_data, axis=0) if len(device_data) > 1 else device_data[0] for device_data in devices_data]
         return data
         pass
 
-    @property
     def generate_epoch_done(self):
         return self._epoch_done
         pass
-    pass
-
-
-class CommonDataProxy(NamespaceProxy):
-    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', 'restart_data', 'generate_data', 'generate_epoch_done')
-
-    def restart_data(self, restart_param=None):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.restart_data.__name__, (restart_param, ))
-        pass
-
-    def generate_data(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.generate_data.__name__, ())
-        pass
-
-    # @property
-    # def generate_epoch_done(self):
-    #     callmethod = object.__getattribute__(self, '_callmethod')
-    #     return callmethod(self.generate_epoch_done.__name__)
-    #     pass
     pass
 
 
@@ -134,11 +183,17 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
         if data.generate_epoch_done:
             count = 0
             pass
-        epoch_done_cond.wait_for(lambda: data.generate_epoch_done is False)
-        get_data = data.generate_data()
+        epoch_done_cond.wait_for(lambda: data.generate_epoch_done() is False)
+        try:
+            get_data = data.generate_data()
+            pass
+        except Exception as ex:
+            GeneratorLogger.fatal(traceback.format_tb(ex.__traceback__))
+            raise ex
+            pass
         flag_sync_mutex.acquire()
         data_queue.put(get_data)
-        epoch_done_flag.value = data.generate_epoch_done
+        epoch_done_flag.value = data.generate_epoch_done()
         flag_sync_mutex.release()
         count += 1
         epoch_done_cond.release()
@@ -215,7 +270,13 @@ class DataPutProcess:
             restart_param['device_batch'] = [1]
             pass
         else:
-            restart_param['debice_batch'] = kwargs['device_batch']
+            restart_param['device_batch'] = kwargs['device_batch']
+            pass
+        if 'critical_process' not in kwargs:
+            restart_param['critical_process'] = 'random_fill'
+            pass
+        else:
+            restart_param['critical_process'] = kwargs['critical_process']
             pass
         for key, value in kwargs.items():
             restart_param[key] = value
@@ -236,7 +297,7 @@ class DataPutProcess:
     def stop_generation(self):
         plog.api_function_log(DataPutProcessLogger, 'stop_generation')
         restart_param = mlp.Manager().dict()
-        restart_param['device_batch'] = [1]
+        self._set_default_restart_param(restart_param)
         self._epoch_done_cond.acquire()
         self._data.restart_data(restart_param)
         self._stop_generation.value = True
@@ -247,80 +308,35 @@ class DataPutProcess:
             pass
         pass
 
-    @property
+    def _set_default_restart_param(self, restart_param):
+        restart_param['device_batch'] = self._default_device_batch()
+        restart_param['critical_process'] = self._default_critical_process()
+        pass
+
+    def _default_device_batch(self):
+        return [1]
+        pass
+
+    def _default_critical_process(self):
+        return 'random_fill'
+        pass
+
     def Count(self):
         return self._count.value
         pass
 
-    @property
     def DataQueue(self):
         return self._data_queue
         pass
 
-    @property
     def EpochDoneCond(self):
         return self._epoch_done_cond
         pass
 
-    @property
     def EpochDoneFlag(self):
         return self._epoch_done_flag
         pass
 
-    @property
     def queue_process_ret(self):
         return self._ret
         pass
-    pass
-
-
-class DataPutProcessProxy(NamespaceProxy):
-    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', 'pause_queue', 'continue_queue', 'restart', 'stop_generation', 'Count', 'DataQueue', 'EpochDoneCond', 'EpochDoneFlag')
-
-    def pause_queue(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.pause_queue())
-        pass
-
-    def continue_queue(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.continue_queue())
-        pass
-
-    def restart(self, restart_param):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.restart(restart_param))
-        pass
-
-    def stop_generation(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.stop_operation())
-        pass
-
-    @property
-    def Count(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.Count)
-        pass
-
-    @property
-    def DataQueue(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.DataQueue)
-        pass
-
-    @property
-    def EpochDoneCond(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.EpochDoneCond)
-        pass
-
-    @property
-    def EpochDoneFlag(self):
-        callmethod = object.__getattribute__(self, '_callmethod')
-        return callmethod(self.EpochDoneFlag)
-        pass
-    pass
-
-
-CommonDataManager.register('DataPutProcess', DataPutProcess, proxytype=DataPutProcessProxy)
