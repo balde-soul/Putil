@@ -64,9 +64,9 @@ if __name__ == '__main__':
 
         data.restart_data(restart_param)
 
-        assert data.generate_epoch_done is False
+        assert data.generate_epoch_done() is False
         count = 0
-        while data.generate_epoch_done is False:
+        while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
             assert get[0].shape == (1, 1)
@@ -79,9 +79,9 @@ if __name__ == '__main__':
 
         data.restart_data(restart_param)
 
-        assert data.generate_epoch_done is False
+        assert data.generate_epoch_done() is False
         count = 0
-        while data.generate_epoch_done is False:
+        while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
             assert get[0].shape == (11, 1)
@@ -94,9 +94,9 @@ if __name__ == '__main__':
 
         data.restart_data(restart_param)
 
-        assert data.generate_epoch_done is False
+        assert data.generate_epoch_done() is False
         count = 0
-        while data.generate_epoch_done is False:
+        while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 2
             assert get[0].shape == (3, 1)
@@ -110,9 +110,9 @@ if __name__ == '__main__':
 
         data.restart_data(restart_param)
 
-        assert data.generate_epoch_done is False
+        assert data.generate_epoch_done() is False
         count = 0
-        while data.generate_epoch_done is False:
+        while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
             count += 1
@@ -126,9 +126,9 @@ if __name__ == '__main__':
 
         data.restart_data(restart_param)
 
-        assert data.generate_epoch_done is False
+        assert data.generate_epoch_done() is False
         count = 0
-        while data.generate_epoch_done is False:
+        while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 2
             count += 1
