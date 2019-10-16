@@ -108,10 +108,18 @@ class CommonData(ABC):
 
     @abstractmethod
     def _restart_process(self, restart_param):
+        '''
+        process while restart the data, process in the derived class and called by restart_data
+        restart_param: the argv which the derived class need, dict
+        '''
         pass
 
     @abstractmethod
     def _inject_operation(self, inject_param):
+        '''
+        operation while the epoch_done is False, process in the derived class and called by inject_operation
+        injecct_param: the argv which the derived class need, dict
+        '''
         pass
 
     @abstractmethod
