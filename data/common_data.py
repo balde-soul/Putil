@@ -347,7 +347,7 @@ class DataPutProcess:
 
         if (recycle is True) and (self._data_queue.empty() is False):
             get = self._data_queue.get()
-            index = get.indexs().index_info().point()
+            index = get[0].indexs()[0].index_info().point()
             self._data.reset_index(index)
             while self._data_queue.empty() is False:
                 self._data_queue.get()
@@ -360,7 +360,11 @@ class DataPutProcess:
             data_reject_param[key] = value
         self._data.inject_operation(data_reject_param)
 
+        before_generate_after_inject_data_queue = self._data_queue.qsize()
+
         self.continue_queue()
+
+        return before_generate_after_inject_data_queue
         pass
 
     def continue_queue(self):
@@ -388,18 +392,20 @@ class DataPutProcess:
     def restart(self, **kwargs):
         plog.api_function_log(DataPutProcessLogger, 'restart')
         restart_param = mlp.Manager().dict()
-        if 'device_batch' not in kwargs:
-            restart_param['device_batch'] = [1]
-            pass
-        else:
-            restart_param['device_batch'] = kwargs['device_batch']
-            pass
-        if 'critical_process' not in kwargs:
-            restart_param['critical_process'] = 'random_fill'
-            pass
-        else:
-            restart_param['critical_process'] = kwargs['critical_process']
-            pass
+        restart_param['device_batch'] = kwargs.get('device_batch', [1])
+        # if 'device_batch' not in kwargs:
+        #     restart_param['device_batch'] = [1]
+        #     pass
+        # else:
+        #     restart_param['device_batch'] = kwargs['device_batch']
+        #     pass
+        restart_param['critical_process'] = kwargs.get('critical_process', 'random_fill')
+        # if 'critical_process' not in kwargs:
+        #     restart_param['critical_process'] = 'random_fill'
+        #     pass
+        # else:
+        #     restart_param['critical_process'] = kwargs['critical_process']
+        #     pass
         for key, value in kwargs.items():
             restart_param[key] = value
         if self._first_init is False:

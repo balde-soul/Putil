@@ -31,7 +31,6 @@ if __name__ == '__main__':
 
     restart_param = dict()
 
-    restart_param['device_batch'] = [1]
     restart_param['critical_process'] = 'random_fill'
     dpq.restart(**restart_param)
 
@@ -82,7 +81,7 @@ if __name__ == '__main__':
     while count < 50 and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (1, 1), print(get.datas()[0].shape)
+        assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
         count += 1
         pass
 
@@ -90,18 +89,27 @@ if __name__ == '__main__':
     while count < 60 and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (2, 1), print(get.datas()[0].shape)
+        assert get[0].datas().shape == (2, 1), print(get[0].datas().shape)
         count += 1
         pass
 
-    dpq.inject_operation({'recycle': False}, device_batch=[3])
-    while count < 70 and dpq.has_next():
+    old_size = dpq.inject_operation({'recycle': False}, device_batch=[1])
+    while count < 60 + old_size and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (3, 1), print(get.datas()[0].shape)
+        assert get[0].datas().shape == (2, 1), print(get[0].datas().shape)
         count += 1
         pass
-    assert count == 70
+    assert count == 60 + old_size, print(count)
+    remain_count = 100 - (50 + (10 + old_size) * 2)
+    truck_count = count
+    while (count - truck_count) < remain_count and dpq.has_next():
+        get = dq.get()
+        assert len(get) == 1
+        assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+        count += 1
+        pass
+    assert count == old_size + remain_count + 60, print(count)
 
     dpq.stop_generation()
     pool.join()
