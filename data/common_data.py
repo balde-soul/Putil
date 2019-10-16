@@ -20,6 +20,8 @@ GeneratorLogger = logger.getChild('Generator')
 GeneratorLogger.setLevel(plog.DEBUG)
 DataPutProcessLogger = logger.getChild('DataPutProcess')
 DataPutProcessLogger.setLevel(plog.DEBUG)
+GeneratedDataLogger = logger.getChild('GeneratedData')
+GeneratedDataLogger.setLevel(plog.DEBUG)
 
 
 class CommonDataManager(BaseManager):
@@ -28,6 +30,63 @@ class CommonDataManager(BaseManager):
 
 class ProxyBase(NamespaceProxy):
     _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
+    pass
+
+
+class IndexInfo:
+    def __init__(self, point, type, *args, **kwargs):
+        self._point = point
+        self._type = type
+        pass
+
+    def point(self):
+        return self._point
+        pass
+
+    def type(self):
+        return self._type
+        pass
+    pass
+
+
+class DataIndexInfo:
+    def __init__(self, start, end, index_info, *args, **kwargs):
+        self._range = [start, end]
+        self._index_info = index_info
+        pass
+
+    def index_info(self):
+        return self._index_info
+        pass
+
+    def data_range(self):
+        return self._range
+        pass
+    pass
+
+
+class GeneratedData:
+    def __init__(self, data_list, index_info_list):
+        self._indexs = [DataIndexInfo(0, 0, None, '')]
+        for data, index_info, data_order in zip(data_list, index_info_list, range(0, len(data_list))):
+            pre_range = self._indexs[data_order].data_range()
+            self._indexs.append(DataIndexInfo(pre_range[0], pre_range[1] + data.shape[0], index_info))
+            pass
+        self._indexs.pop(0)
+        self._indexs = np.array(self._indexs)
+        self._data = np.concatenate(data_list, axis=0) if len(data_list) > 1 else data_list[0]
+        pass
+
+    def datas(self):
+        return self._data
+        pass
+
+    def indexs(self):
+        return self._indexs
+        pass
+
+    def data(self, index):
+        pass
     pass
 
 
@@ -40,13 +99,26 @@ class CommonData(ABC):
         self._device_batch = None
         self._critical_process = None
         self._epoch_done = False
-        pass
 
-    def set_config(self, config):
+        # a list which contain number(int) which represent the index of the data
+        self._data_field = None
+        # a number(int) which the represent data read now
+        self._index = None
         pass
 
     @abstractmethod
     def _restart_process(self, restart_param):
+        pass
+
+    @abstractmethod
+    def _inject_operation(self, inject_param):
+        pass
+
+    @abstractmethod
+    def _generate_from_specified(self, index):
+        '''
+        this function is call in the generate_data, using the specified id from the data_set_field to get the data from the id
+        '''
         pass
 
     def restart_data(self, restart_param):
@@ -61,6 +133,30 @@ class CommonData(ABC):
         self._critical_process = restart_param['critical_process']
         self._restart_process(restart_param)
         self._epoch_done = False
+        self._index = 0
+        pass
+
+    def reset_param(self, reset_param):
+        pass
+
+    def inject_operation(self, inject_param):
+        '''
+        inject some operation while whenevery, no matter the epoch_done is True or False
+        inject_param: the argv which operation needed
+            'device_batch': this virtual class needed
+            'critical_process': this virtual class needed
+        '''
+        if 'device_batch' in inject_param:
+            self._device_batch = inject_param['device_batch']
+            pass
+        if 'critical_process' in inject_param:
+            self._critical_process = inject_param['critical_process']
+            pass
+        self._inject_operation(inject_param)
+        pass
+
+    def reset_index(self, index):
+        self._index = index
         pass
 
     def device_batch_operation(self):
@@ -69,51 +165,17 @@ class CommonData(ABC):
         self._device_batch_mutex.release()
         pass
 
-    # @abstractmethod
-    # def _inject_operation(self, inject_param):
-    #     pass
-
-    # def inject_operation(self, inject_param):
-    #     '''
-    #     this method can be call between every data generation
-    #     '''
-    #     CommonDataLogger.fatal('unsupported method')
-    #     assert 'type' in inject_param.keys(), CommonDataLogger.fatal('type should be found in the inject_param vs. {0}'.format(inject_param))
-    #     self._inject_operation_type = inject_param['type']
-    #     if self._inject_operation == 'restart':
-    #         pass
-    #     pass
-
-    @abstractmethod
-    def _generate_from_one_sample(self):
-        '''
-        this function is call in the generate_data
-        generate_data from one sample
-        return the ndarray
-        '''
-        pass
-
-    @abstractmethod
-    def _generate_from_specified(self, index):
-        '''
-        this function is call in the generate_data, using the specified id from the data_set_field to get the data from the id
-        '''
-        pass
-
-    @abstractmethod
     def _data_set_field(self):
-        '''
-        this function return the data_set_field, which contain the id of all data
-        '''
+        return self._data_field
         pass
 
-    @abstractmethod
     def _status_update(self):
         '''
         this function is call in the generate_data
         update the status of the dataset after one sample is generate
         such as update the self._epoch_done: if the sample is the last of the dataset, we should set the sale._epoch_done to True, ortherwise, set to False
         '''
+        self._epoch_done = True if self._index == len(self._data_field) - 1 else False
         pass
 
     def generate_data(self):
@@ -125,8 +187,10 @@ class CommonData(ABC):
         '''
         func_for_deal_with_epoch_done = None
         devices_data = []
+        index_data = []
         need_batch = copy.deepcopy(self._device_batch)
         [devices_data.append([]) for device in self._device_batch]
+        [index_data.append([]) for device in self._device_batch]
         while np.sum(need_batch) > 0:
             for ergodic_device in zip(need_batch, range(0, len(need_batch))):
                 batch = ergodic_device[0]
@@ -134,10 +198,12 @@ class CommonData(ABC):
                 if batch > 0:
                     # get the data
                     if self._epoch_done is False:
-                        data = self._generate_from_one_sample()
+                        data = self._generate_from_specified(self._index)
                         self._status_update()
                         need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
                         devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                        index_data[device_order].append(IndexInfo(self._index, 'normal'))
+                        self._index += 1
                         pass
                     else:
                         def deal_with_epoch_done():
@@ -145,7 +211,7 @@ class CommonData(ABC):
 
                             def func():
                                 random_sample = np.random.choice(field)
-                                return self._generate_from_specified(random_sample)
+                                return self._generate_from_specified(random_sample), random_sample
                                 pass
                             return func
                             pass
@@ -154,14 +220,16 @@ class CommonData(ABC):
                             need_batch[device_order] = 0
                             pass
                         elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
-                            data = func_for_deal_with_epoch_done()
+                            data, index = func_for_deal_with_epoch_done()
                             need_batch[device_order] = 0
                             devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                            index_data[device_order].append(IndexInfo(index, 'allow_low'))
                             pass
                         elif self._critical_process == 'random_fill':
-                            data = func_for_deal_with_epoch_done()
+                            data, index = func_for_deal_with_epoch_done()
                             need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
                             devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
+                            index_data[device_order].append(IndexInfo(index, 'random_fill'))
                             pass
                         else:
                             CommonDataLogger.fatal('this should not happen')
@@ -173,7 +241,7 @@ class CommonData(ABC):
                     pass
                 pass
             pass
-        data = [np.concatenate(device_data, axis=0) if len(device_data) > 1 else device_data[0] for device_data in devices_data]
+        data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
         pass
 
@@ -195,7 +263,7 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
     count = 0
     while stop_generation.value is False:
         epoch_done_cond.acquire()
-        if data.generate_epoch_done:
+        if data.generate_epoch_done():
             count = 0
             pass
         epoch_done_cond.wait_for(lambda: data.generate_epoch_done() is False)
@@ -214,12 +282,6 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
         epoch_done_cond.release()
         pass
     plog.api_function_log(GeneratorLogger, 'data put process end')
-    pass
-
-
-def a(count, stop_generation, epoch_done_cond, epoch_done_flag, data, data_queue):
-    print(count)
-    print('sdasdasdasda')
     pass
 
 
@@ -258,22 +320,59 @@ class DataPutProcess:
         pass
 
     def pause_queue(self):
+        plog.api_function_log(DataPutProcessLogger, 'pause the queue')
         self._epoch_done_cond.acquire()
         self._paused = True
         pass
 
+    def inject_operation(self, param, **kwargs):
+        '''
+        this function cound be call while in the epoch processing,
+        param: the argv which needed by DataPutProcess
+            'recycle': bool, recycle the data in the data_queue or not, if true the data in the data_queue would be pop out and the index in the CommonData would be set to the index of the first data in the data_queue
+        **kwargs: the argv which needed by the ComonData
+        '''
+        self.pause_queue()
+
+        assert 'recycle' in param, DataPutProcessLogger.fatal('recycle should be foud in the param vs. {0}'.format(param))
+        recycle = param['recycle']
+
+        if (recycle is True) and (self._data_queue.empty() is False):
+            get = self._data_queue.get()
+            index = get.indexs().index_info().point()
+            self._data.reset_index(index)
+            while self._data_queue.empty() is False:
+                self._data_queue.get()
+                pass
+            assert self._data_queue.empty() is True
+            pass
+
+        data_reject_param = mlp.Manager().dict()
+        for key, value in kwargs.items():
+            data_reject_param[key] = value
+        self._data.inject_operation(data_reject_param)
+
+        self.continue_queue()
+        pass
+
     def continue_queue(self):
-        self._epoch_done_cond.notify_all()
+        plog.api_function_log(DataPutProcessLogger, 'continue the queue')
         self._epoch_done_cond.release()
         self._paused = False
         pass
 
-    @property
     def has_next(self):
         self._flag_sync_mutex.acquire()
         # print(self._data_queue.empty())
         # print(self._epoch_done_flag.value)
         flag = (self._data_queue.empty() is False or self._epoch_done_flag.value is False)
+        self._flag_sync_mutex.release()
+        return flag
+        pass
+
+    def paused_and_has_next(self):
+        self._flag_sync_mutex.acquire()
+        flag = self._data_queue.empty() is False and self._paused is True
         self._flag_sync_mutex.release()
         return flag
         pass
