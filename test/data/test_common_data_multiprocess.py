@@ -39,10 +39,10 @@ if __name__ == '__main__':
     # print(dpq.queue_process_ret.get())
 
     count = 0
-    while dpq.has_next:
+    while dpq.has_next():
         data = dq.get()
         assert len(data) == 1
-        assert data[0].shape[0] == 1
+        assert data[0].datas().shape[0] == 1
         count += 1
         pass
     assert count == 100
@@ -51,11 +51,57 @@ if __name__ == '__main__':
     restart_param['critical_process'] = 'random_fill'
     dpq.restart(**restart_param)
     count = 0
-    while dpq.has_next:
+    while dpq.has_next():
         dq.get()
         count += 1
         pass
     assert count == 100
+
+    restart_param['device_batch'] = [1]
+    restart_param['critical_process'] = 'allow_low'
+    dpq.restart(**restart_param)
+    dpq.pause_queue()
+    now_size = dpq.DataQueue().qsize()
+    count = 0
+    while dpq.paused_and_has_next():
+        dq.get()
+        count += 1
+        pass
+    assert count == now_size
+    dpq.continue_queue()
+    while dpq.has_next():
+        dq.get()
+        count += 1
+        pass
+    assert count == 100
+
+    restart_param['device_batch'] = [1]
+    restart_param['critical_process'] = 'allow_low'
+    dpq.restart(**restart_param)
+    count = 0
+    while count < 50 and dpq.has_next():
+        get = dq.get()
+        assert len(get) == 1
+        assert get[0].datas().shape == (1, 1), print(get.datas()[0].shape)
+        count += 1
+        pass
+
+    dpq.inject_operation({'recycle': True}, device_batch=[2])
+    while count < 60 and dpq.has_next():
+        get = dq.get()
+        assert len(get) == 1
+        assert get[0].datas().shape == (2, 1), print(get.datas()[0].shape)
+        count += 1
+        pass
+
+    dpq.inject_operation({'recycle': False}, device_batch=[3])
+    while count < 70 and dpq.has_next():
+        get = dq.get()
+        assert len(get) == 1
+        assert get[0].datas().shape == (3, 1), print(get.datas()[0].shape)
+        count += 1
+        pass
+    assert count == 70
 
     dpq.stop_generation()
     pool.join()

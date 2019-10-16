@@ -16,22 +16,14 @@ import multiprocessing
 class TestCommonData(pcd.CommonData):
     def __init__(self):
         pcd.CommonData.__init__(self)
-        self._field = list(range(0, 100))
-        self._index = 0
+        self._data_field = list(range(0, 100))
         pass
 
     def _restart_process(self, restart_param):
-        self._index = 0
-        pass
-
-    def _generate_from_one_sample(self):
-        data = self._field[self._index]
-        self._index += 1
-        return np.array([[data]])
         pass
 
     def _generate_from_specified(self, index):
-        data = self._field[index]
+        data = self._data_field[index]
         return np.array([[data]])
         pass
 
@@ -39,8 +31,7 @@ class TestCommonData(pcd.CommonData):
         return list(range(0, 100))
         pass
 
-    def _status_update(self):
-        self._epoch_done = True if self._index == len(self._field) else False
+    def _inject_operation(self, inject_param):
         pass
     pass
 
@@ -69,7 +60,10 @@ if __name__ == '__main__':
         while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
-            assert get[0].shape == (1, 1)
+            assert get[0].datas().shape == (1, 1)
+            assert get[0].indexs().shape == (1,)
+            assert get[0].indexs()[0].index_info().type() == 'normal'
+            assert get[0].indexs()[0].data_range() == [0, 1]
             count += 1
             pass
         assert count == 100
@@ -84,7 +78,8 @@ if __name__ == '__main__':
         while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
-            assert get[0].shape == (11, 1)
+            assert get[0].datas().shape == (11, 1)
+            assert get[0].indexs().shape == (11,)
             count += 1
             pass
         assert count == 10
@@ -99,8 +94,19 @@ if __name__ == '__main__':
         while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 2
-            assert get[0].shape == (3, 1)
-            assert get[1].shape == (5, 1)
+            assert get[0].datas().shape == (3, 1)
+            assert get[1].datas().shape == (5, 1)
+            assert get[0].indexs().shape == (3,)
+            assert get[1].indexs().shape == (5,)
+            if count == 12:
+                assert get[0].indexs()[2].index_info().type() == 'random_fill'
+                assert get[1].indexs()[3].index_info().type() == 'random_fill'
+                assert get[1].indexs()[4].index_info().type() == 'random_fill'
+                pass
+            else:
+                assert get[0].indexs()[-1].index_info().type() == 'normal', print(get[0].indexs()[-1].index_info().type(), count)
+                assert get[1].indexs()[-1].index_info().type() == 'normal'
+                pass
             count += 1
             pass
         assert count == 13
@@ -115,13 +121,14 @@ if __name__ == '__main__':
         while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 1
+            if count == 33:
+                assert get[0].indexs()[-1].index_info().type() == 'normal', print(get[0].indexs()[-1].index_info().type())
+                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
             count += 1
-            if count == 34:
-                assert get[0].shape == (1, 1)
             pass
         assert count == 34
 
-        restart_param['device_batch'] = [3, 5]
+        restart_param['device_batch'] = [1, 2]
         restart_param['critical_process'] = 'allow_low'
 
         data.restart_data(restart_param)
@@ -131,9 +138,15 @@ if __name__ == '__main__':
         while data.generate_epoch_done() is False:
             get = data.generate_data()
             assert len(get) == 2
+            if count == 33:
+                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+                assert get[1].datas().shape == (1, 1), print(get[1].datas().shape)
+                assert get[0].indexs()[0].index_info().type() == 'normal', print(get[0].indexs()[0].index_info().type())
+                assert get[1].indexs()[0].index_info().type() == 'allow_low', print(get[1].indexs()[0].index_info().type())
+                pass
+            else:
+                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+                assert get[1].datas().shape == (2, 1), print(get[1].datas().shape)
             count += 1
-            if count == 13:
-                assert get[0].shape == (2, 1)
-                assert get[1].shape == (2, 1)
             pass
-        assert count == 13
+        assert count == 34
