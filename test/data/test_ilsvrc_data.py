@@ -14,6 +14,10 @@ def test_statistic():
     pass
 
 
+def test_ilsvrc():
+    ilsvrcd.ILSVRC(
+    pass
+
+
 if __name__ == '__main__':
-    test_statistic()
     pass

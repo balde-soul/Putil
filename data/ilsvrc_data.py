@@ -1,4 +1,6 @@
 # coding=utf-8
+import sys
+import cv2
 from PIL import Image
 import threading
 import pandas as pd
@@ -158,7 +160,7 @@ def deal_with_ilsvrc(ilsvrc_train_root, info_save_to, sample_save_to, label_save
 
 
 class ILSVRC(pcd.CommonData):
-    def __init__(self, statistic_file, information_save_to='', load_truncate=None, split=0.8, subset_class_amount=1000, data_drop_rate=0.0, **kwargs):
+    def __init__(self, statistic_file, information_save_to='', load_truncate=None, k_fold=[0.9, 0.1], subset_class_amount=1000, data_drop_rate=0.0, **kwargs):
         '''
         :param statistic_file: the statistic file which generate by ILSVRC_statistic
         :param load_truncate: load a part of the statistic file
@@ -194,10 +196,13 @@ class ILSVRC(pcd.CommonData):
         # the subset of the total dataset, represent the class amount, which should be smaller than 1000
         assert(subset_class_amount <= 1000), print('subset amount should be lower than 1000')
         assert(isinstance(subset_class_amount, int)), print('subset amount should be a int')
+        assert max(k_fold) < 1.0, ILSVRCDataLogger.fatal('max of k_fold should be smaller than 1.0 vs. {0}'.format(k_fold))
+        assert min(k_fold) > 0.0, ILSVRCDataLogger.fatal('max of k_fold should be larger an 0.0 vs. {0}'.format(k_fold))
+        assert sum(k_fold) == 1.0, ILSVRCDataLogger.fatal('sum of k_fold should be equal to 1.0 vs. {0}'.format(k_fold))
         self._subset = subset_class_amount
         ILSVRCLogger.info('subset: {0}'.format(self._subset))
         # the split for the train
-        self._split = split
+        self._k_fold = k_fold
         ILSVRCLogger.info('split: {0}'.format(self._split))
         self._data_drop_rate = data_drop_rate
         ILSVRCLogger.info('data drop rate: {0}'.format(self._data_drop_rate))
@@ -226,8 +231,7 @@ class ILSVRC(pcd.CommonData):
         del _dpd
 
         # : deal with the train valuate split
-        self._train_df = None
-        self._evaluate_df = None
+        self._fold_df = []
         for sub_class in self._class_reflect.items():
             # get the target class data
             target_class = self._subset_df[self._subset_df['class'] == sub_class[0]]
@@ -236,14 +240,20 @@ class ILSVRC(pcd.CommonData):
             np.random.shuffle(target_class_index)
             # drop sample
             target_class_index = target_class_index[0: np.floor(target_class_index.size * (1.0 - self._data_drop_rate)).astype('int64')]
-            # split to train and evaluate
-            train_index = target_class_index[0: (np.floor(target_class_index.size * self._split)).astype('int64')]
-            evaluate_index = target_class_index[(np.floor(target_class_index.size * self._split)).astype('int64'):]
-            self._train_df = self._subset_df.loc[train_index] if self._train_df is None else self._train_df.append(
-                self._subset_df.loc[train_index])
-            self._evaluate_df = self._subset_df.loc[
-                evaluate_index] if self._evaluate_df is None else self._evaluate_df.append(
-                self._subset_df.loc[evaluate_index])
+            # calc the size of every fold
+            k_fold_step_amount = np.floor(np.multiply(self._k_fold, target_class_index.size)).astype(np.int64)
+            if len(self._fold_df) != self._k_fold:
+                for ele in range(0, self._k_fold):
+                    target_index = target_class_index[sum(k_fold_step_amount[0: ele]): sum(k_fold_step_amount[0: ele]) + k_fold_step_amount[ele]]
+                    self._fold_df.append(self._subset_df.loc[target_index])
+                    pass
+                pass
+            else:
+                for ele in range(0, self._k_fold):
+                    target_index = target_class_index[sum(k_fold_step_amount[0: ele]): sum(k_fold_step_amount[0: ele]) + k_fold_step_amount[ele]]
+                    self._fold_df[ele].append(self._subset_df.loc[target_index])
+                    pass
+                pass
             pass
         del self._subset_df
 
@@ -263,62 +273,88 @@ class ILSVRC(pcd.CommonData):
         # self._train_reader = DefaultTrainReader()
         # self._evaluate_reader = DefaultEvaluateReader()
 
-        self._train_epoch_done = True
-        self._train_remain = list()
-        self._train_generated_epoch = None
-        self._train_reset_mutex = threading.Condition()
-        self._evaluate_epoch_done = True
-        self._evaluate_remain = list()
-        self._evaluate_generated_epoch = None
-        self._evaluate_reset_mutex = threading.Condition()
-
         '''
         the second type function
         '''
+        self._data_fold = None
+        self._data_field = None
         self._ilvrc_root = None  # str
         self._target_type_is_train = None   # bool
-        self._generated_epoch_done = True    # bool
-        self._data_remain = list()    # list
         self._data_reset_mutex = threading.Condition()
-        self._index = None
         pass
 
-    def __restart_data(self, train_data, ilsvrc_root, shuffle=True):
+    def data_fold(self):
+        pass
+
+    def __restart_data(self, data_fold, ilsvrc_root, shuffle):
         self._data_reset_mutex.acquire()
-        self._target_type_is_train = train_data
+        self._data_fold = data_fold
         self._ilvrc_root = ilsvrc_root
-        np.random.shuffle(self._train_field) if self._target_type_is_train else np.random.shuffle(self._evaluate_field) if shuffle is True else None
-        self._data_remain = copy.deepcopy(self._train_field) if self._target_type_is_train is True else copy.deepcopy(self._evaluate_field)
-        self._generated_epoch_done = False
-        self._train_generated_epoch = 1 if self._train_generated_epoch is None else self._train_generated_epoch + 1 if self._target_type_is_train else self._train_generated_epoch
-        self._evaluate_generated_epoch = 1 if self._evaluate_generated_epoch is None else self._evaluate_generated_epoch + 1 if self._target_type_is_train else self._evaluate_generated_epoch
-        self._index = 0
+        self._data_field = list()
+        for fold in data_fold:
+            self._data_field += list(self._fold_df[fold].index)
+            pass
+        np.random.shuffle(self._data_field) if shuffle is True else None
         self._data_reset_mutex.notify_all()
         self._data_reset_mutex.release()
         pass
 
     def _restart_process(self, restart_param):
-        train_data = restart_param['train_data'].value
-        ilsvrc_root = restart_param['ilsvrc_root'].value
+        assert 'data_fold' in restart_param
+        assert 'ilsvrc_root' in restart_param
+        assert 'shuffle' in restart_param
+        data_fold = restart_param['data_fold']
+        ilsvrc_root = restart_param['ilsvrc_root']
         shuffle = restart_param['shuffle'].value
         size = restart_param['size'].value
-        self.__restart_data(self, train_data, ilsvrc_root, shuffle)
+        self.__restart_data(data_fold, ilsvrc_root, shuffle)
+        pass
+
+    def __read_data(self, index):
+        element = self._data_field.loc[index]
+
+        # get the data
+        class_name = element['class']
+        image_name = element['image_name']
+        image_path = os.path.join(os.path.join(self._ilvrc_root, class_name), image_name)
+        class_id = self._class_reflect[class_name]
+        class_amount = self._subset
+
+        img = cv2.imread(image_path)
+        if img is None:
+            ILSVRCLogger.error('image read : {0} failed'.format(image_path))
+            sys.exit()
+            pass
+        img = cv2.resize(img, (256, 256), cv2.INTER_CUBIC)
+        if len(img.shape) == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            pass
+        image = np.asanyarray(img.astype('float32'))
+        # normalization
+        # sum = np.sum(img, axis=-1, keepdims=True, dtype=np.float32)
+        # image = image / (sum + 1e-32)
+        image = image / 255.0
+        label = np.zeros(shape=[class_amount], dtype=np.float32)
+        label[class_id] = 1.0
+        return np.array([image]), np.array([label])
         pass
 
     def _generate_from_one_sample(self):
+        self._generate_from_specified(self._index)
+        self._index += 1
         pass
 
     def _generate_from_specified(self, index):
-        data = self._field[index]
-        return np.array([[data]])
+        data = self.__read_data(index)
+        return data
         pass
 
     def _data_set_field(self):
-        return list(range(0, 100))
+        return self._data_field
         pass
 
     def _status_update(self):
-        self._epoch_done = True if self._index == len(self._field) else False
+        self._epoch_done = True if self._index == len(self._data_field) else False
         pass
 
     @staticmethod
@@ -326,3 +362,6 @@ class ILSVRC(pcd.CommonData):
         deal_with_ilsvrc(ilsvrc_train_root, os.path.join(save_to, run_time_message), os.path.join(save_to, statistic_sample), os.path.join(save_to, statistic_label), process_amount)
         pass
     pass
+
+
+pcd.CommonDataManager.register('ILSVRC', ILSVRC)
