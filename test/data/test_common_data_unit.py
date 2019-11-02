@@ -24,7 +24,7 @@ class TestCommonData(pcd.CommonData):
 
     def _generate_from_specified(self, index):
         data = self._data_field[index]
-        return np.array([[data]])
+        return {'data': np.array([[data]]), 'label': np.array([[data]])}
         pass
 
     def _data_set_field(self):
@@ -58,12 +58,15 @@ if __name__ == '__main__':
         assert data.generate_epoch_done() is False
         count = 0
         while data.generate_epoch_done() is False:
-            get = data.generate_data()
-            assert len(get) == 1
-            assert get[0].datas().shape == (1, 1)
-            assert get[0].indexs().shape == (1,)
-            assert get[0].indexs()[0].index_info().type() == 'normal'
-            assert get[0].indexs()[0].data_range() == [0, 1]
+            got_data = data.generate_data()
+            assert len(got_data) == 1, print(len(data))
+            for d in got_data:
+                for k, v in d.items():
+                    get = v
+                    assert get.datas().shape == (1, 1)
+                    assert get.indexs().shape == (1,)
+                    assert get.indexs()[0].index_info().type() == 'normal'
+                    assert get.indexs()[0].data_range() == [0, 1]
             count += 1
             pass
         assert count == 100
@@ -76,10 +79,13 @@ if __name__ == '__main__':
         assert data.generate_epoch_done() is False
         count = 0
         while data.generate_epoch_done() is False:
-            get = data.generate_data()
-            assert len(get) == 1
-            assert get[0].datas().shape == (11, 1)
-            assert get[0].indexs().shape == (11,)
+            got_data = data.generate_data()
+            assert len(got_data) == 1
+            for d in got_data:
+                for k, v in d.items():
+                    get = v
+                    assert get.datas().shape == (11, 1)
+                    assert get.indexs().shape == (11,)
             count += 1
             pass
         assert count == 10
@@ -92,21 +98,25 @@ if __name__ == '__main__':
         assert data.generate_epoch_done() is False
         count = 0
         while data.generate_epoch_done() is False:
-            get = data.generate_data()
-            assert len(get) == 2
-            assert get[0].datas().shape == (3, 1)
-            assert get[1].datas().shape == (5, 1)
-            assert get[0].indexs().shape == (3,)
-            assert get[1].indexs().shape == (5,)
-            if count == 12:
-                assert get[0].indexs()[2].index_info().type() == 'random_fill'
-                assert get[1].indexs()[3].index_info().type() == 'random_fill'
-                assert get[1].indexs()[4].index_info().type() == 'random_fill'
-                pass
-            else:
-                assert get[0].indexs()[-1].index_info().type() == 'normal', print(get[0].indexs()[-1].index_info().type(), count)
-                assert get[1].indexs()[-1].index_info().type() == 'normal'
-                pass
+            got_data = data.generate_data()
+            assert len(got_data) == 2
+            for index, d in enumerate(got_data):
+                for k, v in d.items():
+                    get = v
+                    assert get.datas().shape == (restart_param['device_batch'][index], 1), print(get.datas().shape)
+                    assert get.indexs().shape == (restart_param['device_batch'][index],)
+                    if count == 12 and index == 1:
+                        assert get.indexs()[2].index_info().type() == 'random_fill'
+                        assert get.indexs()[3].index_info().type() == 'random_fill'
+                        assert get.indexs()[4].index_info().type() == 'random_fill'
+                        pass
+                    elif count == 12 and index == 0:
+                        assert get.indexs()[2].index_info().type() == 'random_fill'
+                        pass
+                    else:
+                        assert get.indexs()[-1].index_info().type() == 'normal', print(get.indexs()[-1].index_info().type(), count)
+                        assert get.indexs()[-1].index_info().type() == 'normal'
+                        pass
             count += 1
             pass
         assert count == 13
@@ -119,11 +129,14 @@ if __name__ == '__main__':
         assert data.generate_epoch_done() is False
         count = 0
         while data.generate_epoch_done() is False:
-            get = data.generate_data()
-            assert len(get) == 1
+            got_data = data.generate_data()
+            assert len(got_data) == 1
             if count == 33:
-                assert get[0].indexs()[-1].index_info().type() == 'normal', print(get[0].indexs()[-1].index_info().type())
-                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+                for index, d in enumerate(got_data):
+                    for k, v in d.items():
+                        get = v
+                        assert get.indexs()[-1].index_info().type() == 'normal', print(get.indexs()[-1].index_info().type())
+                        assert get.datas().shape == (1, 1), print(get[0].datas().shape)
             count += 1
             pass
         assert count == 34
@@ -136,17 +149,26 @@ if __name__ == '__main__':
         assert data.generate_epoch_done() is False
         count = 0
         while data.generate_epoch_done() is False:
-            get = data.generate_data()
-            assert len(get) == 2
+            got_data = data.generate_data()
+            assert len(got_data) == 2
             if count == 33:
-                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
-                assert get[1].datas().shape == (1, 1), print(get[1].datas().shape)
-                assert get[0].indexs()[0].index_info().type() == 'normal', print(get[0].indexs()[0].index_info().type())
-                assert get[1].indexs()[0].index_info().type() == 'allow_low', print(get[1].indexs()[0].index_info().type())
+                for index, d in enumerate(got_data):
+                    for k, v in d.items():
+                        get = v
+                        assert get.datas().shape == (1, 1), print(get.datas().shape)
+                        assert get.datas().shape == (1, 1), print(get.datas().shape)
+                        assert get.indexs()[0].index_info().type() == 'normal' if index == 0 else 'allow_low', print(get.indexs()[0].index_info().type())
+                        pass
+                    pass
                 pass
             else:
-                assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
-                assert get[1].datas().shape == (2, 1), print(get[1].datas().shape)
+                for index, d in enumerate(got_data):
+                    for k, v in d.items():
+                        get = v
+                        assert get.datas().shape == (1 if index == 0 else 2, 1), print(get.datas().shape)
+                        pass
+                    pass
+                pass
             count += 1
             pass
         assert count == 34

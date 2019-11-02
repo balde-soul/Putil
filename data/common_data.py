@@ -126,6 +126,7 @@ class CommonData(ABC):
     def _generate_from_specified(self, index):
         '''
         this function is call in the generate_data, using the specified id from the data_set_field to get the data from the id
+        the format of the data returned should be: {key: data.follow(shape: [batch, **])}
         '''
         pass
 
@@ -188,7 +189,8 @@ class CommonData(ABC):
 
     def generate_data(self):
         '''
-        this function return the data follow the format: 'D, B, *, *'
+        this function return the data with content follow the format: [{key: GeneratedData}.follow(data_name)].follow(device)
+        in fact: the data is pack in to the GeneratedData
         the first dimesion is the device
         the second dimesion is the batch
         return the ndarray
@@ -197,8 +199,8 @@ class CommonData(ABC):
         devices_data = []
         index_data = []
         need_batch = copy.deepcopy(self._device_batch)
-        [devices_data.append([]) for device in self._device_batch]
-        [index_data.append([]) for device in self._device_batch]
+        [devices_data.append(dict()) for device in self._device_batch]
+        [index_data.append(dict()) for device in self._device_batch]
         while np.sum(need_batch) > 0:
             for ergodic_device in zip(need_batch, range(0, len(need_batch))):
                 batch = ergodic_device[0]
@@ -207,10 +209,20 @@ class CommonData(ABC):
                     # get the data
                     if self._epoch_done is False:
                         data = self._generate_from_specified(self._index)
+                        alignment_batch = None
+                        old_item_name = None
+                        for item in data.items():
+                            alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
+                            assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
+                            old_item_name = item[0]
+                            pass
                         self._status_update()
-                        need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
-                        devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
-                        index_data[device_order].append(IndexInfo(self._index, 'normal'))
+                        need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
+                        for key, value in data.items():
+                            devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
+                            index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
+                            devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
+                            index_data[device_order][key].append(IndexInfo(self._index, 'normal'))
                         self._index += 1
                         pass
                     else:
@@ -230,14 +242,26 @@ class CommonData(ABC):
                         elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
                             data, index = func_for_deal_with_epoch_done()
                             need_batch[device_order] = 0
-                            devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
-                            index_data[device_order].append(IndexInfo(index, 'allow_low'))
+                            for key, value in data.items():
+                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
+                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
+                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
+                                index_data[device_order][key].append(IndexInfo(index, 'allow_low'))
                             pass
                         elif self._critical_process == 'random_fill':
                             data, index = func_for_deal_with_epoch_done()
-                            need_batch[device_order] = 0 if data.shape[0] > batch else batch - data.shape[0]
-                            devices_data[device_order].append(data[0: batch] if data.shape[0] > batch else data)
-                            index_data[device_order].append(IndexInfo(index, 'random_fill'))
+                            alignment_batch = None
+                            for item in data.items():
+                                alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
+                                assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
+                                old_item_name = item[0]
+                                pass
+                            need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
+                            for key, value in data.items():
+                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
+                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
+                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
+                                index_data[device_order][key].append(IndexInfo(index, 'random_fill'))
                             pass
                         else:
                             CommonDataLogger.fatal('this should not happen')
@@ -249,7 +273,8 @@ class CommonData(ABC):
                     pass
                 pass
             pass
-        data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
+        data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
+        # data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
         pass
 
