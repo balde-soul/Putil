@@ -372,8 +372,12 @@ class DataPutProcess:
 
         if (recycle is True) and (self._data_queue.empty() is False):
             get = self._data_queue.get()
-            index = get[0].indexs()[0].index_info().point()
-            self._data.reset_index(index)
+            alignment_index = None
+            the_first = get[0]
+            for k, v in the_first.items():
+                alignment_index = v.indexs()[0].index_info().point() if alignment_index is None else alignment_index
+                assert alignment_index == v.indexs()[0].index_info().point()
+            self._data.reset_index(alignment_index)
             while self._data_queue.empty() is False:
                 self._data_queue.get()
                 pass
