@@ -106,6 +106,14 @@ class CommonData(ABC):
         self._index = None
         pass
 
+    def data_field(self):
+        return self._data_field
+        pass
+
+    def index(self):
+        return self._index
+        pass
+
     @abstractmethod
     def _restart_process(self, restart_param):
         '''
