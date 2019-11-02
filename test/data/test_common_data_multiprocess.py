@@ -41,7 +41,9 @@ if __name__ == '__main__':
     while dpq.has_next():
         data = dq.get()
         assert len(data) == 1
-        assert data[0].datas().shape[0] == 1
+        for k, v in data[0].items():
+            assert v.datas().shape[0] == 1
+            pass
         count += 1
         pass
     assert count == 100
@@ -81,7 +83,9 @@ if __name__ == '__main__':
     while count < 50 and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+        for k, v in get[0].items():
+            assert v.datas().shape == (1, 1), print(v.datas().shape)
+            pass
         count += 1
         pass
 
@@ -89,7 +93,9 @@ if __name__ == '__main__':
     while count < 60 and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (2, 1), print(get[0].datas().shape)
+        for k, v in get[0].items():
+            assert v.datas().shape == (2, 1), print(v.datas().shape)
+            pass
         count += 1
         pass
 
@@ -97,7 +103,8 @@ if __name__ == '__main__':
     while count < 60 + old_size and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (2, 1), print(get[0].datas().shape)
+        for k, v in get[0].items():
+            assert v.datas().shape == (2, 1), print(get[0].datas().shape)
         count += 1
         pass
     assert count == 60 + old_size, print(count)
@@ -106,7 +113,8 @@ if __name__ == '__main__':
     while (count - truck_count) < remain_count and dpq.has_next():
         get = dq.get()
         assert len(get) == 1
-        assert get[0].datas().shape == (1, 1), print(get[0].datas().shape)
+        for k, v in get[0].items():
+            assert v.datas().shape == (1, 1), print(get[0].datas().shape)
         count += 1
         pass
     assert count == old_size + remain_count + 60, print(count)
