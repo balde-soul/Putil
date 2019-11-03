@@ -109,3 +109,6 @@ venv.bak/
 
 # vim
 *.*.swp
+
+# jupyter
+.ipynb_checkpoints*
