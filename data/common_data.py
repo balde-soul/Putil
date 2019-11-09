@@ -505,3 +505,14 @@ class DataPutProcess:
     def queue_process_ret(self):
         return self._ret
         pass
+    
+    def __iter__(self):
+        return self
+        pass
+
+    def __next__(self):
+        if self.has_next():
+            return self._data_queue.get()
+        else:
+            raise StopIteration()
+        pass
