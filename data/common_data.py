@@ -1,4 +1,5 @@
 # coding=utf-8
+import Putil.PutilEnvSet as penv
 import inspect
 import traceback
 import copy
@@ -203,6 +204,7 @@ class CommonData(ABC):
         the second dimesion is the batch
         return the ndarray
         '''
+        CommonDataLogger.debug('generate_data')
         func_for_deal_with_epoch_done = None
         devices_data = []
         index_data = []
@@ -210,16 +212,19 @@ class CommonData(ABC):
         [devices_data.append(dict()) for device in self._device_batch]
         [index_data.append(dict()) for device in self._device_batch]
         while np.sum(need_batch) > 0:
-            for ergodic_device in zip(need_batch, range(0, len(need_batch))):
-                batch = ergodic_device[0]
-                device_order = ergodic_device[1]
+            for ergodic_device in enumerate(need_batch):
+                CommonDataLogger.debug(ergodic_device)
+                batch = ergodic_device[1]
+                device_order = ergodic_device[0]
                 if batch > 0:
                     # get the data
                     if self._epoch_done is False:
+                        CommonDataLogger.debug('epoch not end')
                         data = self._generate_from_specified(self._index)
                         alignment_batch = None
                         old_item_name = None
                         for item in data.items():
+                            CommonDataLogger.debug('deal with {0}'.format(item[0]))
                             alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
                             assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
                             old_item_name = item[0]
@@ -231,6 +236,8 @@ class CommonData(ABC):
                             index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
                             devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
                             index_data[device_order][key].append(IndexInfo(self._index, 'normal'))
+                            pass
+                        CommonDataLogger.debug('fix over')
                         self._index += 1
                         pass
                     else:
@@ -245,9 +252,11 @@ class CommonData(ABC):
                             pass
                         func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
                         if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
+                            CommonDataLogger.debug('method: allow_low and already data in device')
                             need_batch[device_order] = 0
                             pass
                         elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
+                            CommonDataLogger.debug('method: allow_low and no data in device')
                             data, index = func_for_deal_with_epoch_done()
                             need_batch[device_order] = 0
                             for key, value in data.items():
@@ -257,6 +266,7 @@ class CommonData(ABC):
                                 index_data[device_order][key].append(IndexInfo(index, 'allow_low'))
                             pass
                         elif self._critical_process == 'random_fill':
+                            CommonDataLogger.debug('method: random_fill')
                             data, index = func_for_deal_with_epoch_done()
                             alignment_batch = None
                             for item in data.items():
@@ -281,6 +291,14 @@ class CommonData(ABC):
                     pass
                 pass
             pass
+        for i in devices_data:
+            for key, value in i.items():
+                for d in value:
+                    print(key, d.shape)
+                    pass
+                pass
+            pass
+        CommonDataLogger.debug('going to generate data')
         data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
         # data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
@@ -312,6 +330,12 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
             get_data = data.generate_data()
             pass
         except Exception as ex:
+            GeneratorLogger.fatal('str(Exception):\t', str(Exception))
+            GeneratorLogger.fatal('str(e):\t\t', str(e))
+            GeneratorLogger.fatal('repr(e):\t', repr(e))
+            GeneratorLogger.fatal('e.message:\t', e.message)
+            GeneratorLogger.fatal('traceback.print_exc():', traceback.print_exc())
+            GeneratorLogger.fatal('traceback.format_exc():\n%s' % traceback.format_exc())
             GeneratorLogger.fatal(traceback.format_tb(ex.__traceback__))
             raise ex
             pass
