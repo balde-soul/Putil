@@ -33,12 +33,18 @@ class AutoSave(ABC):
             self._abandon_range = abandon_range
         else:
             raise ValueError('keep_save_range vs. abandon_range : {0} vs. {1}'.format(keep_save_range, abandon_range))
-
-        if base_line < limit_line == improve:
-            self._base_line = base_line
-            self._limit_line = limit_line
-        else:
-            raise ValueError('base_line vs. limit_line : {0} vs. {1} base on : {2}'.format(base_line, limit_line, self._direction_info(improve)))
+            pass
+        
+        assert ((base_line is None) ^ (limit_line is None)) is False
+        assert ((base_line is not None) ^ (limit_line is not None)) is False
+        if base_line is not None:
+            if base_line < limit_line == improve:
+                self._base_line = base_line
+                self._limit_line = limit_line
+            else:
+                raise ValueError('base_line vs. limit_line : {0} vs. {1} base on : {2}'.format(base_line, limit_line, self._direction_info(improve)))
+                pass
+            pass
 
         self._improve = improve
         self._delta = delta
