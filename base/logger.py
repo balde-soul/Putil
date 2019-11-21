@@ -42,7 +42,7 @@ StreamHandler = logging.StreamHandler
 
 # logging.basicConfig(level=logging.INFO)
 
-# method
+# method: the global handler for the global logger, which can be changed by PutilLogConfig.config_handlers, the default is no hanlder
 no_log_handler = int('00', 16)
 file_method = int('01', 16)
 rotating_file_method = int('04', 16)
@@ -50,6 +50,7 @@ stream_method = int('02', 16)
 handlers = int('0', 16)
 
 Format = logging.BASIC_FORMAT
+FormatRecommend = "%(filename)s: %(lineno)d: %(levelname)s: %(name)s: %(message)s"
 
 # file name
 if sys.platform == 'win32':
