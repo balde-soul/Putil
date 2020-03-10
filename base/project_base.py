@@ -56,9 +56,12 @@ class BaseSaveFold:
         self._use_date = kwargs.get('use_date', False)
         self._should_be_new = kwargs.get('should_be_new', True)
         self._repo = git.Repo('./') if self._use_git_info is True else None
-        assert self._repo is not None, BaseSaveFoldLogger.fatal('this project is not in git dir, please build a git repo or do not use git info') if self._use_git_info is True else None
+        if self._use_git_info:
+            assert self._repo is not None, BaseSaveFoldLogger.fatal('this project \'{0}\'is not in git dir, please build a git repo or do not use git info'.format(os.getcwd()))
+            self._repo.commit().hexsha[0:6]
+        else:
+            pass
         self._date = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
-        self._repo.commit().hexsha[0:6]
         self._name = '{0}{1}{2}'.format(self._base_name, '-{0}_{1}'.format(self._repo.active_branch.name, self._repo.commit().hexsha[0: 6]) if self._use_git_info is True else '', '-{0}'.format(self._date) if self._use_date is True else '')
 
         self._root_dir = None
