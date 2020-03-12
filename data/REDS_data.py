@@ -1,4 +1,5 @@
 # coding=utf-8
+import cv2
 import random
 import os
 import numpy as np
@@ -87,11 +88,26 @@ class REDSData(pcd.CommonData):
             data = self._sequence_data_field[index]
             # the data
             data_path = os.path.join(os.path.join(self._data_type_root, self._data_name), data)
-            a = os.listdir(data_path)
-            pass
+            frames = os.listdir(data_path)
+            frames = sorted(frames)
+            data = self.__read_sequence_frame(data_path, frames[0: self._sequence_len])
+            gt = self.__read_sequence_frame(data_path, frames[0: self._sequence_len])
         else:
             raise NotImplementedError('generate type {0} is not implemented'.format(self._generate_type))
-        return {'data': np.array([[data]]), 'label': np.array([[data]])}
+        return {'data': np.array([[data]]), 'label': np.array([[gt]])}
+        pass
+
+    def __read_sequence_frame(self, frames_dir, sorted_frame_name_list):
+        frame_collection = list()
+        for frame_name in sorted_frame_name_list:
+            frame_dir = os.path.join(frames_dir, frame_name)
+            frame_array = cv2.imread(frame_dir)
+            if len(frame_collection) != 0:
+                assert frame_collection[0].shape == frame_array.shape, REDSDataLogger.fatal('ununified shape happen at frame:{0} in frames: {1}, dir:{2}'.format(frame_name, sorted_frame_name_list, frames_dir))
+                pass
+            frame_collection.append(frame_array)
+            pass
+        return np.array(frame_collection, dtype=np.uint8)
         pass
 
     def _data_set_field(self):
