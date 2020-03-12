@@ -112,3 +112,6 @@ venv.bak/
 
 # jupyter
 .ipynb_checkpoints*
+
+# vscode
+.vscode*
