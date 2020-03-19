@@ -5,8 +5,8 @@ import Putil.function.function as function
 
 class Gaussian(function.Function):
     '''
-    the input of the function should be with shape: input_amount x dim
-    the return of the function is with shape: input_amount x 1
+    the input of the function should be with shape: dim x input_amount(the amount of x)
+    the return of the function is with shape: 1 x input_amount
     '''
     def __init__(self):
         function.Function.__init__(self)
@@ -65,7 +65,7 @@ class Gaussian(function.Function):
         self._dim = self._Sigma.shape[0]
         def func(x):
             return 1.0 / (np.ma.power(2 * np.pi, self._dim / 2.0) * np.ma.power(self._Sigma_det, 0.5)) * \
-                np.exp(-0.5 * np.sum(np.matmul(np.transpose((x - self._Mu)), self._Sigma_inv) * np.transpose((x - self._Mu)), axis=-1, keepdims=True))
+                np.exp(-0.5 * np.sum(np.matmul(np.transpose(self._Sigma_inv), x - self._Mu) * (x - self._Mu), axis=0, keepdims=True))
             pass
         self._func = func
         pass
