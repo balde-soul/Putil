@@ -14,6 +14,7 @@ class MCMC(s.Sample):
     def set_random_func(self, func):
         '''
         this function set a function which random select a sample from the target sample space
+        Important: the result of the random_func should be able to pass to the pdf_func
         '''
         self._random_func = func
         self._x = self._random_func()
