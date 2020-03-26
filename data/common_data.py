@@ -370,7 +370,7 @@ class DataPutProcess:
             pass
 
         self._epoch_done_cond = manager.Condition()
-        self._epoch_done_flag = manager.Value(bool, False)
+        self._epoch_done_flag = manager.Value(bool, True)
         self._flag_sync_mutex = manager.Lock()
         self._stop_generation = manager.Value(bool, False)
         self._data_queue = manager.Queue(maxsize=self._queue_size)
