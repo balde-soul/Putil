@@ -5,6 +5,9 @@ import os
 
 
 class GenerateSessionConfig:
+    '''
+    the config is defined in the core/protobuf/config.proto
+    '''
     def __init__(self):
         self._config = None
         self._gpu_config = None
@@ -17,7 +20,12 @@ class GenerateSessionConfig:
     def from_file(self, file_path):
         pass
 
-    def from_dict(self, file_path):
+    def from_dict(self, config):
+        if 'CUDA_VISIBLE_DEVICES' in config.keys():
+            os.environ['CUDA_VISIBLE_DEVICES'] = config['CUDA_VISIBLE_DEVICES']
+        GPUConfig = tf.GPUOptions()
+        GPUConfig.allow_growth = config['GPU_ALLOW_GROWTH'] if 'GPU_ALLOW_GROWTH' in config.keys() else GPUConfig.allow_growth
+        self._config = tf.ConfigProto(gpu_options=GPUConfig)
         pass
 
     def default(self):
@@ -25,5 +33,6 @@ class GenerateSessionConfig:
 
     @property
     def config(self):
+        return self._config
         pass
     pass

@@ -294,7 +294,7 @@ class CommonData(ABC):
         for i in devices_data:
             for key, value in i.items():
                 for d in value:
-                    print(key, d.shape)
+                    CommonDataLogger.debug('{0} {1}'.format(key, d.shape))
                     pass
                 pass
             pass
