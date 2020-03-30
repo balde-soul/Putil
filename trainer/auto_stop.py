@@ -64,13 +64,14 @@ class AutoStop:
         self._patience = patience
         self._best = None
         self._count = 0
-        if mode == 'min':
-            self._direction = -1
-            pass
-        else:
-            self._direction = 1
-            pass
+        self._mode = mode
+        self._direction = 1 if self._mode == 'max' else -1
         AutoStopLogger.info(Fore.GREEN +'patience: {0}'.format(self._patience) + Fore.RESET)
+        pass
+
+    def info(self):
+        AutoStopLogger.info(plog.info_color('patience: {0}'.format(self._patience)))
+        AutoStopLogger.info(plog.info_color('mode: {0}'.format(self._mode)))
         pass
 
     @property
