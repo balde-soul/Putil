@@ -290,3 +290,21 @@ def set_internal_debug_log():
     logger = plog.PutilLogConfig('logger').logger()
     logger.setLevel(plog.DEBUG)
     pass
+
+'''
+print with color
+'''
+def info(logger, message):
+    logger.info(Fore.GREEN + message + Fore.RESET)
+    pass
+
+def debug(logger, message):
+    logger.debug(Fore.YELLOW + message + Fore.RESET)
+    pass
+
+def error(logger, message):
+    logger.error(Fore.RED + message + Fore.RESET)
+    pass
+'''
+print with color
+'''
