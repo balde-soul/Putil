@@ -273,3 +273,20 @@ def Log(logger, level):
 def api_function_log(logger, str):
     logger.info(Fore.GREEN + str + Fore.RESET)
     pass
+
+def api_function_in_log(logger, str):
+    logger.info(Fore.GREEN + '-->{0}'.format(str) + Fore.RESET)
+    pass
+
+def api_function_out_log(logger, str):
+    logger.info(Fore.GREEN + '{0}-->'.format(str) + Fore.RESET)
+    pass
+
+def set_internal_debug_log():
+    import Putil.base.logger as plog
+    plog.PutilLogConfig.config_handler(plog.stream_method)
+    plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+    plog.PutilLogConfig.config_format(plog.FormatRecommend)
+    logger = plog.PutilLogConfig('logger').logger()
+    logger.setLevel(plog.DEBUG)
+    pass
