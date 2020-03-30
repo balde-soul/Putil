@@ -305,6 +305,17 @@ def debug(logger, message):
 def error(logger, message):
     logger.error(Fore.RED + message + Fore.RESET)
     pass
+
+def info_color(message):
+    return Fore.GREEN + message + Fore.RESET
+
+def debug_color(message):
+    return Fore.YELLOW + message + Fore.RESET
+    pass
+
+def error_color(message):
+    return Fore.RED + message + Fore.RESET
+    pass
 '''
 print with color
 '''
