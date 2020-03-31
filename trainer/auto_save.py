@@ -161,7 +161,7 @@ class AutoSave(auto_save):
             pass
         else:
             if ((self._best - indicator) * self._direction) <= -self._delta:
-                AutoSaveLogger.info(Fore.GREEN + 'improve from {0} to {1}, save weight and collection to collection'.format(self._best * self._direction, indicator)+ Fore.RESET)
+                AutoSaveLogger.info(Fore.GREEN + 'improve from {0} to {1}, save weight and collection to collection'.format(self._best, indicator)+ Fore.RESET)
                 self._best_collection.append(self._best)
                 self._best = indicator
                 AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
