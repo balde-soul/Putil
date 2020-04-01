@@ -4,8 +4,8 @@ import tensorflow as tf
 
 def calc_semantic_iou(pre, gt, dtype):
     '''
-    pre: the onehot prediction [batch, height, width, class_amount]
-    gt: the onehot ground truth [batch, height, width, class_amount]
+    pre: the onehot prediction , tf.int32, [batch, height, width, class_amount]
+    gt: the onehot ground truth , tf.int32, [batch, height, width, class_amount]
     '''
     tp = tf.multiply(pre, gt)
     fp = tf.multiply(pre, tf.subtract(1, gt))
