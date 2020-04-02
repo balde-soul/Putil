@@ -42,6 +42,28 @@ class BaseArg:
         pass
     pass
 
+class TfBaseArgs:
+    def __init__(self, parser, train=True, evaluate=True, test=True):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--device', dest='TfBaseArgsDevice', type=list, action='store', 
+        help='the device (list) used in tensorflow model runing, use TfBaseArgsDevice to get the arg')
+        parser.add_argument('--batch_size', dest='TfBaseArgsBatchSize', type=list, action='store',
+        help='the batch size (list) for every device, use TfBaseArgsBatchSize to get the arg')
+        if train:
+            parser.add_argument('--epoch', dest='TfBaseArgsEpoch', type=int, action='store', 
+            help='the training(int) epoch, use TfBaseArgsEpoch to get the arg')
+            parser.add_argument('--evaluate_rate', dest='TfBaseArgEvaluateRate', type=int, action='store',
+            help='the frequent(int) base on train epoch for evaluating, use TfBaseArgEvaluateRate to get the arg')
+            parser.add_argument('--test_rate', dest='TfBaseArgTestRate', type=int, action='store',
+            help='the frequent(int) base on train epoch for testing, use TfBaseArgTestRate to get the arg')
+            pass
+        if evaluate:
+            pass
+        if test:
+            pass
+        pass
+    pass
+
 
 class BaseSaveFold:
     def __init__(self, **kwargs):
