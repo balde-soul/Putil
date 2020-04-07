@@ -1,6 +1,6 @@
 # coding=utf-8
-import base.logger as plog
-import base.project_base as ppb
+import Putil.base.logger as plog
+import Putil.base.project_base as ppb
 
 DeepLearningBaseLogger = plog.PutilLogConfig('deep_learning_base').logger()
 DeepLearningBaseLogger.setLevel(plog.DEBUG)
