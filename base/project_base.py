@@ -1,69 +1,53 @@
 # coding=utf-8
+from abc import ABCMeta, abstractmethod
 import os
 import time
 import git
 import argparse
 import Putil.base.logger as plog
+import Putil.base.arg_base as pab
 
 
 ProjectBaseLogger = plog.PutilLogConfig('ProjectBase').logger()
 ProjectBaseLogger.setLevel(plog.DEBUG)
+ProjectArgLogger = ProjectBaseLogger.getChild('PorjectArg')
+ProjectArgLogger.setLevel(plog.DEBUG)
 BaseArgLogger = ProjectBaseLogger.getChild('BaseArg')
 BaseArgLogger.setLevel(plog.DEBUG)
 BaseSaveFoldLogger = ProjectBaseLogger.getChild('BaseSaveFoldLogger')
 BaseSaveFoldLogger.setLevel(plog.DEBUG)
 
+#parser = argparse.ArgumentParser()
+#parser.add_argument('--save_dir', action='store', dest='SaveDir', default=None, help='this param specified the dir to save the result, the default is')
+#
+#args = parser.parse_args()
+#print(args)
+#args2 = parser.parse_args()
+#print(args2)
 
-class BaseArg:
+
+class ProjectArg(metaclass=ABCMeta):
     def __init__(self, parser=None, *args, **kwargs):
-        '''
-        save_dir:
-        level:
-        debug:
-        config:
-        multi_gpu:
-        '''
         self._parser = argparse.ArgumentParser() if parser is None else parser
         self._save_dir = kwargs.get('save_dir', None)
-        self._level = kwargs.get('level', None)
-        self._debug = kwargs.get('debug', None)
+        self._level = kwargs.get('log_level', None)
+        self._debug = kwargs.get('debug_mode', None)
         self._config = kwargs.get('config', None)
-        self._multi_gpu = kwargs.get('multi_gpu', None)
         self._parser.add_argument('--save_dir', action='store', dest='SaveDir', default=self._save_dir, help='this param specified the dir to save the result, the default is {0}'.format(self._save_dir)) if self._save_dir is not None else None
-        self._parser.add_argument('--level', action='store', dest='Level', default=self._level, help='this param specified the log level, the default is {0}'.format(self._level)) if self._level is not None else None
-        self._parser.add_argument('--debug', action='store_true', dest='DebugMode', default=self._debug, help='this param set the program mode if the program contain a debug method, the default is {0}'.format(self._debug)) if self._debug is True else None
+        self._parser.add_argument('--log_level', action='store', dest='Level', default=self._level, help='this param specified the log level, the default is {0}'.format(self._level)) if self._level is not None else None
+        self._parser.add_argument('--debug_mode', action='store_true', dest='DebugMode', default=self._debug, help='this param set the program mode if the program contain a debug method, the default is {0}'.format(self._debug)) if self._debug is True else None
         self._parser.add_argument('--config', action='store', dest='Config', default=self._config, help='this param set the config file path for the program if needed, the default is {0}'.format(self._config)) if self._config is not None else None
-        self._parser.add_argument('--device_list', nargs='+', action='store', dest='DeviceList', type=str, default=self._multi_gpu, help='this param specifid the device order for multi gpu using, the default is {0}'.format(self._multi_gpu)) if self._multi_gpu is not None else None
         pass
 
+    def show(self):
+        pab.arg_log(self._parser.parse_args(), ProjectArgLogger)
+        pass
+    
     @property
-    def Parser(self):
+    def parser(self):
         return self._parser
         pass
     pass
-
-class TfBaseArgs:
-    def __init__(self, parser, train=True, evaluate=True, test=True):
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--device', dest='TfBaseArgsDevice', type=list, action='store', 
-        help='the device (list) used in tensorflow model runing, use TfBaseArgsDevice to get the arg')
-        parser.add_argument('--batch_size', dest='TfBaseArgsBatchSize', type=list, action='store',
-        help='the batch size (list) for every device, use TfBaseArgsBatchSize to get the arg')
-        if train:
-            parser.add_argument('--epoch', dest='TfBaseArgsEpoch', type=int, action='store', 
-            help='the training(int) epoch, use TfBaseArgsEpoch to get the arg')
-            parser.add_argument('--evaluate_rate', dest='TfBaseArgEvaluateRate', type=int, action='store',
-            help='the frequent(int) base on train epoch for evaluating, use TfBaseArgEvaluateRate to get the arg')
-            parser.add_argument('--test_rate', dest='TfBaseArgTestRate', type=int, action='store',
-            help='the frequent(int) base on train epoch for testing, use TfBaseArgTestRate to get the arg')
-            pass
-        if evaluate:
-            pass
-        if test:
-            pass
-        pass
-    pass
-
 
 class BaseSaveFold:
     def __init__(self, **kwargs):
