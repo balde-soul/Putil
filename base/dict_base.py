@@ -15,7 +15,6 @@ def dict_pack(d):
 
 
 def dict_log(d, logger):
-    logger.info(plog.info_color('dict:'))
     for k, v in d.items():
         logger.info(plog.info_color('\t{0}: {1}'.format(k, v)))
         pass
