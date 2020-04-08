@@ -103,16 +103,21 @@ class PutilLogConfig:
     import Putil.loger as log
     logger = log.PutilLogConfig(name).logging()
     """
+    _root = None
     def __init__(self, name):
-        self._logger = logging.getLogger(name)
-        self._handlers_dict = self.__set_handlers()
-        for handler_key in self._handlers_dict.keys():
-            if self._handlers_dict[handler_key] is not None:
-                self._logger.addHandler(self._handlers_dict[handler_key])
-                pass
-            else:
+        self._logger = None
+        if PutilLogConfig._root is None:
+            PutilLogConfig._root = logging.getLogger(name)
+            self._handlers_dict = self.__set_handlers()
+            for handler_key in self._handlers_dict.keys():
+                if self._handlers_dict[handler_key] is not None:
+                    PutilLogConfig._root.addHandler(self._handlers_dict[handler_key])
+                    pass
+                else:
+                    pass
                 pass
             pass
+        self._logger = PutilLogConfig._root.getChild(name)
         pass
 
     # : generate handlers and pack into dict by the keys in global log_level
