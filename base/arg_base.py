@@ -2,7 +2,9 @@
 # this file is called before logger config
 # Putil
 import Putil.base.logger as plog
+import Putil.base.dict_base as pdb
 
+from abc import ABCMeta, abstractmethod
 import argparse
 
 class ProjectArg(metaclass=ABCMeta):
@@ -30,18 +32,11 @@ def args_pack(args):
     this function pack the args into a string with format: key1-value1_key2-value2
     '''
     collection = args.__dict__
-    origin = ''
-    for k, v in collection.items():
-        origin = '{0}{1}-{2}'.format('' if origin == '' else '{0}_'.format(origin), k, v)
-        pass
-    return origin
+    return pdb.dict_back(collection)
     pass
 
 
 def args_log(args, logger):
     collection = args.__dict__
-    logger.info(plog.info_color('args:'))
-    for k, v in collection.items():
-        logger.info(plog.info_color('\t{0}: {1}'.format(k, v)))
-        pass
+    pdb.dict_log(collection, logger)
     pass

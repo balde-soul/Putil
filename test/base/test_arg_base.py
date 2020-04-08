@@ -11,6 +11,8 @@ TestArgBaseLogger.setLevel(plog.DEBUG)
 parser = argparse.ArgumentParser()
 parser.add_argument('--t', dest='T', type=str, action='store', default='asdas')
 parser.add_argument('--tt', dest='TT', type=str, action='store', default='asd')
+parser.add_argument('--ttt', dest='TTT', type=list, action='store', default=['ads', 1])
+parser.add_argument('--tttt', dest='TTTT', type=dict, action='store', default={'adc': 1})
 
 args = parser.parse_args()
 
