@@ -14,6 +14,12 @@ from abc import ABCMeta, abstractmethod
 import tensorflow as tf
 
 
+class Net(metaclass=ABCMeta):
+    def __init__(self, net_name):
+        pass
+    pass
+
+
 class Model(metaclass=ABCMeta):
     def __init__(self, graph_name):
         self._save_dir = None
