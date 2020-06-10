@@ -1,17 +1,17 @@
 # coding=utf-8
-#In[]:
-import midi
-
-def midi2mp3(midi_path, output_path):
-    
-    pass
-
-#In[]:
 import os
-root_data = '/data2/process_data/caojihua/data/LakhMIDI/lmd_full/0'
-midi_name = '07e81fd29a2b0bc5516b89aaabb8c7a4.mid'
-m = midi.read_midifile(os.path.join(root_data, midi_name))
-#In[]:
+import re
+import subprocess
+import sys
+
+def is_fsynth_installed():
+    """ Check to make sure fluidsynth exists in the PATH """
+    for path in os.environ['PATH'].split(os.pathsep):
+        f = os.path.join(path, 'fluidsynth')
+        if os.path.exists(f) and os.access(f, os.X_OK):
+            return True
+    return False
+
 def to_audio(sf2, midi_file, out_dir, out_type='wav', txt_file=None, append=True):
     """ 
     Convert a single midi file to an audio file.  If a text file is specified,
@@ -43,7 +43,7 @@ def to_audio(sf2, midi_file, out_dir, out_type='wav', txt_file=None, append=True
         else:
             out_file = out_dir + '/' + line + '.' + out_type
 
-    subprocess.call(['fluidsynth', '-T', out_type, '-F', out_file, '-ni', sf2, midi_file])
+    subprocess.call(['fluidsynth', '-F', out_file, sf2, midi_file])
 
 def main():
     """
@@ -64,27 +64,36 @@ def main():
                            of the midi file names.  If not specified, the text from the files will
                            be appended to the file name.
     """
+    import argparse
+    import random
+    import glob
+
+    parser = argparse.ArgumentParser()
+    UbuntuSf2DefaultPath = '/usr/share/sounds/sf2'
+    parser.add_argument('--sf2_dir', dest='SF2Dir', type=str, default=UbuntuSf2DefaultPath, action='store', help='the path to a directory with \
+        .sf2 soundfont files. \n The script wil pick a random soundfont from this directory for each file \
+        the default path in \n ubuntu is {0}'.format(UbuntuSf2DefaultPath))
+    parser.add_argument('--midi_dir', dest='MidiDir', type=str, default='', action='store', help='the path to a directory \
+        with .mid MIDI files to convert')
+    parser.add_argument('--out_dir', dest='OutDir', type=str, default='', action='store', help='the directory to write the audio files to')
+    out_type_default = 'wav'
+    parser.add_argument('--out_type', dest='OutType', type=str, default='wav', action='store', help='the audio type to write out \
+        (see \'fluidsynth -T help\' for options the default is {0}'.format(out_type_default))
+    parser.add_argument('--replace', dest='Replace', default=False, action='store_true', help='if .txt files exist in the same directory \
+        as the .mid files, \n the text from the files will be used for the output audio file name instead of the midi files names. \
+        if not specified, \n the text from the files will be appended to the file name')
     try:
         if not is_fsynth_installed():
             raise Exception('Unable to find \'fluidsynth\' in the path')
         
-        opts, args = getopt.getopt(sys.argv[1:], None, ['sf2-dir=', 'midi-dir=', 'out-dir=', 'type=', 'replace'])
+        options = parser.parse_args()
         sf2files, midifiles, textfiles, out_dir, out_type, append = [], [], [], None, 'wav', True
-        for o, v in opts:
-            if o == '--sf2-dir':
-                sf2files = glob.glob(v + '/*.[sS][fF]2')
-            elif o == '--midi-dir':
-                midifiles = glob.glob(v + '/*.[mM][iI][dD]')
-                textfiles = glob.glob(v + '/*.[tT][xX][tT]')
-                if not out_dir:
-                    out_dir = v
-            elif o == '--out-dir':
-                out_dir = v
-            elif o == '--type':
-                out_type = v
-            elif o == '--replace':
-                append = False
-                
+        sf2files = glob.glob(options.SF2Dir + '/*.[sS][fF]2')
+        midifiles = glob.glob(options.MidiDir + '/*.[mM][iI][dD]')
+        textfiles = glob.glob(options.MidiDir + '/*.[tT][xX][tT]')
+        out_dir = options.OutDir
+        out_type = options.OutType
+        append = not options.Replace
         if not sf2files:
             raise Exception('A --sf2-dir directory must be specified where at least one .sf2 file exists')
         elif not midifiles:
@@ -97,11 +106,8 @@ def main():
             for mid, txt in zip(midifiles, textfiles):
                 to_audio(random.choice(sf2files), mid, out_dir, out_type, txt, append)
                     
-    except getopt.GetoptError, err:
-        print str(err)
-        sys.exit(2)
-    except Exception, exc:
-        print str(exc)
+    except Exception as exc:
+        print(str(exc))
         sys.exit(2)
         
 if __name__ == '__main__':
