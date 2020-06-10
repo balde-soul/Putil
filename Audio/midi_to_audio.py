@@ -87,7 +87,7 @@ def main():
             raise Exception('Unable to find \'fluidsynth\' in the path')
         
         options = parser.parse_args()
-        sf2files, midifiles, textfiles, out_dir, out_type, append = [], [], [], None, 'wav', True
+        assert options.MidiDir != ''
         sf2files = glob.glob(options.SF2Dir + '/*.[sS][fF]2')
         midifiles = glob.glob(options.MidiDir + '/*.[mM][iI][dD]')
         textfiles = glob.glob(options.MidiDir + '/*.[tT][xX][tT]')
