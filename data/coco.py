@@ -50,3 +50,113 @@ class COCOData(pcd.CommonData):
         # instances
         pass
     pass
+
+
+class COCOStatistic:
+    '''
+    @brief
+    '''
+    pass
+
+#In[]:
+import json
+instance_file = '/data2/Public_Data/COCO/annotations/instances_val2017.json'
+
+anno = json.loads(open(instance_file, 'r').read())
+
+#In[]:
+anno.keys()
+#In[]:
+anno['info']
+#In[]:
+import os
+images = anno['images']
+for i in images:
+    if i['id'] == 448263:
+        print(i)
+        image_path = os.path.join('/data2/Public_Data/COCO/val2017', i['file_name'])
+        break
+    pass
+import cv2
+import matplotlib.pyplot as plt
+img = cv2.imread(image_path)
+plt.imshow(img)
+plt.show()
+#In[]:
+annot = anno['annotations']
+print(type(annot))
+print(len(annot))
+print(annot[0].keys())
+annot[118]
+for a in annot:
+    if a['iscrowd'] == 0:
+        print(a)
+        break
+        pass
+for a in annot:
+    if a['iscrowd'] == 1:
+        print(a)
+        break
+        pass
+
+#In[]:
+person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_val2017.json'
+panno = json.loads(open(person_file, 'r').read())
+
+#In[]:
+panno.keys()
+
+#In[]:
+panno['categories']
+
+#In[]:
+panno_image = panno['images']
+panno_image[0]
+
+#In[]:
+import pycocotools as pt
+from pycocotools.coco import COCO
+iann = COCO(instance_file)
+
+#In[]:
+dir(iann)
+
+#In[]:
+iann.getImgIds(iann.getAnnIds()[0: 10])
+iann.loadAnns(iann.getAnnIds()[0: 2])
+
+#In[]:
+import numpy as np
+print(iann.loadAnns.__doc__)
+print(iann.getAnnIds.__doc__)
+print(iann.getImgIds.__doc__)
+
+print(len(iann.getAnnIds(catIds=[1], areaRng=[10000, np.inf], iscrowd=False)))
+print(len(iann.getAnnIds(iscrowd=False)))
+print(len(iann.getAnnIds()))
+print(len(iann.getImgIds()))
+print(len(set(iann.getAnnIds())))
+all_annid = iann.getAnnIds()
+print(iann.loadAnns(900100448263))
+def bbox_area_stastics(catId):
+    pass
+#In[]:
+class Statistic:
+    def __init__(self):
+        '''
+        '''
+        pass
+
+    def config(self):
+        '''
+         @brief which indicator would be statistic
+         @note
+        '''
+        # hw_rate
+        # area
+        # cat
+        pass
+    pass
+
+def hw_rate():
+    pass
