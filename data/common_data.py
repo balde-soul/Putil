@@ -90,8 +90,10 @@ class GeneratedData:
         pass
     pass
 
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
 
-class CommonData(ABC):
+class CommonData(ABC, Dataset):
     '''
     this class provide a common method to read the data
     '''
@@ -109,11 +111,9 @@ class CommonData(ABC):
 
     def data_field(self):
         return self._data_field
-        pass
 
     def index(self):
         return self._index
-        pass
 
     @abstractmethod
     def _restart_process(self, restart_param):
@@ -306,9 +306,14 @@ class CommonData(ABC):
 
     def generate_epoch_done(self):
         return self._epoch_done
-        pass
-    pass
 
+    def __getitem__(self, index):
+        return self._generate_from_specified(index)
+
+    def __len__(self):
+        return len(self._data_field)
+
+    pass
 
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
     plog.api_function_log(GeneratorLogger, 'generator start')
