@@ -59,8 +59,6 @@ class COCOStatistic:
     pass
 
 #In[]:
-import json
-instance_file = '/data2/Public_Data/COCO/annotations/instances_val2017.json'
 
 anno = json.loads(open(instance_file, 'r').read())
 
@@ -114,12 +112,27 @@ panno_image = panno['images']
 panno_image[0]
 
 #In[]:
-import pycocotools as pt
 from pycocotools.coco import COCO
+import json
+instance_file = '/data2/Public_Data/COCO/annotations/instances_val2017.json'
 iann = COCO(instance_file)
+print(dir(iann))
+#In[]:
+import matplotlib.pyplot as plt
+import numpy as np
+ids = iann.getAnnIds(areaRng=[100, 200])
+bbox = iann.loadAnns(ids[0])[0]['bbox']
+area = iann.loadAnns(ids[0])[0]['area']
+box_area = bbox[-1] * bbox[-2]
+print('bbox area: {0}; area: {1}'.format(box_area, area))
+
+iannc = iann.loadAnns(ids[0])
+mask = iann.annToMask(iannc[0])
+plt.imshow(mask)
+plt.show()
+np.count_nonzero(mask)
 
 #In[]:
-dir(iann)
 
 #In[]:
 iann.getImgIds(iann.getAnnIds()[0: 10])
