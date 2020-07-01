@@ -327,11 +327,11 @@ class CommonDataWithAug(CommonData):
     '''
     def __init__(self):
         CommonData.__init__(self)
-        self._aug = None
+        self._aug_node = None
         pass
 
     def __len__(self):
-        return len(self._index) * (len(self._aug) if self._aug is not None else 1)
+        return len(self._index) * 
 
     def set_aug(self, Aug):
         self._aug = Aug
