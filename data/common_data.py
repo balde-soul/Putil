@@ -131,6 +131,10 @@ class CommonData(ABC, Dataset):
         '''
         pass
 
+    def set_seed(self, seed):
+        np.random.seed(seed)
+        pass
+
     @abstractmethod
     def _generate_from_specified(self, index):
         '''
