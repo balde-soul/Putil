@@ -131,7 +131,8 @@ class CommonData(ABC, Dataset):
         '''
         pass
 
-    def set_seed(self, seed):
+    @staticmethod
+    def set_seed(seed):
         np.random.seed(seed)
         pass
 
@@ -316,7 +317,25 @@ class CommonData(ABC, Dataset):
 
     def __len__(self):
         return len(self._data_field)
+    pass
 
+import Putil.data.aug as Aug
+
+class CommonDataWithAug(CommonData):
+    '''
+     @brief the CommonData which support aug
+    '''
+    def __init__(self):
+        CommonData.__init__(self)
+        self._aug = None
+        pass
+
+    def __len__(self):
+        return len(self._index) * (len(self._aug) if self._aug is not None else 1)
+
+    def set_aug(self, Aug):
+        self._aug = Aug
+        pass
     pass
 
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):

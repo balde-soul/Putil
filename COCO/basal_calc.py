@@ -211,3 +211,9 @@ if __name__ == '__main__':
         CocoBox(ann_file, store_dir_box)
         pass
     pass
+
+#In[]:
+import torchvision.datasets as dset
+path2data="/data2/Public_Data/COCO/train2017"
+path2json="/data2/Public_Data/COCO/annotations/instances_train2017.json"
+coco_train = dset.CocoDetection(root = path2data, annFile = path2json)

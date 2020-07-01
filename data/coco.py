@@ -4,6 +4,7 @@ import json
 import numpy as np
 import Putil.base.logger as plog
 import Putil.data.common_data as pcd
+from pycocotools.coco import COCO
 
 logger = plog.PutilLogConfig('coco').logger()
 logger.setLevel(plog.DEBUG)
@@ -12,7 +13,11 @@ COCODataLogger.setLevel(plog.DEBUG)
 
 
 class COCOData(pcd.CommonData):
-    def __init__(self, statistic_file, information_save_to='', load_truncate=None, k_fold=[0.9, 0.1], subset_class_amount=1000, data_drop_rate=0.0, **kwargs):
+    @staticmethod
+    def set_seed(seed):
+        pass
+
+    def __init__(self, captions_anno_file, information_save_to='', **kwargs):
         '''
         focus on the coco2017:
         the data is for Segmentation, object detection, personal key-point detection and pic to word
@@ -20,6 +25,8 @@ class COCOData(pcd.CommonData):
         the key point label is in the person_keypoints_*
         the captions label is in the captions_*
         '''
+        self._coco = COCO(anno_file)
+        self._coco.imgs
         pass
 
     def _restart_process(self, restart_param):
