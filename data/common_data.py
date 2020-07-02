@@ -42,11 +42,9 @@ class IndexInfo:
 
     def point(self):
         return self._point
-        pass
 
     def type(self):
         return self._type
-        pass
     pass
 
 
@@ -58,11 +56,9 @@ class DataIndexInfo:
 
     def index_info(self):
         return self._index_info
-        pass
 
     def data_range(self):
         return self._range
-        pass
     pass
 
 

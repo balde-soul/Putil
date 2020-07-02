@@ -1,5 +1,5 @@
 # coding=utf-8
-impor Putil.base.logger as plog
+import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
 plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)

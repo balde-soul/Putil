@@ -336,8 +336,7 @@ class ILSVRC(pcd.CommonData):
         image = image / 255.0
         label = np.zeros(shape=[class_amount], dtype=np.float32)
         label[class_id] = 1.0
-        return np.array([image]), np.array([label])
-        pass
+        return np.array(image), np.array(label)
 
     def _generate_from_one_sample(self):
         self._generate_from_specified(self._index)
@@ -347,11 +346,9 @@ class ILSVRC(pcd.CommonData):
     def _generate_from_specified(self, index):
         data = self.__read_data(index)
         return data
-        pass
 
     def _data_set_field(self):
         return self._data_field
-        pass
 
     def _status_update(self):
         self._epoch_done = True if self._index == len(self._data_field) else False
