@@ -75,16 +75,14 @@ class GeneratedData:
             pass
         self._indexs.pop(0)
         self._indexs = np.array(self._indexs)
-        self._data = np.concatenate(data_list, axis=0) if len(data_list) > 1 else data_list[0]
+        self._data = np.stack(data_list, axis=0)
         pass
 
     def datas(self):
         return self._data
-        pass
 
     def indexs(self):
         return self._indexs
-        pass
 
     def data(self, index):
         pass
