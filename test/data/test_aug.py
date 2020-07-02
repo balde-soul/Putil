@@ -3,6 +3,8 @@ import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
 plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+test_aug_logger = plog.PutilLogConfig('test_aug').logger()
+test_aug_logger.setLevel(plog.DEBUG)
 
 from Putil.data.aug import AugNode
 from Putil.data.aug import AugFunc 
@@ -31,23 +33,25 @@ c31 = c3.add_child(gain())
 c32 = c3.add_child(gain())
 c33 = c3.add_child(gain())
 root.freeze_node()
-print(len(root))
+test_aug_logger.debug(len(root))
 for f in root:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.name)
+    test_aug_logger.debug(f.doc)
+    test_aug_logger.debug(f.func([0, 0]))
 
 for f in c3:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.func([0, 0]))
 
-print(len(root))
+test_aug_logger.debug(len(root))
 for f in root:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.func([0, 0]))
 
 for f in c3:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.func([0, 0]))
 
-print(len(root))
+test_aug_logger.debug(len(root))
 for f in root:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.func([0, 0]))
 
 for f in c3:
-    print(f([0, 0]))
+    test_aug_logger.debug(f.func([0, 0]))

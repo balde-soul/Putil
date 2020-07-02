@@ -331,10 +331,10 @@ class CommonDataWithAug(CommonData):
         pass
 
     def __len__(self):
-        return len(self._index) * 
+        return len(self._index) * len(self._aug_node) 
 
-    def set_aug(self, Aug):
-        self._aug = Aug
+    def set_aug_node_root(self, aug_node_root):
+        self._aug_node = aug_node_root
         pass
     pass
 
