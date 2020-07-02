@@ -50,12 +50,10 @@ class AugFuncNoOp(AugFunc):
     @abstractmethod
     def _generate_name(self):
         return 'no_op'
-        pass
 
     @abstractmethod
     def _generate_doc(self):
         return 'do nothing'
-        pass
     pass
 
 def no_op(*args):
@@ -163,10 +161,10 @@ class AugNode:
                 class AugFuncTemp(AugFunc):
                     def __init__(self):
                         AugFunc.__init__(self)
-                        def t(arg_list):
-                            result = arg_list
+                        def t(*args):
+                            result = args
                             for func in func_list_copy:
-                                result = func.func(result)
+                                result = func.func(*result)
                                 pass
                             return result
                         self._func = t

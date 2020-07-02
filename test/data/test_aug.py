@@ -12,9 +12,8 @@ from Putil.data.aug import AugFunc
 class gain(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        def g(x):
-            return [x[0] + 1, x[1]]
-            pass
+        def g(*args):
+            return args[0] + 1, args[1]
         self._func = g
         pass
 
@@ -37,21 +36,21 @@ test_aug_logger.debug(len(root))
 for f in root:
     test_aug_logger.debug(f.name)
     test_aug_logger.debug(f.doc)
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))
 
 for f in c3:
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))
 
 test_aug_logger.debug(len(root))
 for f in root:
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))
 
 for f in c3:
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))
 
 test_aug_logger.debug(len(root))
 for f in root:
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))
 
 for f in c3:
-    test_aug_logger.debug(f.func([0, 0]))
+    test_aug_logger.debug(f.func(0, 0))

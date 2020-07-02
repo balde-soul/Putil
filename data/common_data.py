@@ -184,7 +184,6 @@ class CommonData(ABC, Dataset):
 
     def _data_set_field(self):
         return self._data_field
-        pass
 
     def _status_update(self):
         '''
@@ -246,9 +245,7 @@ class CommonData(ABC, Dataset):
                             def func():
                                 random_sample = np.random.choice(field)
                                 return self._generate_from_specified(random_sample), random_sample
-                                pass
                             return func
-                            pass
                         func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
                         if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
                             CommonDataLogger.debug('method: allow_low and already data in device')
@@ -318,6 +315,8 @@ import Putil.data.aug as Aug
 class CommonDataWithAug(CommonData):
     '''
      @brief the CommonData which support aug
+     @note
+        this class complete the _generate_from_specified which contain aug
     '''
     def __init__(self):
         CommonData.__init__(self)
@@ -329,6 +328,18 @@ class CommonDataWithAug(CommonData):
 
     def set_aug_node_root(self, aug_node_root):
         self._aug_node = aug_node_root
+        pass
+
+    def _generate_from_specified(self, index):
+        oindex = index // len(self._aug_node)
+        aindex = index % len(self._aug_node)
+        self._aug_node[aindex].func(self._generate_from_origin_index(oindex))
+    
+    @abstractmethod
+    def _generate_from_origin_index(self, oindex):
+        '''
+         @brief return the data which is origin read from the dataset(without augment), tuple
+        '''
         pass
     pass
 
@@ -360,7 +371,6 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
             GeneratorLogger.fatal('traceback.format_exc():\n%s' % traceback.format_exc())
             GeneratorLogger.fatal(traceback.format_tb(ex.__traceback__))
             raise ex
-            pass
         flag_sync_mutex.acquire()
         data_queue.put(get_data)
         epoch_done_flag.value = data.generate_epoch_done()
@@ -448,7 +458,6 @@ class DataPutProcess:
         self.continue_queue()
 
         return before_generate_after_inject_data_queue
-        pass
 
     def continue_queue(self):
         plog.api_function_log(DataPutProcessLogger, 'continue the queue')
