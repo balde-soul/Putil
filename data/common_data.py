@@ -209,6 +209,14 @@ class CommonData(ABC, Dataset):
         need_batch = copy.deepcopy(self._device_batch)
         [devices_data.append(list()) for device in self._device_batch]
         [index_data.append(list()) for device in self._device_batch]
+        def data_pack(data, devices_data, device_order, data_index, index_type):
+            for index, value in enumerate(data):
+                devices_data[device_order].append(list()) if index >= len(devices_data[device_order]) else None
+                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
+                devices_data[device_order][index].append(value)
+                index_data[device_order][index].append(IndexInfo(data_index, 'normal'))
+                pass
+            pass
         while np.sum(need_batch) > 0:
             for ergodic_device in enumerate(need_batch):
                 CommonDataLogger.debug(ergodic_device)
@@ -219,29 +227,16 @@ class CommonData(ABC, Dataset):
                     if self._epoch_done is False:
                         CommonDataLogger.debug('epoch not end')
                         data = self._generate_from_specified(self._index)
-                        alignment_batch = None
-                        old_item_name = None
-                        for item in data.items():
-                            CommonDataLogger.debug('deal with {0}'.format(item[0]))
-                            alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
-                            assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
-                            old_item_name = item[0]
-                            pass
                         self._status_update()
-                        need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
-                        #for key, value in data.items():
-                        for index, value in enumerate(data):
-                            devices_data[device_order].append(list()) if index >= len(devices_data[device_order]) else None
-                            index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
-                            devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
-                            index_data[device_order][index].append(IndexInfo(self._index, 'normal'))
-                            pass
-                        CommonDataLogger.debug('fix over')
+                        data_pack(data, devices_data, device_order, self._index, 'normal')
+                        need_batch[device_order] -= 1
+                        CommonDataLogger.debug('pack the data')
                         self._index += 1
                         pass
                     else:
                         def deal_with_epoch_done():
-                            field = self._data_set_field()
+                            #field = self._data_set_field()
+                            field = list(range(0, len(self)))
 
                             def func():
                                 random_sample = np.random.choice(field)
@@ -249,42 +244,27 @@ class CommonData(ABC, Dataset):
                             return func
                         func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
                         if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
-                            CommonDataLogger.debug('method: allow_low and already data in device')
+                            CommonDataLogger.debug('method: allow_low and already data in device, done')
                             need_batch[device_order] = 0
                             pass
                         elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
-                            CommonDataLogger.debug('method: allow_low and no data in device')
+                            CommonDataLogger.debug('method: allow_low and no data in device, feed one')
                             data, index = func_for_deal_with_epoch_done()
-                            need_batch[device_order] = 0
                             #for key, value in data.items():
-                            for index, value in data.items():
-                                devices_data[device_order][index] = list() if index >= len(devices_data[device_order]) else None
-                                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
-                                devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][index].append(IndexInfo(index, 'allow_low'))
+                            data_pack(data, devices_data, device_order, index, 'allow_low')
+                            need_batch[device_order] = 0
                             pass
                         elif self._critical_process == 'random_fill':
                             CommonDataLogger.debug('method: random_fill')
                             data, index = func_for_deal_with_epoch_done()
-                            alignment_batch = None
-                            for item in data.items():
-                                alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
-                                assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
-                                old_item_name = item[0]
-                                pass
-                            need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
                             #for key, value in data.items():
-                            for index, value in data.items():
-                                devices_data[device_order][index] = list() if index >= len(devices_data[device_order]) else None
-                                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
-                                devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][index].append(IndexInfo(index, 'random_fill'))
+                            data_pack(data, devices_data, device_order, index, 'random_fill')
+                            need_batch[device_order] -= 1
                             pass
                         else:
                             CommonDataLogger.fatal('this should not happen')
                             pass
                         pass
-                    # add the data to the
                     pass
                 else:
                     pass
