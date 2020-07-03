@@ -282,7 +282,6 @@ class CommonData(ABC, Dataset):
         data = [[GeneratedData(data, index) for data, index in zip(datas, indexs)] for datas, indexs in zip(devices_data, index_data)]
         # data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
-        pass
 
     def generate_epoch_done(self):
         return self._epoch_done
@@ -365,7 +364,6 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
     plog.api_function_log(GeneratorLogger, 'data put process end')
     pass
 
-
 class DataPutProcess:
     def __init__(self, data, manager, pool, *argc, **argv):
         '''
@@ -423,7 +421,7 @@ class DataPutProcess:
             alignment_index = None
             the_first = get[0]
             #for k, v in the_first.items():
-            for index, v in enumerate(the_first):
+            for _, v in enumerate(the_first):
                 alignment_index = v.indexs()[0].index_info().point() if alignment_index is None else alignment_index
                 assert alignment_index == v.indexs()[0].index_info().point()
             self._data.reset_index(alignment_index)
@@ -457,14 +455,12 @@ class DataPutProcess:
         flag = (self._data_queue.empty() is False or self._epoch_done_flag.value is False)
         self._flag_sync_mutex.release()
         return flag
-        pass
 
     def paused_and_has_next(self):
         self._flag_sync_mutex.acquire()
         flag = self._data_queue.empty() is False and self._paused is True
         self._flag_sync_mutex.release()
         return flag
-        pass
 
     def restart(self, **kwargs):
         plog.api_function_log(DataPutProcessLogger, 'restart')
@@ -520,35 +516,27 @@ class DataPutProcess:
 
     def _default_device_batch(self):
         return [1]
-        pass
 
     def _default_critical_process(self):
         return 'random_fill'
-        pass
 
     def Count(self):
         return self._count.value
-        pass
 
     def DataQueue(self):
         return self._data_queue
-        pass
 
     def EpochDoneCond(self):
         return self._epoch_done_cond
-        pass
 
     def EpochDoneFlag(self):
         return self._epoch_done_flag
-        pass
 
     def queue_process_ret(self):
         return self._ret
-        pass
     
     def __iter__(self):
         return self
-        pass
 
     def __next__(self):
         if self.has_next():
