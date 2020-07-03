@@ -15,7 +15,6 @@ def test_statistic():
 
 
 def test_ilsvrc():
-    ilsvrcd.ILSVRC(
     pass
 
 
