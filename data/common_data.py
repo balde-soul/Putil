@@ -326,6 +326,29 @@ class CommonDataWithAug(CommonData):
         pass
     pass
 
+class CombineCommonData(CommonDataWithAug):
+    def __init__(self, common_data_list):
+        '''
+         @brief combine some CommonData and provide the method to get the data
+        '''
+        self._common_data_list = common_data_list
+        self._size_list = [len(common_data) for common_data in self._common_data_list]
+        self._size_ofs = [sum(self._size_list[0: ofs]) for ofs in range(0, len(self._size_list))]
+        self._len = sum(self._size_list)
+        pass
+
+    def __len__(self):
+        return self._len
+
+    def __getitem__(self, index):
+        ofs = 0
+        while(index >= self._size_ofs[ofs]):
+            ofs += 1
+            pass
+        c_ofs = index - self._size_ofs[ofs]
+        return self._common_data_list[ofs + 1][c_ofs]
+    pass
+
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
     plog.api_function_log(GeneratorLogger, 'generator start')
     # count = param['count']
