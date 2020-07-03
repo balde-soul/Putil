@@ -207,8 +207,8 @@ class CommonData(ABC, Dataset):
         devices_data = []
         index_data = []
         need_batch = copy.deepcopy(self._device_batch)
-        [devices_data.append(dict()) for device in self._device_batch]
-        [index_data.append(dict()) for device in self._device_batch]
+        [devices_data.append(list()) for device in self._device_batch]
+        [index_data.append(list()) for device in self._device_batch]
         while np.sum(need_batch) > 0:
             for ergodic_device in enumerate(need_batch):
                 CommonDataLogger.debug(ergodic_device)
@@ -229,11 +229,12 @@ class CommonData(ABC, Dataset):
                             pass
                         self._status_update()
                         need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
-                        for key, value in data.items():
-                            devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                            index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                            devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                            index_data[device_order][key].append(IndexInfo(self._index, 'normal'))
+                        #for key, value in data.items():
+                        for index, value in enumerate(data):
+                            devices_data[device_order].append(list()) if index >= len(devices_data[device_order]) else None
+                            index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
+                            devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
+                            index_data[device_order][index].append(IndexInfo(self._index, 'normal'))
                             pass
                         CommonDataLogger.debug('fix over')
                         self._index += 1
@@ -255,11 +256,12 @@ class CommonData(ABC, Dataset):
                             CommonDataLogger.debug('method: allow_low and no data in device')
                             data, index = func_for_deal_with_epoch_done()
                             need_batch[device_order] = 0
-                            for key, value in data.items():
-                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][key].append(IndexInfo(index, 'allow_low'))
+                            #for key, value in data.items():
+                            for index, value in data.items():
+                                devices_data[device_order][index] = list() if index >= len(devices_data[device_order]) else None
+                                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
+                                devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
+                                index_data[device_order][index].append(IndexInfo(index, 'allow_low'))
                             pass
                         elif self._critical_process == 'random_fill':
                             CommonDataLogger.debug('method: random_fill')
@@ -271,11 +273,12 @@ class CommonData(ABC, Dataset):
                                 old_item_name = item[0]
                                 pass
                             need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
-                            for key, value in data.items():
-                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][key].append(IndexInfo(index, 'random_fill'))
+                            #for key, value in data.items():
+                            for index, value in data.items():
+                                devices_data[device_order][index] = list() if index >= len(devices_data[device_order]) else None
+                                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
+                                devices_data[device_order][index].append(value[0: batch] if value.shape[0] > batch else value)
+                                index_data[device_order][index].append(IndexInfo(index, 'random_fill'))
                             pass
                         else:
                             CommonDataLogger.fatal('this should not happen')
@@ -295,7 +298,8 @@ class CommonData(ABC, Dataset):
                 pass
             pass
         CommonDataLogger.debug('going to generate data')
-        data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
+        #data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
+        data = [[GeneratedData(data, index) for data, index in zip(datas, indexs)] for datas, indexs in zip(devices_data, index_data)]
         # data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
         pass
@@ -438,7 +442,8 @@ class DataPutProcess:
             get = self._data_queue.get()
             alignment_index = None
             the_first = get[0]
-            for k, v in the_first.items():
+            #for k, v in the_first.items():
+            for index, v in enumerate(the_first):
                 alignment_index = v.indexs()[0].index_info().point() if alignment_index is None else alignment_index
                 assert alignment_index == v.indexs()[0].index_info().point()
             self._data.reset_index(alignment_index)

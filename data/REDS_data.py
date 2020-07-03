@@ -94,7 +94,7 @@ class REDSData(pcd.CommonData):
             gt = self.__read_sequence_frame(data_path, frames[0: self._sequence_len])
         else:
             raise NotImplementedError('generate type {0} is not implemented'.format(self._generate_type))
-        return {'data': np.array([[data]]), 'label': np.array([[gt]])}
+        return np.array([data]), 'label': np.array([gt])
         pass
 
     def __read_sequence_frame(self, frames_dir, sorted_frame_name_list):

@@ -24,7 +24,7 @@ class TestCommonData(pcd.CommonDataWithAug):
 
     def _generate_from_origin_index(self, index):
         data = self._data_field[index]
-        return {'data': np.array([data]), 'label': np.array([data])}
+        return np.array([data]), np.array([data])
 
     def _data_set_field(self):
         return list(range(0, 100))
