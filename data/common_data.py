@@ -23,6 +23,7 @@ DataPutProcessLogger = logger.getChild('DataPutProcess')
 DataPutProcessLogger.setLevel(plog.DEBUG)
 GeneratedDataLogger = logger.getChild('GeneratedData')
 GeneratedDataLogger.setLevel(plog.DEBUG)
+import Putil.data.convert_to_input as convert_to_input
 
 
 class CommonDataManager(BaseManager):
@@ -101,6 +102,8 @@ class CommonData(ABC, Dataset):
         self._data_field = None
         # a number(int) which the represent data read now
         self._index = None
+
+        self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
         pass
 
     def data_field(self):
@@ -108,6 +111,9 @@ class CommonData(ABC, Dataset):
 
     def index(self):
         return self._index
+
+    def set_convert_to_input_method(self, method):
+        self._convert_to_input_method = method
 
     @abstractmethod
     def _restart_process(self, restart_param):
@@ -129,6 +135,9 @@ class CommonData(ABC, Dataset):
     def set_seed(seed):
         np.random.seed(seed)
         pass
+
+    def generate_from_specified(self, index):
+        return self._convert_to_input_method(*self._generate_from_specified(index))
 
     @abstractmethod
     def _generate_from_specified(self, index):
@@ -212,9 +221,9 @@ class CommonData(ABC, Dataset):
         def data_pack(data, devices_data, device_order, data_index, index_type):
             for index, value in enumerate(data):
                 devices_data[device_order].append(list()) if index >= len(devices_data[device_order]) else None
-                index_data[device_order][index] = list() if index >= len(index_data[device_order]) else None
+                index_data[device_order].append(list()) if index >= len(index_data[device_order]) else None
                 devices_data[device_order][index].append(value)
-                index_data[device_order][index].append(IndexInfo(data_index, 'normal'))
+                index_data[device_order][index].append(IndexInfo(data_index, index_type))
                 pass
             pass
         while np.sum(need_batch) > 0:
@@ -226,7 +235,7 @@ class CommonData(ABC, Dataset):
                     # get the data
                     if self._epoch_done is False:
                         CommonDataLogger.debug('epoch not end')
-                        data = self._generate_from_specified(self._index)
+                        data = self.generate_from_specified(self._index)
                         self._status_update()
                         data_pack(data, devices_data, device_order, self._index, 'normal')
                         need_batch[device_order] -= 1
@@ -240,7 +249,7 @@ class CommonData(ABC, Dataset):
 
                             def func():
                                 random_sample = np.random.choice(field)
-                                return self._generate_from_specified(random_sample), random_sample
+                                return self.generate_from_specified(random_sample), random_sample
                             return func
                         func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
                         if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
@@ -271,9 +280,9 @@ class CommonData(ABC, Dataset):
                 pass
             pass
         for i in devices_data:
-            for key, value in i.items():
+            for index, value in enumerate(i):
                 for d in value:
-                    CommonDataLogger.debug('{0} {1}'.format(key, d.shape))
+                    CommonDataLogger.debug('{0} {1}'.format(index, d.shape))
                     pass
                 pass
             pass
@@ -287,7 +296,7 @@ class CommonData(ABC, Dataset):
         return self._epoch_done
 
     def __getitem__(self, index):
-        return self._generate_from_specified(index)
+        return self.generate_from_specified(index)
 
     def __len__(self):
         return len(self._data_field)
@@ -299,7 +308,7 @@ class CommonDataWithAug(CommonData):
     '''
      @brief the CommonData which support aug
      @note
-        this class complete the _generate_from_specified which contain aug
+        this class complete the generate_from_specified which contain aug
     '''
     def __init__(self):
         CommonData.__init__(self)
@@ -316,7 +325,7 @@ class CommonDataWithAug(CommonData):
     def _generate_from_specified(self, index):
         oindex = index // len(self._aug_node)
         aindex = index % len(self._aug_node)
-        self._aug_node[aindex].func(self._generate_from_origin_index(oindex))
+        return self._aug_node[aindex](*self._generate_from_origin_index(oindex))
     
     @abstractmethod
     def _generate_from_origin_index(self, oindex):
@@ -368,15 +377,14 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
         try:
             get_data = data.generate_data()
             pass
-        except Exception as ex:
+        except Exception as e:
             GeneratorLogger.fatal('str(Exception):\t', str(Exception))
             GeneratorLogger.fatal('str(e):\t\t', str(e))
             GeneratorLogger.fatal('repr(e):\t', repr(e))
-            GeneratorLogger.fatal('e.message:\t', e.message)
             GeneratorLogger.fatal('traceback.print_exc():', traceback.print_exc())
             GeneratorLogger.fatal('traceback.format_exc():\n%s' % traceback.format_exc())
-            GeneratorLogger.fatal(traceback.format_tb(ex.__traceback__))
-            raise ex
+            GeneratorLogger.fatal(traceback.format_tb(e.__traceback__))
+            raise e
         flag_sync_mutex.acquire()
         data_queue.put(get_data)
         epoch_done_flag.value = data.generate_epoch_done()

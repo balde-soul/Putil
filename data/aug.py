@@ -39,6 +39,9 @@ class AugFunc(metaclass=ABCMeta):
     @property
     def param(self):
         return 'not implemented'
+
+    def __call__(self, *args):
+        return self._func(*args)
     pass
 
 class AugFuncNoOp(AugFunc):

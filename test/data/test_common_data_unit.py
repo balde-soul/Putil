@@ -59,7 +59,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 1, print(len(data))
             for d in got_data:
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (1, 1)
                     assert get.indexs().shape == (1,)
@@ -80,7 +80,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 1
             for d in got_data:
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (11, 1)
                     assert get.indexs().shape == (11,)
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 2
             for index, d in enumerate(got_data):
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (restart_param['device_batch'][index], 1), print(get.datas().shape)
                     assert get.indexs().shape == (restart_param['device_batch'][index],)
@@ -131,7 +131,7 @@ if __name__ == '__main__':
             assert len(got_data) == 1
             if count == 33:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.indexs()[-1].index_info().type() == 'normal', print(get.indexs()[-1].index_info().type())
                         assert get.datas().shape == (1, 1), print(get[0].datas().shape)
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             assert len(got_data) == 2
             if count == 33:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.datas().shape == (1, 1), print(get.datas().shape)
                         assert get.datas().shape == (1, 1), print(get.datas().shape)
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                 pass
             else:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.datas().shape == (1 if index == 0 else 2, 1), print(get.datas().shape)
                         pass
