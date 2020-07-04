@@ -106,6 +106,10 @@ class COCOData(pcd.CommonDataWithAug):
         self._captions_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
         self._image_info_test = os.path.join(self._coco_root_dir, 'annotations/image_info_test2017.json')
 
+        belong_instances = [self._detection, self._stuff, self._panoptic]
+        belong_person_keypoints = [self._key_points]
+        belong_captions = [self._captions]
+
         with_label = [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]
         without_label = [COCOData.Stage.STAGE_TEST]
         self._instances_coco = COCO(self._instances_file_train \
@@ -122,11 +126,12 @@ class COCOData(pcd.CommonDataWithAug):
         self._captions_img_ids = self._captions_coco.getImgIds()
         self._image_test = COCO(self._image_info_test) if self._stage in without_label else None
         self._image_test_img_ids = self._captions_coco.getImgIds()
+
+        # we know use the detectio only
+        self._image_ids = CocoData.__get_common_id([self._instances_img_ids])
         pass
 
     def _restart_process(self, restart_param):
-        '''
-        '''
         pass
 
     def _inject_operation(self, inject_param):
@@ -136,7 +141,19 @@ class COCOData(pcd.CommonDataWithAug):
         '''
          @brief generate the image [detection_label ]
         '''
+        anns = self._instances_coco.getAnnIds(self._image_ids[index])
+        boxes = list()
+        for ann in anns:
+            boxes.append(ann['annotations']['bbox'])
+        image = self._instances_coco.loadImgs(self._image_ids[index])
+        image = Image.fromarray(image)
+        image = image.resize((512, 512), resample=Image.BILINEAR)
+        image = np.array(image)
+        return image, boxes
         pass
+
+    def __len__(self):
+        return len(self._image_ids)
 
     @staticmethod
     def statistic(coco_root='', year=''):
