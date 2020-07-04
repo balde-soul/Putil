@@ -14,6 +14,8 @@ logger.setLevel(plog.DEBUG)
 COCODataLogger = logger.getChild('COCOData')
 COCODataLogger.setLevel(plog.DEBUG)
 
+import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
+
 
 class COCOData(pcd.CommonDataWithAug):
     @staticmethod

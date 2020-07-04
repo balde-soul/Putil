@@ -16,13 +16,11 @@ class AugFunc(metaclass=ABCMeta):
         self._func = -1 
         pass
 
-    @abstractmethod
     def _generate_name(self):
-        pass
+        return ''
 
-    @abstractmethod
     def _generate_doc(self):
-        pass
+        return ''
 
     @property
     def func(self):
