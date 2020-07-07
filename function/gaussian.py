@@ -43,7 +43,7 @@ class Gaussian(function.Function):
         '''
         assert len(Mu.shape) == 2
         assert Mu.shape[1] == 1
-        self._Mu = Mu
+        self._Mu = np.array(Mu)
         if self._param_confirm():
             self._build_func()
             pass
@@ -55,18 +55,19 @@ class Gaussian(function.Function):
         not_none = (self._Sigma is not None) and (self._Mu is not None)
         if not_none:
             return self._Mu.shape[0] == self._Sigma.shape[0]
-            pass
         else:
             return False
-            pass
         pass
 
     def _build_func(self):
         self._dim = self._Sigma.shape[0]
         def func(x):
-            return 1.0 / (np.ma.power(2 * np.pi, self._dim / 2.0) * np.ma.power(self._Sigma_det, 0.5)) * \
-                np.exp(-0.5 * np.sum(np.matmul(np.transpose(self._Sigma_inv), x - self._Mu) * (x - self._Mu), axis=0, keepdims=True))
-            pass
+            de_mean = x - np.transpose(self._Mu)
+            exponent = -0.5 * np.sum(np.matmul(de_mean, np.transpose(self._Sigma_inv)) * de_mean, axis=-1)
+            denominator = np.ma.power(2 * np.pi, self._dim / 2.0) * np.ma.power(self._Sigma_det, 0.5) 
+            ret = 1.0 / denominator * np.exp(exponent)
+            return ret
+                
         self._func = func
         pass
     pass

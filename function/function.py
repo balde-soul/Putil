@@ -9,9 +9,10 @@ class Function(ABC):
 
     def func(self):
         return self._func
-        pass
 
     def calc(self, x):
         return self._func(x)
-        pass
+
+    def __call__(self, x):
+        return self.calc(x)
     pass
