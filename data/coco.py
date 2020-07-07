@@ -228,10 +228,11 @@ print('imageid len: {0}'.format(len(imgids)))
 labids = ic.getAnnIds(imgids[0:1])
 print('label len: {0} for image: {1}'.format(len(labids), imgids[0:1]))
 labels = ic.loadAnns(labids)
+print(labels[0])
 I = io.imread(os.path.join(data_root, img[0]['file_name']))
 plt.axis('off')
 plt.imshow(I) #绘制图像，显示交给plt.show()处理
-ic.showAnns(labels, draw_bbox=False)
+ic.showAnns(labels[0:1], draw_bbox=True)
 plt.show()
 #In[]:
 from pycocotools.coco import COCO
@@ -242,8 +243,25 @@ from pycocotools.coco import COCO
 cc = COCO(person_file)
 len(cc.getImgIds())
 #In[]:
-import time
-begin = time.clock()
-end = time.clock()
-print(begin)
-print(end)
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
+print('array')
+arr = np.reshape(np.linspace(1, 9, num=9), [3, 3])
+print(arr)
+
+print('Image')
+img = Image.fromarray(arr)
+print(np.array(img))
+rimg = img.resize([6, 6], Image.BILINEAR)
+print(np.array(rimg))
+bimg = rimg.resize([3, 3], Image.BILINEAR)
+print(np.array(bimg))
+
+print('cv')
+rimg = cv2.resize(arr, (6, 6), interpolation=cv2.INTER_LINEAR)
+print(rimg)
+bimg = cv2.resize(rimg, (3, 3), interpolation=cv2.INTER_LINEAR)
+print(bimg)
