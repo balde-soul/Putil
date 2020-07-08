@@ -147,6 +147,9 @@ class COCOData(pcd.CommonDataWithAug):
     def _generate_from_origin_index(self, index):
         '''
          @brief generate the image [detection_label ]
+         @note
+         @ret 
+         (image, boxes)
         '''
         image_ann = self._instances_coco.loadImgs(self._image_ids[index])
         ann_ids = self._instances_coco.getAnnIds(self._image_ids[index])

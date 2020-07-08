@@ -23,12 +23,14 @@ class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
 
 
 class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
+    nume
     def __init__(
         self, 
         sample_rate, 
         sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32),
         mu=np.array([[0.0], [0.0]], dtype=np.float32),
-        resolution=0.05):
+        resolution=0.05,
+        format):
         '''
          @brief
          @note
@@ -51,7 +53,7 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
          @brief generate the label from the input
          @param[in] args
          [image, bboxes]
-         bboxes: [[x, y, width, height], ...]
+         bboxes: [[top_left_col_i, top_left_row_i, width, height], ...]
          @ret 
          [image, center_label_with_weight]
         '''
