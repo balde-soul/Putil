@@ -4,14 +4,49 @@ import numpy as np
 import Putil.base.logger as plog
 import Putil.data.convert_to_input as convert_to_input
 import Putil.function.gaussian as Gaussion
+from enum import Enum
 
 bbox_convertor_logger = plog.PutilLogConfig('bbox_convertor').logger()
 bbox_convertor_logger.setLevel(plog.DEBUG)
 BBoxConvertToCenterBoxLogger = bbox_convertor_logger.getChild('BBoxConvertToCenterBox')
 BBoxConvertToCenterBoxLogger.setLevel(plog.DEBUG)
 
+class BBoxToBBoxTranslator:
+    '''
+     @brief
+     @note
+     translate the bbox from original format to the target format
+    '''
+    class BBoxFormat(Enum):
+        '''
+         @brief the Format
+         @note the supported bbox format
+        '''
+        # the [left_top_row_index, left_top_col_index, width, height]
+        LTWHRC = 0
+        # the [left_top_col_index, left_top_row_index, width, height]
+        LTWHCR = 1
+        #LTWHCR = 2
+        #LTWHCR = 1
+        pass
+
+    def __init__(self, bbox_in_format, bbox_ret_format):
+        self._bbox_in_format = bbox_in_format
+        self._bbox_ret_format = bbox_ret_format
+
+        self._translate_func = lambda bbox_input: bbox_input\
+            if self._bbox_in_format == self._bbox_ret_format else self._generate_translate_func()
+        pass
+
+    def _generate_translate_func(self):
+        raise NotImplemented("this function is not implemented")
+
+    def __call__(self, *args):
+        return self._translate_func(*args)
+    pass
+
 class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
-    def __init__(self, config):
+    def __init__(self, format):
         '''
         '''
         convert_to_input.ConvertToInput.__init__(self)
@@ -23,18 +58,18 @@ class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
 
 
 class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
-    nume
     def __init__(
         self, 
         sample_rate, 
+        input_bbox_format=BBoxToBBoxTranslator.BBoxFormat.LTWHCR,
         sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32),
         mu=np.array([[0.0], [0.0]], dtype=np.float32),
-        resolution=0.05,
-        format):
+        resolution=0.05):
         '''
          @brief
          @note
          @param[in] sample_rate
+         @param[in] input_bbox_format default: BBoxToBBox.BBoxFormat.LTWHCR
          @param[in] sigma default: [[0.5, 0.0], [0.0, 0.5]]
          @param[in] mu default: [[0.0], [0.0]]
          @param[in] resolution default: 0.05
@@ -46,6 +81,8 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         self._weight_func.set_Sigma(sigma)
 
         self._resolution = resolution
+
+        self._format_translator = BBoxToBBoxTranslator(input_bbox_format, BBoxToBBoxTranslator.BBoxFormat.LTWHCR)
         pass
 
     def __call__(self, *args):
@@ -60,7 +97,8 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         image = args[0]
         boxes = args[1]
         label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate, 7], dtype=np.float32)
-        for box in boxes:
+        for box_iter in boxes:
+            box = self._format_translator(box_iter)
             x_cell_index = (box[0] + 0.5) // self._sample_rate
             y_cell_index = (box[1] + 0.5) // self._sample_rate
 
