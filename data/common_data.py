@@ -6,7 +6,7 @@ import copy
 import numpy as np
 import colorama
 import Putil.base.logger as plog
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 import threading
 import multiprocessing as mlp
 from multiprocessing import Manager
@@ -88,7 +88,7 @@ class GeneratedData:
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
-class CommonData(ABC, Dataset):
+class CommonData(Dataset, metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
     '''
@@ -304,7 +304,7 @@ class CommonData(ABC, Dataset):
 
 import Putil.data.aug as Aug
 
-class CommonDataWithAug(CommonData):
+class CommonDataWithAug(CommonData, metaclass=ABCMeta):
     '''
      @brief the CommonData which support aug
      @note
@@ -312,7 +312,8 @@ class CommonDataWithAug(CommonData):
     '''
     def __init__(self):
         CommonData.__init__(self)
-        self._aug_node = None
+        self._aug_node = Aug.AugNode(Aug.AugFuncNoOp())
+        self._aug_node.freeze_node()
         pass
 
     def __len__(self):

@@ -1,4 +1,5 @@
 # coding=utf-8
+import cv2
 import numpy as np
 import Putil.base.logger as plog
 import Putil.data.convert_to_input as convert_to_input
@@ -25,13 +26,24 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
     def __init__(
         self, 
         sample_rate, 
-        sigma=np.array([[3.0, 0.0], [0.0, 3.0]], dtype=np.float32), 
-        mu=np.array([[0.0], [0.0]], dtype=np.float32)):
+        sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32),
+        mu=np.array([[0.0], [0.0]], dtype=np.float32),
+        resolution=0.05):
+        '''
+         @brief
+         @note
+         @param[in] sample_rate
+         @param[in] sigma default: [[0.5, 0.0], [0.0, 0.5]]
+         @param[in] mu default: [[0.0], [0.0]]
+         @param[in] resolution default: 0.05
+        '''
         convert_to_input.ConvertToInput.__init__(self)
         self._sample_rate = sample_rate
         self._weight_func = Gaussion.Gaussian()
         self._weight_func.set_Mu(mu)
         self._weight_func.set_Sigma(sigma)
+
+        self._resolution = resolution
         pass
 
     def __call__(self, *args):
@@ -39,13 +51,13 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
          @brief generate the label from the input
          @param[in] args
          [image, bboxes]
+         bboxes: [[x, y, width, height], ...]
          @ret 
          [image, center_label_with_weight]
         '''
         image = args[0]
         boxes = args[1]
         label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate, 7], dtype=np.float32)
-        temp_weight = np.zeros(shape=[image.shape[0], image.shape[1], 4], dtype=np.float32) 
         for box in boxes:
             x_cell_index = (box[0] + 0.5) // self._sample_rate
             y_cell_index = (box[1] + 0.5) // self._sample_rate
@@ -55,35 +67,25 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
             w_cell = box[2] / self._sample_rate
             h_cell = box[3] / self._sample_rate
 
-            xregion = [round(box[0] - box[2] * 0.5), round(box[0] + box[2] * 0.5)]
-            yregion = [round(box[1] - box[3] * 0.5), round(box[1] + box[3] * 0.5)]
-            x = np.linspace(-(xregion[1] - xregion[0]) * 0.5, (xregion[1] - xregion[0]) * 0.5, num=xregion[1] - xregion[0] + 1)
-            y = np.linspace(-(yregion[1] - yregion[0]) * 0.5, (yregion[1] - yregion[0]) * 0.5, num=yregion[1] - yregion[0] + 1)
+            xregion = [max(round(box[0] - box[2] * 0.5), 0), min(round(box[0] + box[2] * 0.5), image.shape[1])]
+            yregion = [max(round(box[1] - box[3] * 0.5), 0), min(round(box[1] + box[3] * 0.5), image.shape[1])]
+            #xregion = [round(box[0] - box[2] * 0.5), round(box[0] + box[2] * 0.5)]
+            #yregion = [round(box[1] - box[3] * 0.5), round(box[1] + box[3] * 0.5)]
+            xamount = xregion[1] - xregion[0]
+            x = np.linspace(-1, 1, num=xamount)
+            yamount = yregion[1] - yregion[0]
+            y = np.linspace(-1, 1, num=yamount)
             x, y = np.meshgrid(x, y)
             shape = x.shape
             coor = np.reshape(np.stack([x, y], axis=-1), [-1, 2])
             weights = self._weight_func(coor)
             weights = np.reshape(weights, shape)
-            #label[y_cell_index][x_cell_index][0] = 1.0
-            #label[y_cell_index][x_cell_index][1: 5] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
-            #label[xregion[0]: xregion[1]][yregion[0]: yregion[1]][6] = weights
-        return image, label, weights
-##In[]
-#from PIL import Image
-#import numpy as np
-#import matplotlib.pyplot as plt
-#ia = np.zeros(shape=[50, 100, 3], dtype=np.uint8)
-#print(ia.shape)
-#plt.imshow(ia)
-#plt.show()
-#image = Image.fromarray(ia)
-#print(image.size)
-#print(image.height)
-#plt.imshow(image)
-#plt.show()
-#
-#print(np.array(image).shape)
-#
-#9%4
-#
-#np.floor(9.8)
+            weights = np.pad(weights, ((yregion[0], image.shape[0] - yregion[1]), (xregion[0], image.shape[1] - xregion[1])), mode=lambda vector, iaxis_pad_width, iaxis, kwargs: 0)
+            weights = cv2.resize(weights, (label.shape[1], label.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+            label[int(y_cell_index + 0.5)][int(x_cell_index + 0.5)][0] = 1.0
+            label[int(y_cell_index + 0.5)][int(x_cell_index + 0.5)][1: 5] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
+            label[:, :, 6] = np.max(np.stack([np.squeeze(label[:, :, 6]), weights], axis=-1), axis=-1)
+        label[:, :, 6] = (label[:, :, 6] - np.min(label[:, :, 6])) / (np.max(label[:, :, 6]) - np.min(label[:, :, 6]))
+        return image, label
+    pass

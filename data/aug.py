@@ -45,14 +45,12 @@ class AugFunc(metaclass=ABCMeta):
 class AugFuncNoOp(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        self._aug_func = lambda args: args
+        self._func = lambda *args: args
         pass
 
-    @abstractmethod
     def _generate_name(self):
         return 'no_op'
 
-    @abstractmethod
     def _generate_doc(self):
         return 'do nothing'
     pass
@@ -165,7 +163,7 @@ class AugNode:
                         def t(*args):
                             result = args
                             for func in func_list_copy:
-                                result = func.func(*result)
+                                result = func(*result)
                                 pass
                             return result
                         self._func = t
