@@ -62,8 +62,8 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         self, 
         sample_rate, 
         input_bbox_format=BBoxToBBoxTranslator.BBoxFormat.LTWHCR,
-        sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32),
-        mu=np.array([[0.0], [0.0]], dtype=np.float32),
+        sigma=None,
+        mu=None,
         resolution=0.05):
         '''
          @brief
@@ -77,8 +77,8 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         convert_to_input.ConvertToInput.__init__(self)
         self._sample_rate = sample_rate
         self._weight_func = Gaussion.Gaussian()
-        self._weight_func.set_Mu(mu)
-        self._weight_func.set_Sigma(sigma)
+        self._weight_func.set_Mu(mu if mu is not None else [[0.0], [0.0]])
+        self._weight_func.set_Sigma(sigma if sigma is not None else [[0.1, 0.0], [0.0, 0.1]])
 
         self._resolution = resolution
 
