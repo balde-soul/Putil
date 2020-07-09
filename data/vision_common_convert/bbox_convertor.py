@@ -39,7 +39,7 @@ class BBoxToBBoxTranslator:
         pass
 
     def _generate_translate_func(self):
-        raise NotImplemented("this function is not implemented")
+        raise NotImplementedError("this function is not implemented")
 
     def __call__(self, *args):
         return self._translate_func(*args)
