@@ -14,15 +14,6 @@ logger.setLevel(plog.DEBUG)
 import Putil.data.coco as coco
 from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox as Convertor 
 
-#class FitConvertor(Convertor):
-#    def __call__(self, *args):
-#        boxes = list()
-#        for ann in anns:
-#            box = ann['bbox']
-#            boxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
-#            pass
-#        pass
-#
 coco.COCOData.set_seed(64)
 coco_data = coco.COCOData('/data2/Public_Data/COCO', coco.COCOData.Stage.STAGE_EVAL, '', detection=True)
 convertor = Convertor(4, sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32))
