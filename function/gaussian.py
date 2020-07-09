@@ -20,11 +20,14 @@ class Gaussian(function.Function):
 
     def set_Sigma(self, Sigma):
         '''
-        params:
-            Sigma: should with shape: dim x dim: var_ij
+         @brief
+         @note
+         @param[in] Sigma
+         list, Sigma [[], []]
         '''
-        assert len(Sigma.shape) == 2
-        assert Sigma.shape[0] == Sigma.shape[1]
+        for sigma in Sigma:
+            assert len(sigma) == len(Sigma)
+            pass
         self._Sigma = Sigma
         self._Sigma_inv = np.linalg.inv(Sigma)
         self._Sigma_det = np.linalg.det(Sigma)
@@ -41,8 +44,9 @@ class Gaussian(function.Function):
         params:
             Mu: should with shape: dim x 1: mu_i
         '''
-        assert len(Mu.shape) == 2
-        assert Mu.shape[1] == 1
+        assert len(Mu) == 2
+        assert len(Mu[0]) == 1
+        assert len(Mu[1]) == 1
         self._Mu = np.array(Mu)
         if self._param_confirm():
             self._build_func()
@@ -54,13 +58,13 @@ class Gaussian(function.Function):
     def _param_confirm(self):
         not_none = (self._Sigma is not None) and (self._Mu is not None)
         if not_none:
-            return self._Mu.shape[0] == self._Sigma.shape[0]
+            return len(self._Mu) == len(self._Sigma)
         else:
             return False
         pass
 
     def _build_func(self):
-        self._dim = self._Sigma.shape[0]
+        self._dim = len(self._Sigma)
         def func(x):
             de_mean = x - np.transpose(self._Mu)
             exponent = -0.5 * np.sum(np.matmul(de_mean, np.transpose(self._Sigma_inv)) * de_mean, axis=-1)
