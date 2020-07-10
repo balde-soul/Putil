@@ -136,6 +136,9 @@ class COCOData(pcd.CommonDataWithAug):
 
         # we know use the detectio only
         self._image_ids = COCOData.__get_common_id([self._instances_img_ids])
+
+        if self._instances_coco is not None:
+            self._instances_category_ids = self._instances_coco.getCatIds()
         pass
 
     def _restart_process(self, restart_param):
@@ -179,13 +182,15 @@ class COCOData(pcd.CommonDataWithAug):
         plt.show()
 
         boxes = list()
+        classes = list()
         for ann in anns:
             box = ann['bbox']
+            classes.append(self._instances_category_ids.index(ann['category_id']))
             boxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
             pass
         #for box in boxes:
         #    cv2.rectangle(image, (box[0] - box[])
-        return image, boxes
+        return image, boxes, classes
 
     def __len__(self):
         return len(self._image_ids)

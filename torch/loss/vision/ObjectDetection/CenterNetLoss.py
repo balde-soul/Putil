@@ -1,5 +1,4 @@
 # coding=utf-8
-#In[]:
 import numpy as np
 import torch
 from torch.nn import Module
@@ -13,41 +12,57 @@ class CenterNetLoss(Module):
      loss_xyshift: work in the obj owned cell
      loss_wh: work in the obj owned cell
     '''
-    def __init__(self, focal_alpha, decay_beta, obj_loss_weight=0.3, offset_loss_weight=0.4, size_weight_loss=0.3):
+    def __init__(self, focal_alpha, decay_beta, class_weight=None, obj_loss_weight=0.3, offset_loss_weight=0.4, size_weight_loss=0.3):
         Module.__init__(self)
         self._focal_alpha = focal_alpha
         self._decay_beta = decay_beta
+        self._class_weight = class_weight
         self._object_loss = None
         self._offset_loss = None
 
         self._obj_loss_weight = obj_loss_weight
         self._offset_loss_weight = offset_loss_weight
         self._size_weight_loss = size_weight_loss
+        
+        self._class_loss = torch.nn.CrossEntropyLoss(class_weight)
         pass
 
-    def forward(self, net_out, label):
+    def forward(self, box_net_out, class_net_out, box_label, class_label, radiance_factor):
         '''
          @brief 
          @note
-         @param[in] net_out
+         @param[in] box_net_out
          shape: [batch, 5, h, w], five dimension represent:[obj, x_shift, y_shift, w, h]
-         @param[in] label
-         shape: [batch, h, w, 5], five dimension represent: [obj, x_shift, y_shift, w, h]
+         @param[in] box_label
+         shape: [batch, 6, h, w], five dimension represent: [obj, x_shift, y_shift, w, h]
+         @param[in] class_label
+         shape: [batch, h, w], label use in the CrossEntropyLoss
+         @param[in] radiance_factor
+         shape: [batch, 1, h, w], represent the
         '''
         #print(torch.nn.Conv2d.__doc__)
         #print('Transpose: \n {0}'.format(torch.transpose.__doc__))
-        print(net_out[0, 0, :, :].shape)
-        p_obj_loss = torch.pow(1 - net_out[0, 0, :, :], self._focal_alpha) * label[:, :, 0] * torch.log(net_out[0, 0, :, :])
-        n_obj_loss = torch.pow(1 - label[:, :, 6], self._decay_beta) * torch.pow(net_out[0, 0, :, :], self._focal_alpha) * (1 - label[:, :, 0]) * torch.log(net_out[0, 0, :, :])
+        #print(box_net_out[0, 0, :, :].shape)
+        p_obj_loss = torch.pow(1 - box_net_out[:, 0, :, :], self._focal_alpha) * box_label[:, 0, :, :] * torch.log(box_net_out[:, 0, :, :])
+        n_obj_loss = torch.pow(1 - radiance_factor, self._decay_beta) * \
+            torch.pow(box_net_out[0, 0, :, :], self._focal_alpha) \
+            * (1 - box_label[:, 0, :, :]) * torch.log(box_net_out[:, 0, :, :])
         obj_loss = -torch.mean(p_obj_loss + n_obj_loss)
         print('obj_loss: {0}'.format(obj_loss))
-        offset_loss = 1.0 / torch.nonzero(label[:, :, 0]).size(0) \
-            * torch.sum(label[:, :, 0] * torch.abs( \
-                torch.transpose(torch.transpose(label[:, :, 1: 3], -1, 1), 0, 1)  - net_out[0, 1: 3, :, :]))
+
+        offset_loss = 1.0 / torch.nonzero(box_label[:, 0, :, :]).size(0) \
+            * torch.sum(box_label[:, 0, :, :] * \
+                torch.abs(box_label[:, 1: 3, :, :] - box_net_out[:, 1: 3, :, :]))
         print('offset_loss: {0}'.format(offset_loss))
-        wh_loss = 1.0 / torch.nonzero(label[:, :, 0]).size(0) \
-            * torch.sum(label[:, :, 0] * torch.abs( \
-                torch.transpose(torch.transpose(label[:, :, 3: 5], -1, 1), 0, 1)  - net_out[0, 3: 5, :, :]))
+
+        wh_loss = 1.0 / torch.nonzero(box_label[:, 0, :, :]).size(0) \
+            * torch.sum(box_label[:, 0, :, :] * \
+                torch.abs(box_label[:, 3: 5, :, :] - box_net_out[0, 3: 5, :, :]))
         print('wh_loss: {0}'.format(wh_loss))
-        return self._obj_loss_weight * obj_loss + self._offset_loss_weight * offset_loss + self._size_weight_loss * wh_loss
+
+        class_loss = self._class_loss(class_net_out, class_label)
+        return self._obj_loss_weight * obj_loss + self._offset_loss_weight * offset_loss + self._size_weight_loss * wh_loss + class_loss
     pass
+##In[]:
+#import torch
+#print(torch.ones(1, 3, 2, 2).reshape((3, -1)).shape)

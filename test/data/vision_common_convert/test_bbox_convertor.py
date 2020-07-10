@@ -10,15 +10,12 @@ import matplotlib.pyplot as plt
 #print(t)
 #print(tt)
 #print(np.max(np.stack([t, tt], axis=-1), axis=-1))
-BC = bbc.BBoxConvertToCenterBox(sample_rate=4)
+BC = bbc.BBoxConvertToCenterBox(sample_rate=4, class_amount=10)
 image = np.reshape(np.random.sample(10000), [100, 100])
 print(image.shape)
-image, label = BC(image, [[63.9, 51.9, 30.9, 80.9], [43.9, 33.9, 83.9, 63.9]])
-print(label.shape)
-weight = label[:, :, 6]
-plt.imshow((weight * 255).astype(np.uint8), cmap=plt.cm.gray)
-plt.show()
-plt.imshow((label[:, :, 6] * 255).astype(np.uint8), cmap=plt.cm.gray)
+image, box_label, class_label, radiance_factor  = BC(image, [[63.9, 51.9, 30.9, 80.9], [43.9, 33.9, 83.9, 63.9]], [1, 2])
+print(box_label.shape)
+plt.imshow((radiance_factor * 255).astype(np.uint8), cmap=plt.cm.gray)
 plt.show()
 
 ##In[]

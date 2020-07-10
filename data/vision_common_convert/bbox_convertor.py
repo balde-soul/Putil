@@ -61,6 +61,7 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
     def __init__(
         self, 
         sample_rate, 
+        class_amount,
         input_bbox_format=BBoxToBBoxTranslator.BBoxFormat.LTWHCR,
         sigma=None,
         mu=None,
@@ -76,6 +77,7 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         '''
         convert_to_input.ConvertToInput.__init__(self)
         self._sample_rate = sample_rate
+        self._class_amount = class_amount
         self._weight_func = Gaussion.Gaussian()
         self._weight_func.set_Mu(mu if mu is not None else [[0.0], [0.0]])
         self._weight_func.set_Sigma(sigma if sigma is not None else [[0.1, 0.0], [0.0, 0.1]])
@@ -87,17 +89,23 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
 
     def __call__(self, *args):
         '''
-         @brief generate the label from the input
+         @brief generate the box_label from the input
          @param[in] args
          [image, bboxes]
          bboxes: [[top_left_col_i, top_left_row_i, width, height], ...]
          @ret 
-         [image, center_label_with_weight]
+         [image, center_box_label_with_weight]
         '''
         image = args[0]
         boxes = args[1]
-        label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate, 7], dtype=np.float32)
-        for box_iter in boxes:
+        classes = args[2]
+        box_label = np.zeros(shape=[5, image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+            dtype=np.float32)
+        class_label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+            dtype=np.float32)
+        radiance_factor = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+            dtype=np.float32)
+        for box_iter, class_iter in zip(boxes, classes): 
             box = self._format_translator(box_iter)
             x_cell_index = (box[0] + 0.5) // self._sample_rate
             y_cell_index = (box[1] + 0.5) // self._sample_rate
@@ -118,14 +126,18 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
             x, y = np.meshgrid(x, y)
             shape = x.shape
             coor = np.reshape(np.stack([x, y], axis=-1), [-1, 2])
-            weights = self._weight_func(coor)
+            weights = self._weight_func(coor).astype(np.float32)
             weights = np.reshape(weights, shape)
             weights = np.pad(weights, ((yregion[0], image.shape[0] - yregion[1]), (xregion[0], image.shape[1] - xregion[1])), mode=lambda vector, iaxis_pad_width, iaxis, kwargs: 0)
-            weights = cv2.resize(weights, (label.shape[1], label.shape[0]), interpolation=cv2.INTER_LINEAR)
+            weights = cv2.resize(weights, radiance_factor.shape, interpolation=cv2.INTER_LINEAR)
 
-            label[int(y_cell_index + 0.5)][int(x_cell_index + 0.5)][0] = 1.0
-            label[int(y_cell_index + 0.5)][int(x_cell_index + 0.5)][1: 5] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
-            label[:, :, 6] = np.max(np.stack([np.squeeze(label[:, :, 6]), weights], axis=-1), axis=-1)
-        label[:, :, 6] = (label[:, :, 6] - np.min(label[:, :, 6])) / (np.max(label[:, :, 6]) - np.min(label[:, :, 6]))
-        return image, label
+            box_label[0, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = 1.0
+            box_label[1: 5, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
+
+            radiance_factor = np.max(np.stack([radiance_factor, weights], axis=0), axis=0)
+
+            class_label[int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = class_iter
+
+        radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor))
+        return image, box_label, class_label, radiance_factor
     pass
