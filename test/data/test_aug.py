@@ -35,6 +35,7 @@ c31 = c3.add_child(gain())
 c32 = c3.add_child(gain())
 c33 = c3.add_child(gain())
 root.freeze_node()
+c33 = c3.add_child(gain())
 test_aug_logger.debug(len(root))
 for f in root:
     test_aug_logger.debug(f.name)

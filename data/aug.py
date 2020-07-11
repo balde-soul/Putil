@@ -48,6 +48,8 @@ class AugFuncNoOp(AugFunc):
         class func:
             def __call__(self, *args):
                 return args
+            pass
+        self._func = func()
         pass
 
     def _generate_name(self):
@@ -126,7 +128,7 @@ class AugNode:
     def freeze_node(self, generate_funcs=True):
         self._freezed = True
         def raise_freeze_error():
-            raise RuntimeError("node has been freezed")
+            raise RuntimeError("node has been freezed") if self._freezed else None
         self._freezed_exp = raise_freeze_error
         self._leaf_nodes = list()
         if len(self._children) == 0:
@@ -162,13 +164,15 @@ class AugNode:
                 class AugFuncTemp(AugFunc):
                     def __init__(self):
                         AugFunc.__init__(self)
-                        def t(*args):
-                            result = args
-                            for func in func_list_copy:
-                                result = func(*result)
-                                pass
-                            return result
-                        self._func = t
+                        class t:
+                            def __call__(self, *args):
+                                result = args
+                                for func in func_list_copy:
+                                    result = func(*result)
+                                    pass
+                                return result
+                            pass
+                        self._func = t()
                         pass
 
                     def _generate_name(self):

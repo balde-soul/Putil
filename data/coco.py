@@ -105,7 +105,7 @@ class COCOData(pcd.CommonDataWithAug):
         self._dense_pose = dense_pose
         self._captions = captions
         
-        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
+        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
         self._person_keypoints_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
         self._person_keypoints_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
@@ -211,6 +211,8 @@ class COCOData(pcd.CommonDataWithAug):
         # instances
         pass
     pass
+
+pcd.CommonDataManager.register('COCO', COCOData)
 ##In[]:
 #import json
 #person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_val2017.json'
