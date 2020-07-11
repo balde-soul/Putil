@@ -1,4 +1,5 @@
 # coding=utf-8
+#In[]
 import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
@@ -8,6 +9,8 @@ test_aug_logger.setLevel(plog.DEBUG)
 
 from Putil.data.aug import AugNode
 from Putil.data.aug import AugFunc 
+import Putil.data.aug as PAug
+import pickle
 
 class gain(AugFunc):
     def __init__(self):

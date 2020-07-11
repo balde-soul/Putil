@@ -45,7 +45,9 @@ class AugFunc(metaclass=ABCMeta):
 class AugFuncNoOp(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        self._func = lambda *args: args
+        class func:
+            def __call__(self, *args):
+                return args
         pass
 
     def _generate_name(self):
