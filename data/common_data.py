@@ -31,7 +31,7 @@ class CommonDataManager(BaseManager):
 
 
 class ProxyBase(NamespaceProxy):
-    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
+    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', '__len__')
     pass
 
 
@@ -93,7 +93,7 @@ class CommonData(Dataset, metaclass=ABCMeta):
     this class provide a common method to read the data
     '''
     def __init__(self):
-        self._device_batch_mutex = threading.Lock()
+        #self._device_batch_mutex = threading.Lock()
         self._device_batch = None
         self._critical_process = None
         self._epoch_done = False
@@ -185,11 +185,11 @@ class CommonData(Dataset, metaclass=ABCMeta):
         self._index = index
         pass
 
-    def device_batch_operation(self):
-        self._device_batch_.acquire()
-        self._device_batch_operator()
-        self._device_batch_mutex.release()
-        pass
+    #def device_batch_operation(self):
+    #    self._device_batch_.acquire()
+    #    self._device_batch_operator()
+    #    self._device_batch_mutex.release()
+    #    pass
 
     def _data_set_field(self):
         return self._data_field

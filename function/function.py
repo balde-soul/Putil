@@ -1,5 +1,5 @@
 # coding=utf-8
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class Function(ABC):
@@ -7,12 +7,7 @@ class Function(ABC):
         self._func = None
         pass
 
-    def func(self):
-        return self._func
-
-    def calc(self, x):
-        return self._func(x)
-
+    @abstractmethod
     def __call__(self, x):
-        return self.calc(x)
+        pass
     pass

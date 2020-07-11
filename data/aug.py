@@ -11,8 +11,6 @@ AugNodeLogger.setLevel(plog.DEBUG)
 
 class AugFunc(metaclass=ABCMeta):
     def __init__(self):
-        self._name = self._generate_name()
-        self._doc = self._generate_doc()
         self._func = -1 
         pass
 
@@ -28,11 +26,11 @@ class AugFunc(metaclass=ABCMeta):
 
     @property
     def name(self):
-        return self._name
+        return self._generate_name()
 
     @property
     def doc(self):
-        return self._doc
+        return self._generate_doc()
 
     @property
     def param(self):
@@ -45,11 +43,6 @@ class AugFunc(metaclass=ABCMeta):
 class AugFuncNoOp(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        class func:
-            def __call__(self, *args):
-                return args
-            pass
-        self._func = func()
         pass
 
     def _generate_name(self):
@@ -57,10 +50,50 @@ class AugFuncNoOp(AugFunc):
 
     def _generate_doc(self):
         return 'do nothing'
+
+    @property
+    def func(self):
+        return self
+
+    def __call__(self, *args):
+        return args
     pass
 
 def no_op(*args):
     return args
+
+class AugFuncSum(AugFunc):
+    def __init__(self, func_list):
+        AugFunc.__init__(self)
+        self._func_list = copy.deepcopy(func_list)
+        pass
+
+    def __call__(self, *args):
+        result = args
+        for func in self._func_list:
+            result = func(*result)
+            pass
+        return result
+    
+    @property
+    def func(self):
+        return self
+
+    def _generate_name(self):
+        name = ''
+        for fl in self._func_list:
+            name = '{0}-{1}'.format(name, fl.name)
+            pass
+        return name
+    
+    def _generate_doc(self):
+        doc = ''
+        for fl in self._func_list:
+            cell = 'name: {0}; param: {1}; doc: {2}'.format(fl.name, fl.param, fl.doc)
+            doc = '{0}\n{1}'.format(doc, cell)
+            pass
+        return doc 
+    pass
 
 class AugNode:
     '''
@@ -73,8 +106,6 @@ class AugNode:
 
         self._leaf_nodes = list()
         self._funcs = list()
-
-        self._freezed_exp = lambda : None
         pass
 
     @property
@@ -114,22 +145,23 @@ class AugNode:
         return self._parent
     
     def set_parent(self, parent):
-        self._freezed_exp()
+        self._check_freezed()
         self._parent = parent
         pass
 
     def add_child(self, aug_func):
-        self._freezed_exp()
+        self._check_freezed()
         child_node = AugNode(aug_func)
         self._children.append(child_node)
         self._children[-1].set_parent(self)
         return child_node
 
+    def _check_freezed(self):
+        if self._freezed:
+            raise ValueError("node has been freezed")
+
     def freeze_node(self, generate_funcs=True):
         self._freezed = True
-        def raise_freeze_error():
-            raise RuntimeError("node has been freezed") if self._freezed else None
-        self._freezed_exp = raise_freeze_error
         self._leaf_nodes = list()
         if len(self._children) == 0:
             self._leaf_nodes.append(self)
@@ -159,40 +191,7 @@ class AugNode:
             func_list_collection.append(func_list)
             AugNodeLogger.debug('leaf_nodes depth: {0}'.format(depth))
             pass
-            def func_sum(func_list):
-                func_list_copy = copy.deepcopy(func_list)
-                class AugFuncTemp(AugFunc):
-                    def __init__(self):
-                        AugFunc.__init__(self)
-                        class t:
-                            def __call__(self, *args):
-                                result = args
-                                for func in func_list_copy:
-                                    result = func(*result)
-                                    pass
-                                return result
-                            pass
-                        self._func = t()
-                        pass
-
-                    def _generate_name(self):
-                        name = ''
-                        for fl in func_list_copy:
-                            name = '{0}-{1}'.format(name, fl.name)
-                            pass
-                        return name
-                    
-                    def _generate_doc(self):
-                        doc = ''
-                        for fl in func_list_copy:
-                            cell = 'name: {0}; param: {1}; doc: {2}'.format(fl.name, fl.param, fl.doc)
-                            doc = '{0}\n{1}'.format(doc, cell)
-                            pass
-                        return doc 
-                    pass
-                return AugFuncTemp()
-
-            _funcs.append(func_sum(func_list))
+            _funcs.append(AugFuncSum(func_list))
             count += 1
             pass
         AugNodeLogger.debug('leaf count: {0}'.format(count))
@@ -202,5 +201,3 @@ class AugNode:
     def empty_node():
         return AugNode(no_op)
     pass
-
-#In[]:

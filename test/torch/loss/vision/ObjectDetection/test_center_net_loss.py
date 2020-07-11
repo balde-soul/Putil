@@ -1,7 +1,7 @@
 # coding=utf-8
 #In[]
 import Putil.data.coco as coco
-from Putil.torch.loss.vision.ObjectDetection.CenterNetLoss import CenterNetLoss
+from Putil.torch.loss.vision.ObjectDetection.center_net_loss import CenterNetLoss
 from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox as Convertor
 import torch 
 import numpy as np
@@ -9,9 +9,9 @@ import numpy as np
 coco.COCOData.set_seed(64)
 
 loss = CenterNetLoss(0.5, 0.5)
-box_net_out = torch.from_numpy(np.reshape(np.random.sample(81920 * 2), [2, 5, 128, 128]).astype(np.float32))
+box_net_out = torch.from_numpy(np.reshape(np.random.sample(int(81920 * 2 / 16)), [2, 5, 32, 32]).astype(np.float32))
 print(box_net_out.shape)
-class_net_out = torch.from_numpy(np.reshape(np.random.sample(1310720 * 2), [2, 80, 128, 128]).astype(np.float32))
+class_net_out = torch.from_numpy(np.reshape(np.random.sample(int(1310720 * 2 / 16)), [2, 80, 32, 32]).astype(np.float32))
 print(class_net_out.shape)
 
 coco_data = coco.COCOData('/data2/Public_Data/COCO', coco.COCOData.Stage.STAGE_EVAL, '', detection=True)
@@ -26,4 +26,4 @@ radiance_factor = np.stack([radiance_factor_1, radiance_factor_2], axis=0)
 print(box_label.shape)
 print('not zero: {0}'.format(np.count_nonzero(box_label[:, :, 1: 3])))
 
-print('loss: {0}'.format(loss(box_net_out, class_net_out, torch.from_numpy(box_label), torch.from_numpy(class_label).long(), torch.from_numpy(radiance_factor))))
+print('loss: {0}'.format(loss(box_net_out.cuda(), class_net_out.cuda(), torch.from_numpy(box_label).cuda(), torch.from_numpy(class_label).cuda(), torch.from_numpy(radiance_factor).cuda())))

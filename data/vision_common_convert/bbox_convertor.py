@@ -34,9 +34,15 @@ class BBoxToBBoxTranslator:
         self._bbox_in_format = bbox_in_format
         self._bbox_ret_format = bbox_ret_format
 
-        self._translate_func = lambda bbox_input: bbox_input\
-            if self._bbox_in_format == self._bbox_ret_format else self._generate_translate_func()
+        if self._bbox_in_format == self._bbox_ret_format:
+            self._translate_func = self._directed
+        else:
+            self._translate_func = self._generate_translate_func
+            pass
         pass
+
+    def _directed(self, box):
+        return box
 
     def _generate_translate_func(self):
         raise NotImplementedError("this function is not implemented")
@@ -102,16 +108,16 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         box_label = np.zeros(shape=[5, image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
             dtype=np.float32)
         class_label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
-            dtype=np.float32)
+            dtype=np.int64)
         radiance_factor = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
             dtype=np.float32)
         for box_iter, class_iter in zip(boxes, classes): 
             box = self._format_translator(box_iter)
-            x_cell_index = (box[0] + 0.5) // self._sample_rate
-            y_cell_index = (box[1] + 0.5) // self._sample_rate
+            x_cell_index = (box[0]) // self._sample_rate
+            y_cell_index = (box[1]) // self._sample_rate
 
-            x_cell_shift = (box[0] + 0.5) % self._sample_rate
-            y_cell_shift = (box[1] + 0.5) % self._sample_rate
+            x_cell_shift = (box[0]) % self._sample_rate
+            y_cell_shift = (box[1]) % self._sample_rate
             w_cell = box[2] / self._sample_rate
             h_cell = box[3] / self._sample_rate
 
@@ -138,6 +144,6 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
 
             class_label[int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = class_iter
 
-        radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor))
+        radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor) + 1e-32)
         return image, box_label, class_label, radiance_factor
     pass

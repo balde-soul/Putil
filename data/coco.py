@@ -1,6 +1,6 @@
 # coding=utf-8
 from skimage import io
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import cv2
 import time
 from enum import Enum
@@ -95,7 +95,7 @@ class COCOData(pcd.CommonDataWithAug):
         pcd.CommonDataWithAug.__init__(self)
         self._coco_root_dir = coco_root_dir
         self._stage = stage
-        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
+        self._img_root_name = 'val2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
             ('val2017' if self._stage == COCOData.Stage.STAGE_EVAL else 'test2017')
         self._img_root_dir = os.path.join(self._coco_root_dir, self._img_root_name)
         self._detection = detection
@@ -135,7 +135,7 @@ class COCOData(pcd.CommonDataWithAug):
         self._image_test_img_ids = self._captions_coco.getImgIds() if image_test_load else None
 
         # we know use the detectio only
-        self._image_ids = COCOData.__get_common_id([self._instances_img_ids])
+        self._index= COCOData.__get_common_id([self._instances_img_ids])
 
         if self._instances_coco is not None:
             self._instances_category_ids = self._instances_coco.getCatIds()
@@ -154,32 +154,36 @@ class COCOData(pcd.CommonDataWithAug):
          @ret 
          (image, boxes)
         '''
-        image_ann = self._instances_coco.loadImgs(self._image_ids[index])
-        ann_ids = self._instances_coco.getAnnIds(self._image_ids[index])
+        image_ann = self._instances_coco.loadImgs(self._index[index])
+        ann_ids = self._instances_coco.getAnnIds(self._index[index])
         anns = self._instances_coco.loadAnns(ann_ids)
 
-        image = cv2.imread(os.path.join(self._img_root_dir, image_ann[0]['file_name']))
+        image = cv2.imread(os.path.join(self._img_root_dir, image_ann[0]['file_name'])).astype(np.float32)
+        image_min = np.min(np.min(image, axis=0, keepdims=True), axis=1, keepdims=True)
+        image_max = np.max(np.max(image, axis=0, keepdims=True), axis=1, keepdims=True)
+        image = (image - image_min) / (image_max - image_min)
+        assert(image is not None)
 
         # debug check
         for ann in anns:
             box = ann['bbox']
             if (box[0] + box[2] > image.shape[1]) or (box[1] + box[3] > image.shape[0]):
-                print(box)
+                COCODataLogger.info(box)
                 pass
             pass
 
-        plt.axis('off')
-        print(image.shape)
-        plt.imshow(image)
+        #plt.axis('off')
+        ##COCODataLogger.debug(image.shape)
+        #plt.imshow(image)
 
-        resize_width = 512
-        resize_height = 512
+        resize_width = 128
+        resize_height = 128 
         x_scale = float(resize_width) / image.shape[1]
         y_scale = float(resize_height) / image.shape[0]
         image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
 
         self._instances_coco.showAnns(anns, draw_bbox=True)
-        plt.show()
+        #plt.show()
 
         boxes = list()
         classes = list()
@@ -191,9 +195,6 @@ class COCOData(pcd.CommonDataWithAug):
         #for box in boxes:
         #    cv2.rectangle(image, (box[0] - box[])
         return image, boxes, classes
-
-    def __len__(self):
-        return len(self._image_ids)
 
     @staticmethod
     def statistic(coco_root='', year=''):
@@ -212,7 +213,7 @@ class COCOData(pcd.CommonDataWithAug):
         pass
     pass
 
-pcd.CommonDataManager.register('COCO', COCOData)
+pcd.CommonDataManager.register('COCOData', COCOData)
 ##In[]:
 #import json
 #person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_val2017.json'
