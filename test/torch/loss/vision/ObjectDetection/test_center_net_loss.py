@@ -26,4 +26,4 @@ radiance_factor = np.stack([radiance_factor_1, radiance_factor_2], axis=0)
 print(box_label.shape)
 print('not zero: {0}'.format(np.count_nonzero(box_label[:, :, 1: 3])))
 
-loss(box_net_out, class_net_out, torch.from_numpy(box_label), torch.from_numpy(class_label).long(), torch.from_numpy(radiance_factor))
+print('loss: {0}'.format(loss(box_net_out, class_net_out, torch.from_numpy(box_label), torch.from_numpy(class_label).long(), torch.from_numpy(radiance_factor))))

@@ -43,21 +43,27 @@ class CenterNetLoss(Module):
         #print(torch.nn.Conv2d.__doc__)
         #print('Transpose: \n {0}'.format(torch.transpose.__doc__))
         #print(box_net_out[0, 0, :, :].shape)
-        p_obj_loss = torch.pow(1 - box_net_out[:, 0, :, :], self._focal_alpha) * box_label[:, 0, :, :] * torch.log(box_net_out[:, 0, :, :])
+        obj = box_label[:, 0, :, :]
+        n_obj = 1 - box_label[:, 0, :, :]
+        obj_cell_amount = torch.nonzero(obj).size(0)
+        n_obj_cell_amount = torch.nonzero(n_obj).size(0)
+        p_obj_loss = torch.pow(1 - box_net_out[:, 0, :, :], self._focal_alpha) * \
+            box_label[:, 0, :, :] * torch.log(box_net_out[:, 0, :, :])
         n_obj_loss = torch.pow(1 - radiance_factor, self._decay_beta) * \
-            torch.pow(box_net_out[0, 0, :, :], self._focal_alpha) \
-            * (1 - box_label[:, 0, :, :]) * torch.log(box_net_out[:, 0, :, :])
-        obj_loss = -torch.mean(p_obj_loss + n_obj_loss)
+            torch.pow(box_net_out[:, 0, :, :], self._focal_alpha) \
+            * (1 - box_label[:, 0, :, :]) * torch.log(1 - box_net_out[:, 0, :, :])
+        obj_loss = -torch.mean((obj_cell_amount / (obj_cell_amount + n_obj_cell_amount)) * p_obj_loss + \
+            (n_obj_cell_amount / obj_cell_amount + n_obj_cell_amount) * n_obj_loss)
         print('obj_loss: {0}'.format(obj_loss))
 
-        offset_loss = 1.0 / torch.nonzero(box_label[:, 0, :, :]).size(0) \
+        offset_loss = 1.0 / obj_cell_amount \
             * torch.sum(box_label[:, 0, :, :] * \
                 torch.abs(box_label[:, 1: 3, :, :] - box_net_out[:, 1: 3, :, :]))
         print('offset_loss: {0}'.format(offset_loss))
 
-        wh_loss = 1.0 / torch.nonzero(box_label[:, 0, :, :]).size(0) \
+        wh_loss = 1.0 / obj_cell_amount \
             * torch.sum(box_label[:, 0, :, :] * \
-                torch.abs(box_label[:, 3: 5, :, :] - box_net_out[0, 3: 5, :, :]))
+                torch.abs(box_label[:, 3: 5, :, :] - box_net_out[:, 3: 5, :, :]))
         print('wh_loss: {0}'.format(wh_loss))
 
         class_loss = self._class_loss(class_net_out, class_label)
