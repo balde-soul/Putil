@@ -18,18 +18,28 @@ class Gaussian(function.Function):
         self._dim = None
         pass
 
+    def __call__(self, x):
+        de_mean = x - np.transpose(self._Mu)
+        exponent = -0.5 * np.sum(np.matmul(de_mean, np.transpose(self._Sigma_inv)) * de_mean, axis=-1)
+        denominator = np.ma.power(2 * np.pi, self._dim / 2.0) * np.ma.power(self._Sigma_det, 0.5) 
+        ret = 1.0 / denominator * np.exp(exponent)
+        return ret
+
     def set_Sigma(self, Sigma):
         '''
-        params:
-            Sigma: should with shape: dim x dim: var_ij
+         @brief
+         @note
+         @param[in] Sigma
+         list, Sigma [[], []]
         '''
-        assert len(Sigma.shape) == 2
-        assert Sigma.shape[0] == Sigma.shape[1]
+        for sigma in Sigma:
+            assert len(sigma) == len(Sigma)
+            pass
         self._Sigma = Sigma
         self._Sigma_inv = np.linalg.inv(Sigma)
         self._Sigma_det = np.linalg.det(Sigma)
         if self._param_confirm():
-            self._build_func()
+            self._config()
             pass
         else:
             self._Mu =  None
@@ -41,11 +51,12 @@ class Gaussian(function.Function):
         params:
             Mu: should with shape: dim x 1: mu_i
         '''
-        assert len(Mu.shape) == 2
-        assert Mu.shape[1] == 1
-        self._Mu = Mu
+        assert len(Mu) == 2
+        assert len(Mu[0]) == 1
+        assert len(Mu[1]) == 1
+        self._Mu = np.array(Mu)
         if self._param_confirm():
-            self._build_func()
+            self._config()
             pass
         else:
             self._Sigma = None
@@ -54,19 +65,12 @@ class Gaussian(function.Function):
     def _param_confirm(self):
         not_none = (self._Sigma is not None) and (self._Mu is not None)
         if not_none:
-            return self._Mu.shape[0] == self._Sigma.shape[0]
-            pass
+            return len(self._Mu) == len(self._Sigma)
         else:
             return False
-            pass
         pass
 
-    def _build_func(self):
-        self._dim = self._Sigma.shape[0]
-        def func(x):
-            return 1.0 / (np.ma.power(2 * np.pi, self._dim / 2.0) * np.ma.power(self._Sigma_det, 0.5)) * \
-                np.exp(-0.5 * np.sum(np.matmul(np.transpose(self._Sigma_inv), x - self._Mu) * (x - self._Mu), axis=0, keepdims=True))
-            pass
-        self._func = func
+    def _config(self):
+        self._dim = len(self._Sigma)
         pass
     pass

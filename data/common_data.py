@@ -6,7 +6,7 @@ import copy
 import numpy as np
 import colorama
 import Putil.base.logger as plog
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 import threading
 import multiprocessing as mlp
 from multiprocessing import Manager
@@ -23,6 +23,7 @@ DataPutProcessLogger = logger.getChild('DataPutProcess')
 DataPutProcessLogger.setLevel(plog.DEBUG)
 GeneratedDataLogger = logger.getChild('GeneratedData')
 GeneratedDataLogger.setLevel(plog.DEBUG)
+import Putil.data.convert_to_input as convert_to_input
 
 
 class CommonDataManager(BaseManager):
@@ -30,7 +31,7 @@ class CommonDataManager(BaseManager):
 
 
 class ProxyBase(NamespaceProxy):
-    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__')
+    _exposed_ = ('__getattribute__', '__setattr__', '__delattr__', '__len__')
     pass
 
 
@@ -42,11 +43,9 @@ class IndexInfo:
 
     def point(self):
         return self._point
-        pass
 
     def type(self):
         return self._type
-        pass
     pass
 
 
@@ -58,11 +57,9 @@ class DataIndexInfo:
 
     def index_info(self):
         return self._index_info
-        pass
 
     def data_range(self):
         return self._range
-        pass
     pass
 
 
@@ -75,28 +72,28 @@ class GeneratedData:
             pass
         self._indexs.pop(0)
         self._indexs = np.array(self._indexs)
-        self._data = np.concatenate(data_list, axis=0) if len(data_list) > 1 else data_list[0]
+        self._data = np.stack(data_list, axis=0)
         pass
 
     def datas(self):
         return self._data
-        pass
 
     def indexs(self):
         return self._indexs
-        pass
 
     def data(self, index):
         pass
     pass
 
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
 
-class CommonData(ABC):
+class CommonData(Dataset, metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
     '''
     def __init__(self):
-        self._device_batch_mutex = threading.Lock()
+        #self._device_batch_mutex = threading.Lock()
         self._device_batch = None
         self._critical_process = None
         self._epoch_done = False
@@ -105,15 +102,18 @@ class CommonData(ABC):
         self._data_field = None
         # a number(int) which the represent data read now
         self._index = None
+
+        self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
         pass
 
     def data_field(self):
         return self._data_field
-        pass
 
     def index(self):
         return self._index
-        pass
+
+    def set_convert_to_input_method(self, method):
+        self._convert_to_input_method = method
 
     @abstractmethod
     def _restart_process(self, restart_param):
@@ -130,6 +130,14 @@ class CommonData(ABC):
         injecct_param: the argv which the derived class need, dict
         '''
         pass
+
+    @staticmethod
+    def set_seed(seed):
+        np.random.seed(seed)
+        pass
+
+    def generate_from_specified(self, index):
+        return self._convert_to_input_method(*self._generate_from_specified(index))
 
     @abstractmethod
     def _generate_from_specified(self, index):
@@ -177,15 +185,14 @@ class CommonData(ABC):
         self._index = index
         pass
 
-    def device_batch_operation(self):
-        self._device_batch_.acquire()
-        self._device_batch_operator()
-        self._device_batch_mutex.release()
-        pass
+    #def device_batch_operation(self):
+    #    self._device_batch_.acquire()
+    #    self._device_batch_operator()
+    #    self._device_batch_mutex.release()
+    #    pass
 
     def _data_set_field(self):
         return self._data_field
-        pass
 
     def _status_update(self):
         '''
@@ -209,8 +216,16 @@ class CommonData(ABC):
         devices_data = []
         index_data = []
         need_batch = copy.deepcopy(self._device_batch)
-        [devices_data.append(dict()) for device in self._device_batch]
-        [index_data.append(dict()) for device in self._device_batch]
+        [devices_data.append(list()) for device in self._device_batch]
+        [index_data.append(list()) for device in self._device_batch]
+        def data_pack(data, devices_data, device_order, data_index, index_type):
+            for index, value in enumerate(data):
+                devices_data[device_order].append(list()) if index >= len(devices_data[device_order]) else None
+                index_data[device_order].append(list()) if index >= len(index_data[device_order]) else None
+                devices_data[device_order][index].append(value)
+                index_data[device_order][index].append(IndexInfo(data_index, index_type))
+                pass
+            pass
         while np.sum(need_batch) > 0:
             for ergodic_device in enumerate(need_batch):
                 CommonDataLogger.debug(ergodic_device)
@@ -220,95 +235,129 @@ class CommonData(ABC):
                     # get the data
                     if self._epoch_done is False:
                         CommonDataLogger.debug('epoch not end')
-                        data = self._generate_from_specified(self._index)
-                        alignment_batch = None
-                        old_item_name = None
-                        for item in data.items():
-                            CommonDataLogger.debug('deal with {0}'.format(item[0]))
-                            alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
-                            assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
-                            old_item_name = item[0]
-                            pass
+                        data = self.generate_from_specified(self._index)
                         self._status_update()
-                        need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
-                        for key, value in data.items():
-                            devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                            index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                            devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                            index_data[device_order][key].append(IndexInfo(self._index, 'normal'))
-                            pass
-                        CommonDataLogger.debug('fix over')
+                        data_pack(data, devices_data, device_order, self._index, 'normal')
+                        need_batch[device_order] -= 1
+                        CommonDataLogger.debug('pack the data')
                         self._index += 1
                         pass
                     else:
                         def deal_with_epoch_done():
-                            field = self._data_set_field()
+                            #field = self._data_set_field()
+                            field = list(range(0, len(self)))
 
                             def func():
                                 random_sample = np.random.choice(field)
-                                return self._generate_from_specified(random_sample), random_sample
-                                pass
+                                return self.generate_from_specified(random_sample), random_sample
                             return func
-                            pass
                         func_for_deal_with_epoch_done = deal_with_epoch_done() if func_for_deal_with_epoch_done is None else func_for_deal_with_epoch_done
                         if self._critical_process == 'allow_low' and batch != self._device_batch[device_order]:
-                            CommonDataLogger.debug('method: allow_low and already data in device')
+                            CommonDataLogger.debug('method: allow_low and already data in device, done')
                             need_batch[device_order] = 0
                             pass
                         elif self._critical_process == 'allow_low' and batch == self._device_batch[device_order]:
-                            CommonDataLogger.debug('method: allow_low and no data in device')
+                            CommonDataLogger.debug('method: allow_low and no data in device, feed one')
                             data, index = func_for_deal_with_epoch_done()
+                            #for key, value in data.items():
+                            data_pack(data, devices_data, device_order, index, 'allow_low')
                             need_batch[device_order] = 0
-                            for key, value in data.items():
-                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][key].append(IndexInfo(index, 'allow_low'))
                             pass
                         elif self._critical_process == 'random_fill':
                             CommonDataLogger.debug('method: random_fill')
                             data, index = func_for_deal_with_epoch_done()
-                            alignment_batch = None
-                            for item in data.items():
-                                alignment_batch = item[1].shape[0] if alignment_batch is None else alignment_batch
-                                assert alignment_batch == item[1].shape[0], CommonDataLogger.fatal('the return data should be alignmented in batch {0} in {1} vs {2} in {3}'.format(alignment_batch, old_item_name, item[0], item[1].shape[0]))
-                                old_item_name = item[0]
-                                pass
-                            need_batch[device_order] = 0 if alignment_batch > batch else batch - alignment_batch
-                            for key, value in data.items():
-                                devices_data[device_order][key] = list() if key not in devices_data[device_order] else devices_data[device_order][key]
-                                index_data[device_order][key] = list() if key not in index_data[device_order] else index_data[device_order][key]
-                                devices_data[device_order][key].append(value[0: batch] if value.shape[0] > batch else value)
-                                index_data[device_order][key].append(IndexInfo(index, 'random_fill'))
+                            #for key, value in data.items():
+                            data_pack(data, devices_data, device_order, index, 'random_fill')
+                            need_batch[device_order] -= 1
                             pass
                         else:
                             CommonDataLogger.fatal('this should not happen')
                             pass
                         pass
-                    # add the data to the
                     pass
                 else:
                     pass
                 pass
             pass
         for i in devices_data:
-            for key, value in i.items():
+            for index, value in enumerate(i):
                 for d in value:
-                    CommonDataLogger.debug('{0} {1}'.format(key, d.shape))
+                    CommonDataLogger.debug('{0} {1}'.format(index, d.shape))
                     pass
                 pass
             pass
         CommonDataLogger.debug('going to generate data')
-        data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
+        #data = [{key: GeneratedData(datas[key], indexs[key]) for key in datas.keys()} for datas, indexs in zip(devices_data, index_data)]
+        data = [[GeneratedData(data, index) for data, index in zip(datas, indexs)] for datas, indexs in zip(devices_data, index_data)]
         # data = [GeneratedData(datas, indexs) for datas, indexs in zip(devices_data, index_data)]
         return data
-        pass
 
     def generate_epoch_done(self):
         return self._epoch_done
+
+    def __getitem__(self, index):
+        return self.generate_from_specified(index)
+
+    def __len__(self):
+        return len(self._data_field)
+    pass
+
+import Putil.data.aug as Aug
+
+class CommonDataWithAug(CommonData, metaclass=ABCMeta):
+    '''
+     @brief the CommonData which support aug
+     @note
+        this class complete the generate_from_specified which contain aug
+    '''
+    def __init__(self):
+        CommonData.__init__(self)
+        self._aug_node = Aug.AugNode(Aug.AugFuncNoOp())
+        self._aug_node.freeze_node()
+        pass
+
+    def __len__(self):
+        return len(self._index) * len(self._aug_node) 
+
+    def set_aug_node_root(self, aug_node_root):
+        self._aug_node = aug_node_root
+        pass
+
+    def _generate_from_specified(self, index):
+        oindex = index // len(self._aug_node)
+        aindex = index % len(self._aug_node)
+        return self._aug_node[aindex](*self._generate_from_origin_index(oindex))
+    
+    @abstractmethod
+    def _generate_from_origin_index(self, oindex):
+        '''
+         @brief return the data which is origin read from the dataset(without augment), tuple
+        '''
         pass
     pass
 
+class CombineCommonData(CommonDataWithAug):
+    def __init__(self, common_data_list):
+        '''
+         @brief combine some CommonData and provide the method to get the data
+        '''
+        self._common_data_list = common_data_list
+        self._size_list = [len(common_data) for common_data in self._common_data_list]
+        self._size_ofs = [sum(self._size_list[0: ofs]) for ofs in range(0, len(self._size_list))]
+        self._len = sum(self._size_list)
+        pass
+
+    def __len__(self):
+        return self._len
+
+    def __getitem__(self, index):
+        ofs = 0
+        while(index >= self._size_ofs[ofs]):
+            ofs += 1
+            pass
+        c_ofs = index - self._size_ofs[ofs]
+        return self._common_data_list[ofs + 1][c_ofs]
+    pass
 
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
     plog.api_function_log(GeneratorLogger, 'generator start')
@@ -329,16 +378,14 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
         try:
             get_data = data.generate_data()
             pass
-        except Exception as ex:
+        except Exception as e:
             GeneratorLogger.fatal('str(Exception):\t', str(Exception))
             GeneratorLogger.fatal('str(e):\t\t', str(e))
             GeneratorLogger.fatal('repr(e):\t', repr(e))
-            GeneratorLogger.fatal('e.message:\t', e.message)
             GeneratorLogger.fatal('traceback.print_exc():', traceback.print_exc())
             GeneratorLogger.fatal('traceback.format_exc():\n%s' % traceback.format_exc())
-            GeneratorLogger.fatal(traceback.format_tb(ex.__traceback__))
-            raise ex
-            pass
+            GeneratorLogger.fatal(traceback.format_tb(e.__traceback__))
+            raise e
         flag_sync_mutex.acquire()
         data_queue.put(get_data)
         epoch_done_flag.value = data.generate_epoch_done()
@@ -348,7 +395,6 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
         pass
     plog.api_function_log(GeneratorLogger, 'data put process end')
     pass
-
 
 class DataPutProcess:
     def __init__(self, data, manager, pool, *argc, **argv):
@@ -406,7 +452,8 @@ class DataPutProcess:
             get = self._data_queue.get()
             alignment_index = None
             the_first = get[0]
-            for k, v in the_first.items():
+            #for k, v in the_first.items():
+            for _, v in enumerate(the_first):
                 alignment_index = v.indexs()[0].index_info().point() if alignment_index is None else alignment_index
                 assert alignment_index == v.indexs()[0].index_info().point()
             self._data.reset_index(alignment_index)
@@ -426,7 +473,6 @@ class DataPutProcess:
         self.continue_queue()
 
         return before_generate_after_inject_data_queue
-        pass
 
     def continue_queue(self):
         plog.api_function_log(DataPutProcessLogger, 'continue the queue')
@@ -441,14 +487,12 @@ class DataPutProcess:
         flag = (self._data_queue.empty() is False or self._epoch_done_flag.value is False)
         self._flag_sync_mutex.release()
         return flag
-        pass
 
     def paused_and_has_next(self):
         self._flag_sync_mutex.acquire()
         flag = self._data_queue.empty() is False and self._paused is True
         self._flag_sync_mutex.release()
         return flag
-        pass
 
     def restart(self, **kwargs):
         plog.api_function_log(DataPutProcessLogger, 'restart')
@@ -504,35 +548,27 @@ class DataPutProcess:
 
     def _default_device_batch(self):
         return [1]
-        pass
 
     def _default_critical_process(self):
         return 'random_fill'
-        pass
 
     def Count(self):
         return self._count.value
-        pass
 
     def DataQueue(self):
         return self._data_queue
-        pass
 
     def EpochDoneCond(self):
         return self._epoch_done_cond
-        pass
 
     def EpochDoneFlag(self):
         return self._epoch_done_flag
-        pass
 
     def queue_process_ret(self):
         return self._ret
-        pass
     
     def __iter__(self):
         return self
-        pass
 
     def __next__(self):
         if self.has_next():

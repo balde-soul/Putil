@@ -1,9 +1,7 @@
 # coding=utf-8
 # this file is called before logger config
 # Putil
-import Putil.base.logger as plog
 import Putil.base.dict_base as pdb
-
 from abc import ABCMeta, abstractmethod
 import argparse
 
@@ -23,7 +21,6 @@ class ProjectArg(metaclass=ABCMeta):
     @property
     def parser(self):
         return self._parser
-        pass
     pass
 
 
@@ -33,7 +30,6 @@ def args_pack(args):
     '''
     collection = args.__dict__
     return pdb.dict_back(collection)
-    pass
 
 
 def args_log(args, logger):

@@ -11,7 +11,6 @@ def dict_pack(d):
         origin = '{0}{1}-{2}'.format('' if origin == '' else '{0}_'.format(origin), k, v)
         pass
     return origin
-    pass
 
 
 def dict_log(d, logger):
