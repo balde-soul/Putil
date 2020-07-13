@@ -11,7 +11,6 @@ AugNodeLogger.setLevel(plog.DEBUG)
 
 class AugFunc(metaclass=ABCMeta):
     def __init__(self):
-        self._func = -1 
         pass
 
     def _generate_name(self):
@@ -22,7 +21,7 @@ class AugFunc(metaclass=ABCMeta):
 
     @property
     def func(self):
-        return self._func
+        return self
 
     @property
     def name(self):
@@ -36,8 +35,9 @@ class AugFunc(metaclass=ABCMeta):
     def param(self):
         return 'not implemented'
 
+    @abstractmethod
     def __call__(self, *args):
-        return self._func(*args)
+        raise NotImplementedError("this func is not implement")
     pass
 
 class AugFuncNoOp(AugFunc):
@@ -149,9 +149,8 @@ class AugNode:
         self._parent = parent
         pass
 
-    def add_child(self, aug_func):
+    def add_child(self, child_node):
         self._check_freezed()
-        child_node = AugNode(aug_func)
         self._children.append(child_node)
         self._children[-1].set_parent(self)
         return child_node
@@ -166,10 +165,15 @@ class AugNode:
         if len(self._children) == 0:
             self._leaf_nodes.append(self)
         for child in self._children:
-            self._leaf_nodes += child.freeze_node()
+            child.freeze_node()
+            self._leaf_nodes += child._leaf_nodes
             pass
         
         self._funcs, self._funcs_list_collection = AugNode.generate_func_sum(self._leaf_nodes, self) if generate_funcs is True else None
+        return self
+
+    @property
+    def LeafNodes(self):
         return self._leaf_nodes
 
     @staticmethod

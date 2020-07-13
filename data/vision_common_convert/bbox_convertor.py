@@ -26,8 +26,9 @@ class BBoxToBBoxTranslator:
         LTWHRC = 0
         # the [left_top_col_index, left_top_row_index, width, height]
         LTWHCR = 1
-        #LTWHCR = 2
-        #LTWHCR = 1
+        # 
+        LTRBRC = 2
+        LTRBCR = 3
         pass
 
     def __init__(self, bbox_in_format, bbox_ret_format):
@@ -39,6 +40,9 @@ class BBoxToBBoxTranslator:
         else:
             self._translate_func = self._generate_translate_func
             pass
+        pass
+
+    def ToLTRB(self):
         pass
 
     def _directed(self, box):

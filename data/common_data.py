@@ -92,28 +92,6 @@ class CommonData(Dataset, metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
     '''
-    def __init__(self):
-        #self._device_batch_mutex = threading.Lock()
-        self._device_batch = None
-        self._critical_process = None
-        self._epoch_done = False
-
-        # a list which contain number(int) which represent the index of the data
-        self._data_field = None
-        # a number(int) which the represent data read now
-        self._index = None
-
-        self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
-        pass
-
-    def data_field(self):
-        return self._data_field
-
-    def index(self):
-        return self._index
-
-    def set_convert_to_input_method(self, method):
-        self._convert_to_input_method = method
 
     @abstractmethod
     def _restart_process(self, restart_param):
@@ -131,14 +109,6 @@ class CommonData(Dataset, metaclass=ABCMeta):
         '''
         pass
 
-    @staticmethod
-    def set_seed(seed):
-        np.random.seed(seed)
-        pass
-
-    def generate_from_specified(self, index):
-        return self._convert_to_input_method(*self._generate_from_specified(index))
-
     @abstractmethod
     def _generate_from_specified(self, index):
         '''
@@ -146,6 +116,36 @@ class CommonData(Dataset, metaclass=ABCMeta):
         the format of the data returned should be: {key: data.follow(shape: [batch, **])}
         '''
         pass
+    def __init__(self):
+        #self._device_batch_mutex = threading.Lock()
+        self._device_batch = None
+        self._critical_process = None
+        self._epoch_done = False
+
+        # a list which contain number(int) which represent the index of the data
+        self._data_field = None
+        # a number(int) which the represent data read now
+        self._index = None
+
+        self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
+        pass
+
+    @staticmethod
+    def set_seed(seed):
+        np.random.seed(seed)
+        pass
+
+    def data_field(self):
+        return self._data_field
+
+    def index(self):
+        return self._index
+
+    def set_convert_to_input_method(self, method):
+        self._convert_to_input_method = method
+
+    def generate_from_specified(self, index):
+        return self._convert_to_input_method(*self._generate_from_specified(index))
 
     def restart_data(self, restart_param):
         '''

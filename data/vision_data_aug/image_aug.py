@@ -1,5 +1,4 @@
 # coding=utf-8
-
 import random
 import numpy as np
 import cv2
@@ -7,31 +6,37 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import Putil.data.aug as pAug
-from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox
-from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
+
 
 class HorizontalFlip(pAug.AugFunc):
-    '''
-     @brief aug the bboxes
-     @note
-     @ret
-    '''
+
+    """Randomly horizontally flips the Image with the probability *p*
+
+    Parameters
+    ----------
+    p: float
+        The probability with which the image is flipped
+
+
+    Returns
+    -------
+
+    numpy.ndaaray
+        Flipped image in the numpy format of shape `HxWxC`
+
+    numpy.ndarray
+        Tranformed bounding box co-ordinates of the format `n x 4` where n is
+        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+
+    """
+
     def __init__(self):
         pass
 
     def __call__(self, *args):
-        '''
-         @brief 
-         @param[in] args
-         [0] image [height, width, channel]
-         [1] bboxes list format LTWHCR
-         @ret bboxes list format LTWHCR
-        '''
         img = args[0]
-        bboxes = args[1]
-        bboxes = np.array(bboxes)
-        bboxes[:, 0] = img.shape[1] - 1 - bboxes[:, 0] + bboxes[:, 2]
-        return bboxes.tolist()
+        img = img[:, ::-1, :]
+        return img
 
 
 class RandomScale(object):

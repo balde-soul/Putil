@@ -17,10 +17,10 @@ pickle.dumps(PAug.AugFuncNoOp())
 class gain(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        def g(*args):
-            return args[0] + 1, args[1]
-        self._func = g
         pass
+
+    def __call__(self, *args):
+        return args[0] + 1, args[1]
 
     def _generate_name(self):
         return 'gain'
@@ -30,15 +30,15 @@ class gain(AugFunc):
     pass
 
 root = AugNode(gain())
-c1 = root.add_child(gain())
-c2 = root.add_child(gain())
-c3 = root.add_child(gain())
-c31 = c3.add_child(gain())
-c32 = c3.add_child(gain())
-c33 = c3.add_child(gain())
+c1 = root.add_child(AugNode(gain()))
+c2 = root.add_child(AugNode(gain()))
+c3 = root.add_child(AugNode(gain()))
+c31 = c3.add_child(AugNode(gain()))
+c32 = c3.add_child(AugNode(gain()))
+c33 = c3.add_child(AugNode(gain()))
 root.freeze_node()
 try:
-    c33 = c3.add_child(gain())
+    c33 = c3.add_child(AugNode(gain()))
 except Exception as e:
     pass
 test_aug_logger.debug(len(root))
