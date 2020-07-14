@@ -1,4 +1,4 @@
-##In[1]:
+#In[1]:
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import Putil.sampling.MCMC.metropolis_hasting as mh

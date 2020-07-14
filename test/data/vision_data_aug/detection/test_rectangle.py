@@ -1,12 +1,15 @@
 # coding=utf-8
 #In[]:
 import numpy as np
+import os
+import random
 import cv2
 import Putil.data.aug as pAug
 from Putil.data.common_data import CommonDataWithAug
 
 from Putil.data.vision_data_aug.detection.rectangle import HorizontalFlip as BH
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
+from Putil.data.vision_data_aug.detection.rectangle import RandomResampleCombine as RRC
 from Putil.data.aug import AugFunc
 
 class Data(CommonDataWithAug):
@@ -30,7 +33,8 @@ class Data(CommonDataWithAug):
         self._index = [0]
     
     def _generate_from_origin_index(self, index):
-        image = cv2.imread('../test_image.jpg')
+        img_path = os.path.join(os.path.split(os.path.split(os.path.abspath(__file__))[0])[0], 'test_image.jpg')
+        image = cv2.imread(img_path)
         assert image is not None
         bboxes = [
             [5, 5, image.shape[1] // 2, image.shape[0] // 2], 
@@ -42,7 +46,7 @@ class Data(CommonDataWithAug):
         return image, bboxes
 
 
-class CombineAugFunc(AugFunc):
+class CombineAugFuncHF(AugFunc):
     def __init__(self):
         self._image_aug = IH()
         self._bboxes_aug = BH()
@@ -55,10 +59,29 @@ class CombineAugFunc(AugFunc):
         image = self._image_aug(image)
         bboxes = self._bboxes_aug(image, bboxes)
         return image, bboxes
+    pass
+
+
+class CombineAugFuncRRC(AugFunc):
+    def __init__(self):
+        self._aug = RRC(scale=3)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
 
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
-root_node.add_child(pAug.AugNode(CombineAugFunc()))
+HFNode = root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
+HFNode.add_child(pAug.AugNode(CombineAugFuncRRC()))
+HFNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+RRCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRC()))
+RRCNode.add_child(pAug.AugNode(CombineAugFuncHF()))
+RRCNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 root_node.freeze_node()
 
 data = Data()

@@ -51,9 +51,8 @@ class Gaussian(function.Function):
         params:
             Mu: should with shape: dim x 1: mu_i
         '''
-        assert len(Mu) == 2
-        assert len(Mu[0]) == 1
-        assert len(Mu[1]) == 1
+        for mu in Mu[1: ]:
+            assert len(mu) == len(Mu[0])
         self._Mu = np.array(Mu)
         if self._param_confirm():
             self._config()

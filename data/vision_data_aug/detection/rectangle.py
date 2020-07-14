@@ -9,8 +9,10 @@ import os
 import Putil.data.aug as pAug
 from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox
 from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
+from Putil.data.vision_data_aug.image_aug import Resample as IR
+from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
 
-class HorizontalFlip(pAug.AugFunc):
+class HorizontalFlip:
     '''
      @brief aug the bboxes
      @note
@@ -19,7 +21,7 @@ class HorizontalFlip(pAug.AugFunc):
     def __init__(self):
         pass
 
-    def __call__(self, *args):
+    def __call__(self, image, bboxes):
         '''
          @brief 
          @param[in] args
@@ -27,14 +29,25 @@ class HorizontalFlip(pAug.AugFunc):
          [1] bboxes list format LTWHCR
          @ret bboxes list format LTWHCR
         '''
-        img = args[0]
-        bboxes = args[1]
         bboxes = np.array(bboxes)
-        bboxes[:, 0] = img.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
+        bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
         return bboxes.tolist()
 
+class CombineAugFuncHF(pAug.AugFunc):
+    def __init__(self):
+        self._image_aug = IH()
+        self._bboxes_aug = HorizontalFlip()
+        pass
 
-class RandomScale(object):
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        image = self._image_aug(image)
+        bboxes = self._bboxes_aug(image, bboxes)
+        return image, bboxes
+
+class Resample:
     """Randomly scales an image    
     
     
@@ -59,12 +72,43 @@ class RandomScale(object):
     numpy.ndarray
         Tranformed bounding box co-ordinates of the format `n x 4` where n is 
         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
     """
 
     def __init__(self, scale = 0.2, diff = False):
-        self.scale = scale
+        pass
 
+    def __call__(self, resample_scale_x, resample_scale_y, image, bboxes):
+        '''
+         @brief
+         @note
+         @param[in] resample_scale_x
+         the scale for resample follow the height
+         @param[in] resample_scale_y
+         the scale for resample follow the width
+         @param[in] image
+         the image with format [height, widht[, channel]]
+         @param[in] bboxes 
+         a list which contain the bound boxes in format LTWHCR with list
+         @ret 
+         a list which contain the bound boxes in format LTWHCR with list
+        '''
+        img_shape = image.shape
+
+        bboxes = np.array(bboxes)
+
+        # : 需要检查是否越界
+        bboxes[:, : 4] *= [resample_scale_x, resample_scale_y, resample_scale_x, resample_scale_y]
+        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
+        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
+        bboxes[:, 2] = np.min([bboxes[:, 2], img_shape[1] - 1 - bboxes[:, 0]], axis=0)
+        bboxes[:, 3] = np.min([bboxes[:, 3], img_shape[0] - 1 - bboxes[:, 1]], axis=0)
+
+        return bboxes.tolist()
+
+
+class RandomResampleCombine(pAug.AugFunc):
+    def __init__(self, scale=0.2, diff=False):
+        self.scale = scale
         
         if type(self.scale) == tuple:
             assert len(self.scale) == 2, "Invalid range"
@@ -72,116 +116,32 @@ class RandomScale(object):
             assert self.scale[1] > -1, "Scale factor can't be less than -1"
         else:
             assert self.scale > 0, "Please input a positive float"
-            self.scale = (max(-1, -self.scale), self.scale)
+            self.scale = (max(-1, - self.scale), self.scale)
         
         self.diff = diff
 
-        
+        self._image_scale = IR()
+        self._bboxes_scale = Resample()
+        pass
 
-    def __call__(self, img, bboxes):
-    
-        
-        #Chose a random digit to scale by 
-        
-        img_shape = img.shape
-        
+    def __call__(self, *args):
+        img = args[0]
+        bboxes = args[1]
+
         if self.diff:
             scale_x = random.uniform(*self.scale)
             scale_y = random.uniform(*self.scale)
         else:
             scale_x = random.uniform(*self.scale)
             scale_y = scale_x
-            
-    
-        
+
         resize_scale_x = 1 + scale_x
         resize_scale_y = 1 + scale_y
-        
-        img=  cv2.resize(img, None, fx = resize_scale_x, fy = resize_scale_y)
-        
-        bboxes[:,:4] *= [resize_scale_x, resize_scale_y, resize_scale_x, resize_scale_y]
-        
-        
-        
-        canvas = np.zeros(img_shape, dtype = np.uint8)
-        
-        y_lim = int(min(resize_scale_y,1)*img_shape[0])
-        x_lim = int(min(resize_scale_x,1)*img_shape[1])
-        
-        
-        canvas[:y_lim,:x_lim,:] =  img[:y_lim,:x_lim,:]
-        
-        img = canvas
-        bboxes = clip_box(bboxes, [0,0,1 + img_shape[1], img_shape[0]], 0.25)
-    
-    
+
+        img = self._image_scale(resize_scale_x, resize_scale_y, img)
+        bboxes = self._bboxes_scale(resize_scale_x, resize_scale_y, img, bboxes)
         return img, bboxes
 
-
-class Scale(object):
-    """Scales the image    
-        
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    
-    Parameters
-    ----------
-    scale_x: float
-        The factor by which the image is scaled horizontally
-        
-    scale_y: float
-        The factor by which the image is scaled vertically
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Scaled image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
-    def __init__(self, scale_x = 0.2, scale_y = 0.2):
-        self.scale_x = scale_x
-        self.scale_y = scale_y
-        
-
-    def __call__(self, img, bboxes):
-    
-        
-        #Chose a random digit to scale by 
-        
-        img_shape = img.shape
-        
-        
-        resize_scale_x = 1 + self.scale_x
-        resize_scale_y = 1 + self.scale_y
-        
-        img=  cv2.resize(img, None, fx = resize_scale_x, fy = resize_scale_y)
-        
-        bboxes[:,:4] *= [resize_scale_x, resize_scale_y, resize_scale_x, resize_scale_y]
-        
-        
-        
-        canvas = np.zeros(img_shape, dtype = np.uint8)
-        
-        y_lim = int(min(resize_scale_y,1)*img_shape[0])
-        x_lim = int(min(resize_scale_x,1)*img_shape[1])
-        
-        
-        canvas[:y_lim,:x_lim,:] =  img[:y_lim,:x_lim,:]
-        
-        img = canvas
-        bboxes = clip_box(bboxes, [0,0,1 + img_shape[1], img_shape[0]], 0.25)
-
-    
-        return img, bboxes  
-    
 
 class RandomTranslate(object):
     """Randomly Translates the image    
@@ -222,7 +182,7 @@ class RandomTranslate(object):
 
         else:
             assert self.translate > 0 and self.translate < 1
-            self.translate = (-self.translate, self.translate)
+            self.translate = (- self.translate, self.translate)
             
             
         self.diff = diff

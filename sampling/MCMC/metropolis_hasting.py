@@ -15,14 +15,11 @@ class MetropolisHasting(mcmc.MCMC):
         if u < acc:
             self._x = new_x
             return new_x 
-            pass
         else:
             return self._x
-            pass
-        pass
+
     def __get_tilde_p(self, x):
         return self._pdf_func(x) * 20
-        pass
     pass
 
 
