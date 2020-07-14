@@ -11,14 +11,16 @@ from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterB
 from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
 from Putil.data.vision_data_aug.image_aug import Resample as IR
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
+from Putil.data.vision_data_aug.image_aug import Translate as IT
 
-class HorizontalFlip:
+class HorizontalFlip(IH):
     '''
      @brief aug the bboxes
      @note
      @ret
     '''
     def __init__(self):
+        IH.__init__(self)
         pass
 
     def __call__(self, image, bboxes):
@@ -29,6 +31,8 @@ class HorizontalFlip:
          [1] bboxes list format LTWHCR
          @ret bboxes list format LTWHCR
         '''
+        image = args[0]
+        bboxes = args[1]
         bboxes = np.array(bboxes)
         bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
         return bboxes.tolist()
@@ -47,66 +51,44 @@ class CombineAugFuncHF(pAug.AugFunc):
         bboxes = self._bboxes_aug(image, bboxes)
         return image, bboxes
 
-class Resample:
-    """Randomly scales an image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    scale: float or tuple(float)
-        if **float**, the image is scaled by a factor drawn 
-        randomly from a range (1 - `scale` , 1 + `scale`). If **tuple**,
-        the `scale` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Scaled image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-    """
-
-    def __init__(self, scale = 0.2, diff = False):
+class Resample(IR):
+    def __init__(self, diff = False):
+        IR.__init__(self)
         pass
 
-    def __call__(self, resample_scale_x, resample_scale_y, image, bboxes):
+    def __call__(self, *args):
         '''
          @brief
          @note
-         @param[in] resample_scale_x
-         the scale for resample follow the height
-         @param[in] resample_scale_y
-         the scale for resample follow the width
-         @param[in] image
+         @param[in] args tuple point *args
+          args[0] image
          the image with format [height, widht[, channel]]
-         @param[in] bboxes 
+          args[1] bboxes 
          a list which contain the bound boxes in format LTWHCR with list
          @ret 
          a list which contain the bound boxes in format LTWHCR with list
         '''
+        assert (self._resample_scale_x is not None) and (self._resample_scale_y is not None)
+        image = args[0]
+        bboxes = args[1]
+
         img_shape = image.shape
 
         bboxes = np.array(bboxes)
 
         # : 需要检查是否越界
-        bboxes[:, : 4] *= [resample_scale_x, resample_scale_y, resample_scale_x, resample_scale_y]
+        bboxes[:, : 4] *= [self._resample_scale_x, self._resample_scale_y, self._resample_scale_x, self._resample_scale_y]
         bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
         bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
         bboxes[:, 2] = np.min([bboxes[:, 2], img_shape[1] - 1 - bboxes[:, 0]], axis=0)
         bboxes[:, 3] = np.min([bboxes[:, 3], img_shape[0] - 1 - bboxes[:, 1]], axis=0)
-
+        self._aug_done()
         return bboxes.tolist()
 
-
 class RandomResampleCombine(pAug.AugFunc):
+    '''
+     @brief RandomResampleImageAndBBoxes
+    '''
     def __init__(self, scale=0.2, diff=False):
         self.scale = scale
         
@@ -116,7 +98,7 @@ class RandomResampleCombine(pAug.AugFunc):
             assert self.scale[1] > -1, "Scale factor can't be less than -1"
         else:
             assert self.scale > 0, "Please input a positive float"
-            self.scale = (max(-1, - self.scale), self.scale)
+            self.scale = (max(-1, -self.scale), self.scale)
         
         self.diff = diff
 
@@ -138,8 +120,12 @@ class RandomResampleCombine(pAug.AugFunc):
         resize_scale_x = 1 + scale_x
         resize_scale_y = 1 + scale_y
 
-        img = self._image_scale(resize_scale_x, resize_scale_y, img)
-        bboxes = self._bboxes_scale(resize_scale_x, resize_scale_y, img, bboxes)
+        self._image_scale.resample_scale_x = resize_scale_x
+        self._image_scale.resample_scale_y = resize_scale_y
+        img = self._image_scale(img)
+        self._bboxes_scale.resample_scale_x = resize_scale_x
+        self._bboxes_scale.resample_scale_y = resize_scale_y
+        bboxes = self._bboxes_scale(img, bboxes)
         return img, bboxes
 
 
@@ -222,53 +208,22 @@ class RandomTranslate(object):
         
         
         bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
-        
-    
-        
-    
-        
         return img, bboxes
     
 
-class Translate(object):
-    """Randomly Translates the image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    translate: float or tuple(float)
-        if **float**, the image is translated by a factor drawn 
-        randomly from a range (1 - `translate` , 1 + `translate`). If **tuple**,
-        `translate` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Translated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
-    def __init__(self, translate_x = 0.2, translate_y = 0.2, diff = False):
-        self.translate_x = translate_x
-        self.translate_y = translate_y
-
-        assert self.translate_x > 0 and self.translate_x < 1
-        assert self.translate_y > 0 and self.translate_y < 1
+class Translate(IT):
+    def __init__(self):
+        IT.__init__(self)
  
 
-    def __call__(self, img, bboxes):        
-        #Chose a random digit to scale by 
-        img_shape = img.shape
+    def __call__(self, *args):
+        assert self.translate_x > 0 and self.translate_x < 1
+        assert self.translate_y > 0 and self.translate_y < 1
+
+        image = args[0]
+        bboxes = args[1]
+
+        image_shape = image.shape
         
         #translate the image
         
@@ -276,36 +231,41 @@ class Translate(object):
         translate_factor_x = self.translate_x
         translate_factor_y = self.translate_y
         
-            
-        canvas = np.zeros(img_shape).astype(np.uint8)
+        canvas = np.zeros(image_shape).astype(np.uint8)
 
-        
         #get the top-left corner co-ordinates of the shifted box 
-        corner_x = int(translate_factor_x*img.shape[1])
-        corner_y = int(translate_factor_y*img.shape[0])
-        
-        
+        corner_x = int(translate_factor_x * image.shape[1])
+        corner_y = int(translate_factor_y * image.shape[0])
         
         #change the origin to the top-left corner of the translated box
-        orig_box_cords =  [max(0,corner_y), max(corner_x,0), min(img_shape[0], corner_y + img.shape[0]), min(img_shape[1],corner_x + img.shape[1])]
+        orig_box_cords =  [
+            max(corner_y, 0), 
+            max(corner_x ,0), 
+            min(image_shape[0], corner_y + image.shape[0]), 
+            min(image_shape[1], corner_x + image.shape[1])
+            ]
 
+        mask = image[max(-corner_y, 0): min(image.shape[0], -corner_y + image_shape[0]), \
+            max(-corner_x, 0): min(image.shape[1], -corner_x + image_shape[1]), :]
+        canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
+        image = canvas
         
-        
+        bboxes[:, : 4] += [corner_x, corner_y, corner_x, corner_y]
 
-        mask = img[max(-corner_y, 0):min(img.shape[0], -corner_y + img_shape[0]), max(-corner_x, 0):min(img.shape[1], -corner_x + img_shape[1]),:]
-        canvas[orig_box_cords[0]:orig_box_cords[2], orig_box_cords[1]:orig_box_cords[3],:] = mask
-        img = canvas
-        
-        bboxes[:,:4] += [corner_x, corner_y, corner_x, corner_y]
-        
-        
-        bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
-        
+        # : 需要检查是否越界
+        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
+        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
+        bboxes[:, 2] = np.min([bboxes[:, 2], image_shape[1] - 1 - bboxes[:, 0]], axis=0)
+        return image, bboxes
+    pass
 
-        
 
-        
-        return img, bboxes
+class TranslateCombine(pAug.AugFunc):
+    def __init__(self):
+        pass
+    
+    def __call__(self, *args):
+        pass
     
     
 class RandomRotate(object):

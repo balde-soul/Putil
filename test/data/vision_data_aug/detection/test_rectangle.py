@@ -64,7 +64,7 @@ class CombineAugFuncHF(AugFunc):
 
 class CombineAugFuncRRC(AugFunc):
     def __init__(self):
-        self._aug = RRC(scale=3)
+        self._aug = RRC(scale=1)
         pass
 
     def __call__(self, *args):
@@ -94,8 +94,8 @@ print(len(data))
 
 for index in range(0, len(data)):
     image, bboxes = data[index]
-    print(bboxes)
-    print(image.shape)
+    #print(bboxes)
+    #print(image.shape)
     plt.imshow(image[:, :, ::-1])
     currentAxis=plt.gca()
     for bbox in bboxes:

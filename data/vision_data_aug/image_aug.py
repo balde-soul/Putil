@@ -8,29 +8,15 @@ import os
 import Putil.data.aug as pAug
 
 
-class HorizontalFlip(pAug.AugFunc):
-
-    """Randomly horizontally flips the Image with the probability *p*
-
-    Parameters
-    ----------
-    p: float
-        The probability with which the image is flipped
-
-
-    Returns
-    -------
-
-    numpy.ndaaray
-        Flipped image in the numpy format of shape `HxWxC`
-
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-
-    """
-
+class ImageHorizontalFlip:
     def __init__(self):
+        pass
+
+
+class HorizontalFlip(ImageHorizontalFlip, pAug.AugFunc):
+    def __init__(self):
+        ImageHorizontalFlip.__init__(self)
+        pAug.AugFunc.__init__(self)
         pass
 
     def __call__(self, *args):
@@ -39,7 +25,35 @@ class HorizontalFlip(pAug.AugFunc):
         return img
 
 
-class Resample(object):
+class ImageResample:
+    def __init__(self):
+        self._resample_scale_x = None
+        self._resample_scale_y = None
+        pass
+
+    def set_resample_scale_x(self, resample_x):
+        self._resample_scale_x = resample_x
+        pass
+
+    def get_resample_scale_x(self):
+        return self._resample_scale_x
+    resample_scale_x = property(get_resample_scale_x, set_resample_scale_x)
+
+    def set_resample_scale_y(self, resample_scale_y):
+        self._resample_scale_y = resample_scale_y
+        pass
+
+    def get_resample_scale_y(self):
+        return self._resample_scale_y
+    resample_scale_y = property(get_resample_scale_y, set_resample_scale_y)
+
+    def _aug_done(self):
+        self._resample_scale_x = None
+        self._resample_scale_y = None
+        pass
+
+
+class Resample(ImageResample, pAug.AugFunc):
     '''
      @brief
      @note 
@@ -52,26 +66,31 @@ class Resample(object):
      the target img with shape [height, width[, channel]], we only need the height and width
     '''
     def __init__(self, resample_method=None):
+        ImageResample.__init__(self)
+        pAug.AugFunc.__init__(self)
         pass
 
-    def __call__(self, resize_scale_x, resize_scale_y, img):
+    def __call__(self, *args):
+        img = args[0]
+
         img_shape = img.shape
 
-        img=  cv2.resize(img, None, fx = resize_scale_x, fy = resize_scale_y)
+        img=  cv2.resize(img, None, fx = self._resample_scale_x, fy = self._resample_scale_y)
         
         canvas = np.zeros(img_shape, dtype = np.uint8)
         
-        y_lim = int(min(resize_scale_y,1)*img_shape[0])
-        x_lim = int(min(resize_scale_x,1)*img_shape[1])
+        y_lim = int(min(self._resample_scale_y, 1) * img_shape[0])
+        x_lim = int(min(self._resample_scale_x, 1) * img_shape[1])
         
         
         canvas[: y_lim, : x_lim, :] =  img[: y_lim, : x_lim, :]
         
         img = canvas
+        self._aug_done()
         return img
 
 
-class RandomTranslate(object):
+class RandomTranslate(pAug.AugFunc):
     """Randomly Translates the image    
     
     
@@ -139,9 +158,6 @@ class RandomTranslate(object):
         #change the origin to the top-left corner of the translated box
         orig_box_cords =  [max(0,corner_y), max(corner_x,0), min(img_shape[0], corner_y + img.shape[0]), min(img_shape[1],corner_x + img.shape[1])]
     
-        
-        
-    
         mask = img[max(-corner_y, 0):min(img.shape[0], -corner_y + img_shape[0]), max(-corner_x, 0):min(img.shape[1], -corner_x + img_shape[1]),:]
         canvas[orig_box_cords[0]:orig_box_cords[2], orig_box_cords[1]:orig_box_cords[3],:] = mask
         img = canvas
@@ -150,15 +166,38 @@ class RandomTranslate(object):
         
         
         bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
-        
-    
-        
-    
-        
         return img, bboxes
+
+
+class ImageTranslate:
+    def __init__(self):
+        self._translate_x = None
+        self._translate_y = None
+        pass
+
+    def set_translate_x(self, translate_x):
+        self._translate_x = translate_x
+        pass
+
+    def get_translate_x(self):
+        return self._translate_x
+    translate_x = property(get_translate_x, set_translate_x)
+
+    def set_translate_y(self, translate_y):
+        self._translate_y = translate_y
+        pass
+
+    def get_translate_y(self):
+        return self._translate_y
+    translate_y = property(get_translate_y, set_translate_y)
+
+    def _aug_done(self):
+        self._translate_x = None
+        self._translate_y = None
+    pass
     
 
-class Translate(object):
+class Translate(ImageTranslate, pAug.AugFunc):
     """Randomly Translates the image    
     
     
@@ -186,16 +225,18 @@ class Translate(object):
         
     """
 
-    def __init__(self, translate_x = 0.2, translate_y = 0.2, diff = False):
-        self.translate_x = translate_x
-        self.translate_y = translate_y
-
-        assert self.translate_x > 0 and self.translate_x < 1
-        assert self.translate_y > 0 and self.translate_y < 1
+    def __init__(self):
+        ImageTranslate.__init__(self)
+        pAug.AugFunc.__init__(self)
  
 
-    def __call__(self, img, bboxes):        
+    def __call__(self, *args):
         #Chose a random digit to scale by 
+        assert self.translate_x > 0 and self.translate_x < 1
+        assert self.translate_y > 0 and self.translate_y < 1
+
+        img = args[0]
+
         img_shape = img.shape
         
         #translate the image
@@ -204,36 +245,26 @@ class Translate(object):
         translate_factor_x = self.translate_x
         translate_factor_y = self.translate_y
         
-            
         canvas = np.zeros(img_shape).astype(np.uint8)
 
-        
         #get the top-left corner co-ordinates of the shifted box 
-        corner_x = int(translate_factor_x*img.shape[1])
-        corner_y = int(translate_factor_y*img.shape[0])
-        
-        
+        corner_x = int(translate_factor_x * img.shape[1])
+        corner_y = int(translate_factor_y * img.shape[0])
         
         #change the origin to the top-left corner of the translated box
-        orig_box_cords =  [max(0,corner_y), max(corner_x,0), min(img_shape[0], corner_y + img.shape[0]), min(img_shape[1],corner_x + img.shape[1])]
+        orig_box_cords =  [
+            max(corner_y, 0), 
+            max(corner_x ,0), 
+            min(img_shape[0], corner_y + img.shape[0]), 
+            min(img_shape[1], corner_x + img.shape[1])
+            ]
 
-        
-        
-
-        mask = img[max(-corner_y, 0):min(img.shape[0], -corner_y + img_shape[0]), max(-corner_x, 0):min(img.shape[1], -corner_x + img_shape[1]),:]
-        canvas[orig_box_cords[0]:orig_box_cords[2], orig_box_cords[1]:orig_box_cords[3],:] = mask
+        mask = img[max(-corner_y, 0): min(img.shape[0], -corner_y + img_shape[0]), \
+            max(-corner_x, 0): min(img.shape[1], -corner_x + img_shape[1]), :]
+        canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
         img = canvas
         
-        bboxes[:,:4] += [corner_x, corner_y, corner_x, corner_y]
-        
-        
-        bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
-        
-
-        
-
-        
-        return img, bboxes
+        return img
     
     
 class RandomRotate(object):
