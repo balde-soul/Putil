@@ -30,7 +30,7 @@ class HorizontalFlip(pAug.AugFunc):
         img = args[0]
         bboxes = args[1]
         bboxes = np.array(bboxes)
-        bboxes[:, 0] = img.shape[1] - 1 - bboxes[:, 0] + bboxes[:, 2]
+        bboxes[:, 0] = img.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
         return bboxes.tolist()
 
 

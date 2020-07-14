@@ -35,7 +35,9 @@ class Data(CommonDataWithAug):
         bboxes = [
             [5, 5, image.shape[1] // 2, image.shape[0] // 2], 
             [image.shape[1] // 3, image.shape[0] // 3, (image.shape[1] - image.shape[1] // 3) // 3, (image.shape[0] - image.shape[0] // 3) // 3], 
-            [image.shape[1] // 4, image.shape[0] // 4, (image.shape[1] - image.shape[1] // 4) // 4, (image.shape[0] - image.shape[0] // 4) // 4] 
+            [image.shape[1] // 4, image.shape[0] // 4, (image.shape[1] - image.shape[1] // 4) // 4, (image.shape[0] - image.shape[0] // 4) // 4],
+            [image.shape[1] // 2, image.shape[0] // 2, (image.shape[1] - image.shape[1] // 4) // 4, (image.shape[0] - image.shape[0] // 4) // 4],
+            [image.shape[1] // 1.5, image.shape[0] // 1.5, (image.shape[1] - image.shape[1] // 2) // 2, (image.shape[0] - image.shape[0] // 2) // 2] 
             ] # LTWHCR
         return image, bboxes
 
@@ -63,20 +65,20 @@ data = Data()
 data.set_aug_node_root(root_node)
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 print(len(data))
 
 for index in range(0, len(data)):
     image, bboxes = data[index]
     print(bboxes)
+    print(image.shape)
+    plt.imshow(image[:, :, ::-1])
+    currentAxis=plt.gca()
     for bbox in bboxes:
-        cv2.rectangle(
-            image, 
-            (bbox[0], bbox[1]), 
-            (bbox[0] + bbox[2], bbox[1] + bbox[3]), 
-            (0, 255, 0),
-            thickness=5)
+        #cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 255, 0), thickness=5)
+        rect = patches.Rectangle(bbox[0: 2], bbox[2], bbox[3], linewidth=3,edgecolor='r',facecolor='none')
+        currentAxis.add_patch(rect)
         pass
-    plt.imshow(image)
     plt.show()
     pass
