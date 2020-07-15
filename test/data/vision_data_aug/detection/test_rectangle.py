@@ -10,6 +10,7 @@ from Putil.data.common_data import CommonDataWithAug
 from Putil.data.vision_data_aug.detection.rectangle import HorizontalFlip as BH
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
 from Putil.data.vision_data_aug.detection.rectangle import RandomResampleCombine as RRC
+from Putil.data.vision_data_aug.detection.rectangle import RandomTranslateConbine as RTC
 from Putil.data.aug import AugFunc
 
 class Data(CommonDataWithAug):
@@ -73,15 +74,31 @@ class CombineAugFuncRRC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    pass
+
+
+class CombineAugFuncRTC(AugFunc):
+    def __init__(self):
+        self._aug = RTC(translate=0.5)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
+    pass
 
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 HFNode = root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
-HFNode.add_child(pAug.AugNode(CombineAugFuncRRC()))
-HFNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+#HFNode.add_child(pAug.AugNode(CombineAugFuncRRC()))
+#HFNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 RRCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRC()))
-RRCNode.add_child(pAug.AugNode(CombineAugFuncHF()))
-RRCNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+#RRCNode.add_child(pAug.AugNode(CombineAugFuncHF()))
+#RRCNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+RTCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 root_node.freeze_node()
 
 data = Data()
@@ -94,7 +111,7 @@ print(len(data))
 
 for index in range(0, len(data)):
     image, bboxes = data[index]
-    #print(bboxes)
+    print(bboxes)
     #print(image.shape)
     plt.imshow(image[:, :, ::-1])
     currentAxis=plt.gca()

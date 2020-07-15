@@ -171,29 +171,33 @@ class RandomTranslate(pAug.AugFunc):
 
 class ImageTranslate:
     def __init__(self):
-        self._translate_x = None
-        self._translate_y = None
+        self._translate_factor_x = None
+        self._translate_factor_y = None
         pass
 
-    def set_translate_x(self, translate_x):
-        self._translate_x = translate_x
+    def set_translate_factor_x(self, translate_x):
+        self._translate_factor_x = translate_x
         pass
 
-    def get_translate_x(self):
-        return self._translate_x
-    translate_x = property(get_translate_x, set_translate_x)
+    def get_translate_factor_x(self):
+        return self._translate_factor_x
+    translate_factor_x = property(get_translate_factor_x, set_translate_factor_x)
 
-    def set_translate_y(self, translate_y):
-        self._translate_y = translate_y
+    def set_translate_factor_y(self, translate_y):
+        self._translate_factor_y = translate_y
         pass
 
-    def get_translate_y(self):
-        return self._translate_y
-    translate_y = property(get_translate_y, set_translate_y)
+    def get_translate_factor_y(self):
+        return self._translate_factor_y
+    translate_factor_y = property(get_translate_factor_y, set_translate_factor_y)
 
     def _aug_done(self):
-        self._translate_x = None
-        self._translate_y = None
+        self._translate_factor_x = None
+        self._translate_factor_y = None
+
+    def check_factor(self):
+        assert self.translate_factor_x > -1 and self.translate_factor_x < 1, print('traslate_factor_x: {0}'.format(self._translate_factor_x))
+        assert self.translate_factor_y > -1 and self.translate_factor_y < 1, print('traslate_factor_y: {0}'.format(self._translate_factor_y))
     pass
     
 
@@ -231,9 +235,7 @@ class Translate(ImageTranslate, pAug.AugFunc):
  
 
     def __call__(self, *args):
-        #Chose a random digit to scale by 
-        assert self.translate_x > 0 and self.translate_x < 1
-        assert self.translate_y > 0 and self.translate_y < 1
+        self.check_factor()
 
         img = args[0]
 
@@ -242,8 +244,8 @@ class Translate(ImageTranslate, pAug.AugFunc):
         #translate the image
         
         #percentage of the dimension of the image to translate
-        translate_factor_x = self.translate_x
-        translate_factor_y = self.translate_y
+        translate_factor_x = self.translate_factor_x
+        translate_factor_y = self.translate_factor_y
         
         canvas = np.zeros(img_shape).astype(np.uint8)
 

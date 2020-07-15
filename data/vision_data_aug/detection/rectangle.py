@@ -23,7 +23,7 @@ class HorizontalFlip(IH):
         IH.__init__(self)
         pass
 
-    def __call__(self, image, bboxes):
+    def __call__(self, *args):
         '''
          @brief 
          @param[in] args
@@ -122,94 +122,12 @@ class RandomResampleCombine(pAug.AugFunc):
 
         self._image_scale.resample_scale_x = resize_scale_x
         self._image_scale.resample_scale_y = resize_scale_y
-        img = self._image_scale(img)
+        img_ret = self._image_scale(img)
         self._bboxes_scale.resample_scale_x = resize_scale_x
         self._bboxes_scale.resample_scale_y = resize_scale_y
         bboxes = self._bboxes_scale(img, bboxes)
-        return img, bboxes
+        return img_ret, bboxes
 
-
-class RandomTranslate(object):
-    """Randomly Translates the image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    translate: float or tuple(float)
-        if **float**, the image is translated by a factor drawn 
-        randomly from a range (1 - `translate` , 1 + `translate`). If **tuple**,
-        `translate` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Translated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
-    def __init__(self, translate = 0.2, diff = False):
-        self.translate = translate
-        
-        if type(self.translate) == tuple:
-            assert len(self.translate) == 2, "Invalid range"  
-            assert self.translate[0] > 0 & self.translate[0] < 1
-            assert self.translate[1] > 0 & self.translate[1] < 1
-
-
-        else:
-            assert self.translate > 0 and self.translate < 1
-            self.translate = (- self.translate, self.translate)
-            
-            
-        self.diff = diff
-
-    def __call__(self, img, bboxes):        
-        #Chose a random digit to scale by 
-        img_shape = img.shape
-        
-        #translate the image
-        
-        #percentage of the dimension of the image to translate
-        translate_factor_x = random.uniform(*self.translate)
-        translate_factor_y = random.uniform(*self.translate)
-        
-        if not self.diff:
-            translate_factor_y = translate_factor_x
-            
-        canvas = np.zeros(img_shape).astype(np.uint8)
-    
-    
-        corner_x = int(translate_factor_x*img.shape[1])
-        corner_y = int(translate_factor_y*img.shape[0])
-        
-        
-        
-        #change the origin to the top-left corner of the translated box
-        orig_box_cords =  [max(0,corner_y), max(corner_x,0), min(img_shape[0], corner_y + img.shape[0]), min(img_shape[1],corner_x + img.shape[1])]
-    
-        
-        
-    
-        mask = img[max(-corner_y, 0):min(img.shape[0], -corner_y + img_shape[0]), max(-corner_x, 0):min(img.shape[1], -corner_x + img_shape[1]),:]
-        canvas[orig_box_cords[0]:orig_box_cords[2], orig_box_cords[1]:orig_box_cords[3],:] = mask
-        img = canvas
-        
-        bboxes[:,:4] += [corner_x, corner_y, corner_x, corner_y]
-        
-        
-        bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
-        return img, bboxes
-    
 
 class Translate(IT):
     def __init__(self):
@@ -217,19 +135,14 @@ class Translate(IT):
  
 
     def __call__(self, *args):
-        assert self.translate_x > 0 and self.translate_x < 1
-        assert self.translate_y > 0 and self.translate_y < 1
-
+        self.check_factor()
         image = args[0]
-        bboxes = args[1]
+        bboxes = np.array(args[1])
 
         image_shape = image.shape
         
-        #translate the image
-        
-        #percentage of the dimension of the image to translate
-        translate_factor_x = self.translate_x
-        translate_factor_y = self.translate_y
+        translate_factor_x = self.translate_factor_x
+        translate_factor_y = self.translate_factor_y
         
         canvas = np.zeros(image_shape).astype(np.uint8)
 
@@ -250,24 +163,77 @@ class Translate(IT):
         canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
         image = canvas
         
-        bboxes[:, : 4] += [corner_x, corner_y, corner_x, corner_y]
+        bboxes[:, 0: 2] += [corner_x, corner_y]
 
         # : 需要检查是否越界
         bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
         bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
         bboxes[:, 2] = np.min([bboxes[:, 2], image_shape[1] - 1 - bboxes[:, 0]], axis=0)
-        return image, bboxes
+        self._aug_done()
+        return bboxes.tolist()
     pass
 
 
-class TranslateCombine(pAug.AugFunc):
-    def __init__(self):
-        pass
-    
+class RandomTranslateConbine(object):
+    def __init__(self, translate = 0.2, diff = False):
+        '''
+         @brief random translate which combine the ImageTranslate and the bboxesTranslate 
+         @note
+         @param[in] translate
+         float, tuple with float
+         while float, this means the translate range: [-translate, translate]
+         while tuple, this means the translate range: [translate[0], translate[1]]
+         @param[in] diff
+         bool
+         while False, x_translate and y_translate use the same random variable
+         while True, the the translate and y_translate are from different random variable
+        '''
+        self.translate = translate
+        
+        if type(self.translate) == tuple:
+            assert len(self.translate) == 2, "Invalid range"  
+            assert self.translate[0] > 0 & self.translate[0] < 1
+            assert self.translate[1] > 0 & self.translate[1] < 1
+
+        else:
+            assert self.translate > 0 and self.translate < 1
+            self.translate = (-self.translate, self.translate)
+            pass
+        self.diff = diff
+
+        self._image_translate = IT()
+        self._bboxes_translate = Translate()
+
     def __call__(self, *args):
-        pass
+        '''
+         @brief
+         @note
+         @param[in] args, with length 2
+         [0]: image with shape [height, width[, channel]]
+         [1]: bboxes, list with [x, y, width, height]
+         @ret
+        '''
+        img = args[0]
+        bboxes = args[1]
+
+        translate_factor_x = random.uniform(*self.translate)
+        translate_factor_y = random.uniform(*self.translate)
+        
+        if not self.diff:
+            translate_factor_y = translate_factor_x
+            pass
+
+        self._image_translate.translate_factor_x = translate_factor_x
+        self._image_translate.translate_factor_y = translate_factor_y
+        img_ret = self._image_translate(img)
+
+        self._bboxes_translate.translate_factor_x = translate_factor_x
+        self._bboxes_translate.translate_factor_y = translate_factor_y
+        bboxes = self._bboxes_translate(img, bboxes)
+            
+        return img_ret, bboxes
     
-    
+
 class RandomRotate(object):
     """Randomly rotates an image    
     
