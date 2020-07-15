@@ -91,33 +91,6 @@ class Resample(ImageResample, pAug.AugFunc):
 
 
 class RandomTranslate(pAug.AugFunc):
-    """Randomly Translates the image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    translate: float or tuple(float)
-        if **float**, the image is translated by a factor drawn 
-        randomly from a range (1 - `translate` , 1 + `translate`). If **tuple**,
-        `translate` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Translated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
     def __init__(self, translate = 0.2, diff = False):
         self.translate = translate
         
@@ -125,13 +98,9 @@ class RandomTranslate(pAug.AugFunc):
             assert len(self.translate) == 2, "Invalid range"  
             assert self.translate[0] > 0 & self.translate[0] < 1
             assert self.translate[1] > 0 & self.translate[1] < 1
-
-
         else:
             assert self.translate > 0 and self.translate < 1
             self.translate = (-self.translate, self.translate)
-            
-            
         self.diff = diff
 
     def __call__(self, img, bboxes):        
@@ -149,11 +118,8 @@ class RandomTranslate(pAug.AugFunc):
             
         canvas = np.zeros(img_shape).astype(np.uint8)
     
-    
         corner_x = int(translate_factor_x*img.shape[1])
         corner_y = int(translate_factor_y*img.shape[0])
-        
-        
         
         #change the origin to the top-left corner of the translated box
         orig_box_cords =  [max(0,corner_y), max(corner_x,0), min(img_shape[0], corner_y + img.shape[0]), min(img_shape[1],corner_x + img.shape[1])]
@@ -163,7 +129,6 @@ class RandomTranslate(pAug.AugFunc):
         img = canvas
         
         bboxes[:,:4] += [corner_x, corner_y, corner_x, corner_y]
-        
         
         bboxes = clip_box(bboxes, [0,0,img_shape[1], img_shape[0]], 0.25)
         return img, bboxes
@@ -202,37 +167,9 @@ class ImageTranslate:
     
 
 class Translate(ImageTranslate, pAug.AugFunc):
-    """Randomly Translates the image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    translate: float or tuple(float)
-        if **float**, the image is translated by a factor drawn 
-        randomly from a range (1 - `translate` , 1 + `translate`). If **tuple**,
-        `translate` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Translated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
     def __init__(self):
         ImageTranslate.__init__(self)
         pAug.AugFunc.__init__(self)
- 
 
     def __call__(self, *args):
         self.check_factor()
@@ -270,33 +207,6 @@ class Translate(ImageTranslate, pAug.AugFunc):
     
     
 class RandomRotate(object):
-    """Randomly rotates an image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    angle: float or tuple(float)
-        if **float**, the image is rotated by a factor drawn 
-        randomly from a range (-`angle`, `angle`). If **tuple**,
-        the `angle` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Rotated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
     def __init__(self, angle = 10):
         self.angle = angle
         
@@ -340,81 +250,81 @@ class RandomRotate(object):
         return img, bboxes
 
     
-class Rotate(object):
-    """Rotates an image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    angle: float
-        The angle by which the image is to be rotated 
-        
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Rotated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
 
-    def __init__(self, angle):
-        self.angle = angle
-        
+class ImageRotate:
+    def __init__(self):
+        self._angle = None
+        pass
 
-    def __call__(self, img, bboxes):
+    def get_angle(self):
+        return self._angle
+    
+    def set_angle(self, angle):
+        self._angle = angle
+        pass
+    angle = property(get_angle, set_angle)
+
+    def aug_done(self):
+        self._angle = None
+        pass
+    pass
+
+
+def rotate_im(image, angle):
+    # grab the dimensions of the image and then determine the
+    # centre
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w // 2, h // 2)
+
+    # grab the rotation matrix (applying the negative of the
+    # angle to rotate clockwise), then grab the sine and cosine
+    # (i.e., the rotation components of the matrix)
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    # compute the new bounding dimensions of the image
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    # adjust the rotation matrix to take into account translation
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    # perform the actual rotation and return the image
+    image = cv2.warpAffine(image, M, (nW, nH))
+
+    return image
+
+
+class Rotate(ImageRotate, pAug.AugFunc):
+    def __init__(self):
+        ImageRotate.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
+
+    def __call__(self, *args):
         """
-        Args:
-            img (PIL Image): Image to be flipped.
-
-        Returns:
-            PIL Image: Randomly flipped image.
-            
-            
+         @brief
+         @note
+         @param[in] args *args
+         [0] img, the image with shape [height, width[, channel]]
         """
-        
+        img = args[0]
+
         angle = self.angle
-        print(self.angle)
         
-        w,h = img.shape[1], img.shape[0]
+        w, h = img.shape[1], img.shape[0]
         cx, cy = w//2, h//2
         
-        corners = get_corners(bboxes)
-        
-        corners = np.hstack((corners, bboxes[:,4:]))
-
         img = rotate_im(img, angle)
-        
-        corners[:,:8] = rotate_box(corners[:,:8], angle, cx, cy, h, w)
-        
-        
-        
-        
-        new_bbox = get_enclosing_box(corners)
-        
-        
         scale_factor_x = img.shape[1] / w
-        
         scale_factor_y = img.shape[0] / h
         
         img = cv2.resize(img, (w,h))
-        
-        new_bbox[:,:4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y] 
-        
-        
-        bboxes  = new_bbox
 
-        bboxes = clip_box(bboxes, [0,0,w, h], 0.25)
-        
-        return img, bboxes
+        self.aug_done()
+        return img
         
 
 

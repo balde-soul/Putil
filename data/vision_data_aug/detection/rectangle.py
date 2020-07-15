@@ -12,6 +12,16 @@ from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
 from Putil.data.vision_data_aug.image_aug import Resample as IR
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
 from Putil.data.vision_data_aug.image_aug import Translate as IT
+from Putil.data.vision_data_aug.image_aug import Rotate as IRE
+from Putil.data.vision_data_aug.image_aug import rotate_im as rotate_im
+
+
+def clip_box(bboxes, image):
+    bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
+    bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
+    bboxes[:, 2] = np.min([bboxes[:, 2], image.shape[1] - 1 - bboxes[:, 0]], axis=0)
+    bboxes[:, 3] = np.min([bboxes[:, 3], image.shape[0] - 1 - bboxes[:, 1]], axis=0)
+    return bboxes
 
 class HorizontalFlip(IH):
     '''
@@ -76,12 +86,9 @@ class Resample(IR):
 
         bboxes = np.array(bboxes)
 
-        # : 需要检查是否越界
         bboxes[:, : 4] *= [self._resample_scale_x, self._resample_scale_y, self._resample_scale_x, self._resample_scale_y]
-        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
-        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
-        bboxes[:, 2] = np.min([bboxes[:, 2], img_shape[1] - 1 - bboxes[:, 0]], axis=0)
-        bboxes[:, 3] = np.min([bboxes[:, 3], img_shape[0] - 1 - bboxes[:, 1]], axis=0)
+        # : 需要检查是否越界
+        bboxes = clip_box(bboxes, image)
         self._aug_done()
         return bboxes.tolist()
 
@@ -164,11 +171,8 @@ class Translate(IT):
         image = canvas
         
         bboxes[:, 0: 2] += [corner_x, corner_y]
-
         # : 需要检查是否越界
-        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
-        bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
-        bboxes[:, 2] = np.min([bboxes[:, 2], image_shape[1] - 1 - bboxes[:, 0]], axis=0)
+        bboxes = clip_box(bboxes, image)
         self._aug_done()
         return bboxes.tolist()
     pass
@@ -232,36 +236,144 @@ class RandomTranslateConbine(object):
         bboxes = self._bboxes_translate(img, bboxes)
             
         return img_ret, bboxes
-    
 
-class RandomRotate(object):
-    """Randomly rotates an image    
     
+def get_corners(bboxes):
+    width = bboxes[:, 2: 3]
+    height = bboxes[:, 3: 4]
     
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
+    x1 = bboxes[:, 0].reshape(-1, 1)
+    y1 = bboxes[:, 1].reshape(-1, 1)
+    
+    x2 = x1 + width
+    y2 = y1 
+    
+    x3 = x1
+    y3 = y1 + height
+    
+    x4 = x1 + width
+    y4 = y1 + height
+    
+    corners = np.hstack((x1, y1, x2, y2, x3, y3, x4, y4))
+    return corners
+
+
+def rotate_box(corners, angle,  cx, cy, h, w):
+    """
+     @brief Rotate the bounding box.
+     @paran[in] corners : numpy.ndarray
+        Numpy array of shape `N x 8` containing N bounding boxes each described by their 
+        corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`
+     @param[in] angle : float
+        angle by which the image is to be rotated
+     @param[in] cx : int
+        x coordinate of the center of image (about which the box will be rotated)
+     @param[in] cy : int
+        y coordinate of the center of image (about which the box will be rotated)
+     @param[in] h : int 
+        height of the image
+     @param[in] w : int 
+        width of the image
+     @ret
+    -------
+    numpy.ndarray
+        Numpy array of shape `N x 8` containing N rotated bounding boxes each described by their 
+        corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`
+    """
+    corners = corners.reshape(-1,2)
+    corners = np.hstack((corners, np.ones((corners.shape[0],1), dtype = type(corners[0][0]))))
+    
+    M = cv2.getRotationMatrix2D((cx, cy), angle, 1.0)
+    
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+    
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+    # adjust the rotation matrix to take into account translation
+    M[0, 2] += (nW / 2) - cx
+    M[1, 2] += (nH / 2) - cy
+    # Prepare the vector to be transformed
+    calculated = np.dot(M,corners.T).T
+    
+    calculated = calculated.reshape(-1,8)
+    
+    return calculated
+
+
+def get_enclosing_box(corners):
+    """Get an enclosing box for ratated corners of a bounding box
     
     Parameters
     ----------
-    angle: float or tuple(float)
-        if **float**, the image is rotated by a factor drawn 
-        randomly from a range (-`angle`, `angle`). If **tuple**,
-        the `angle` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
+    
+    corners : numpy.ndarray
+        Numpy array of shape `N x 8` containing N bounding boxes each described by their 
+        corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`  
+    
+    Returns 
     -------
     
-    numpy.ndaaray
-        Rotated image in the numpy format of shape `HxWxC`
-    
     numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+        Numpy array containing enclosing bounding boxes of shape `N X 4` where N is the 
+        number of bounding boxes and the bounding boxes are represented in the
+        format `x1 y1 x2 y2`
         
     """
+    x_ = corners[:, [0, 2, 4, 6]]
+    y_ = corners[:, [1, 3, 5, 7]]
+    
+    xmin = np.min(x_, 1).reshape(-1,1)
+    ymin = np.min(y_, 1).reshape(-1,1)
+    xmax = np.max(x_, 1).reshape(-1,1)
+    ymax = np.max(y_, 1).reshape(-1,1)
+    
+    final = np.hstack((xmin, ymin, xmax, ymax, corners[:, 8: ]))
+    
+    return final
 
+
+class Rotate(IRE):
+    def __init__(self):
+        IRE.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        '''
+         @brief
+         @note
+         @param[in] args, *args
+         [0]: image
+         [1]: bboxes
+        '''
+        image = args[0]
+        bboxes = np.array(args[1])
+
+        angle = self.angle
+        
+        w, h = image.shape[1], image.shape[0]
+        cx, cy = w // 2, h // 2
+        
+        corners = get_corners(bboxes)
+        
+        corners = np.hstack((corners, bboxes[:, 4: ]))
+
+        corners[:, : 8] = rotate_box(corners[:, : 8], angle, cx, cy, h, w)
+        
+        new_bbox = get_enclosing_box(corners)
+        
+        img = rotate_im(image, angle)
+        scale_factor_x = img.shape[1] / w
+        scale_factor_y = img.shape[0] / h
+        
+        new_bbox[:, : 4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y]
+        new_bbox[:, 2: 4] = new_bbox[:, 2: 4] - new_bbox[:, 0: 2]
+        bboxes  = new_bbox
+        bboxes = clip_box(bboxes, image)
+        return bboxes.tolist()
+
+
+class RandomRotateCombine(object):
     def __init__(self, angle = 10):
         self.angle = angle
         
@@ -270,117 +382,24 @@ class RandomRotate(object):
             
         else:
             self.angle = (-self.angle, self.angle)
+            pass
+        self._image_rotate = IRE()
+        self._bboxes_rotate = Rotate()
             
-    def __call__(self, img, bboxes):
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
     
         angle = random.uniform(*self.angle)
-    
-        w,h = img.shape[1], img.shape[0]
-        cx, cy = w//2, h//2
-    
-        img = rotate_im(img, angle)
-    
-        corners = get_corners(bboxes)
-    
-        corners = np.hstack((corners, bboxes[:,4:]))
-    
-    
-        corners[:,:8] = rotate_box(corners[:,:8], angle, cx, cy, h, w)
-    
-        new_bbox = get_enclosing_box(corners)
-    
-    
-        scale_factor_x = img.shape[1] / w
-    
-        scale_factor_y = img.shape[0] / h
-    
-        img = cv2.resize(img, (w,h))
-    
-        new_bbox[:,:4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y] 
-    
-        bboxes  = new_bbox
-    
-        bboxes = clip_box(bboxes, [0,0,w, h], 0.25)
+        
+        self._image_rotate.angle = angle
+        img = self._image_rotate(image)
+
+        self._bboxes_rotate.angle = angle
+        bboxes = self._bboxes_rotate(image, bboxes)
     
         return img, bboxes
-
-    
-class Rotate(object):
-    """Rotates an image    
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    angle: float
-        The angle by which the image is to be rotated 
-        
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Rotated image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
-    def __init__(self, angle):
-        self.angle = angle
-        
-
-    def __call__(self, img, bboxes):
-        """
-        Args:
-            img (PIL Image): Image to be flipped.
-
-        Returns:
-            PIL Image: Randomly flipped image.
-            
-            
-        """
-        
-        angle = self.angle
-        print(self.angle)
-        
-        w,h = img.shape[1], img.shape[0]
-        cx, cy = w//2, h//2
-        
-        corners = get_corners(bboxes)
-        
-        corners = np.hstack((corners, bboxes[:,4:]))
-
-        img = rotate_im(img, angle)
-        
-        corners[:,:8] = rotate_box(corners[:,:8], angle, cx, cy, h, w)
-        
-        
-        
-        
-        new_bbox = get_enclosing_box(corners)
-        
-        
-        scale_factor_x = img.shape[1] / w
-        
-        scale_factor_y = img.shape[0] / h
-        
-        img = cv2.resize(img, (w,h))
-        
-        new_bbox[:,:4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y] 
-        
-        
-        bboxes  = new_bbox
-
-        bboxes = clip_box(bboxes, [0,0,w, h], 0.25)
-        
-        return img, bboxes
-        
+       
 
 
 class RandomShear(object):
