@@ -445,10 +445,38 @@ class Shear(IS):
             bboxes = np.array(bboxes)
             pass
         bboxes[:, [0, 2]] = bboxes[:, [0, 2]] + (bboxes[:, [1, 3]] * abs(shear_factor))
-        new_width = (image_shape[1] + image_shape[0] * shear_factor)
+        ## test
+        #print('before resize')
+        #rect_color = ['m', 'c', 'y', 'w']
+        #import matplotlib.pyplot as plt
+        #import matplotlib.patches as patches
+        #plt.imshow(image[:, :, ::-1])
+        #currentAxis=plt.gca()
+        #for i, bbox in enumerate(bboxes):
+        #    #cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 255, 0), thickness=5)
+        #    rect = patches.Rectangle(bbox[0: 2], bbox[2], bbox[3], linewidth=2, edgecolor=rect_color[i], facecolor='none')
+        #    currentAxis.add_patch(rect)
+        #    pass
+        #plt.show()
+        ## test
+        new_width = (image_shape[1] + image_shape[0] * abs(shear_factor))
         fractor_width = image_shape[1] / new_width
         print(fractor_width)
         bboxes[:, [0, 2]] *= fractor_width
+        ## test
+        #print('after resize')
+        #rect_color = ['m', 'c', 'y', 'w']
+        #import matplotlib.pyplot as plt
+        #import matplotlib.patches as patches
+        #plt.imshow(image[:, :, ::-1])
+        #currentAxis=plt.gca()
+        #for i, bbox in enumerate(bboxes):
+        #    #cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 255, 0), thickness=5)
+        #    rect = patches.Rectangle(bbox[0: 2], bbox[2], bbox[3], linewidth=2, edgecolor=rect_color[i], facecolor='none')
+        #    currentAxis.add_patch(rect)
+        #    pass
+        #plt.show()
+        ## test
         if shear_factor < 0:
             bboxes, = HorizontalFlip()(image, bboxes.tolist())
             image, = IH()(image) 
