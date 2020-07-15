@@ -22,7 +22,7 @@ class HorizontalFlip(ImageHorizontalFlip, pAug.AugFunc):
     def __call__(self, *args):
         img = args[0]
         img = img[:, ::-1, :]
-        return img
+        return img, 
 
 
 class ImageResample:
@@ -87,7 +87,7 @@ class Resample(ImageResample, pAug.AugFunc):
         
         img = canvas
         self._aug_done()
-        return img
+        return img, 
 
 
 class RandomTranslate(pAug.AugFunc):
@@ -203,7 +203,7 @@ class Translate(ImageTranslate, pAug.AugFunc):
         canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
         img = canvas
         
-        return img
+        return img,
     
     
 class RandomRotate(object):
@@ -324,128 +324,74 @@ class Rotate(ImageRotate, pAug.AugFunc):
         img = cv2.resize(img, (w,h))
 
         self.aug_done()
-        return img
+        return img,
         
 
+class ImageShear:
+    def __init__(self):
+        self.aug_done()
+        pass
 
-class RandomShear(object):
-    """Randomly shears an image in horizontal direction   
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    shear_factor: float or tuple(float)
-        if **float**, the image is sheared horizontally by a factor drawn 
-        randomly from a range (-`shear_factor`, `shear_factor`). If **tuple**,
-        the `shear_factor` is drawn randomly from values specified by the 
-        tuple
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
+    def get_shear_factor_x(self):
+        return self._shear_factor_x
 
-    def __init__(self, shear_factor = 0.2):
-        self.shear_factor = shear_factor
-        
-        if type(self.shear_factor) == tuple:
-            assert len(self.shear_factor) == 2, "Invalid range for scaling factor"   
-        else:
-            self.shear_factor = (-self.shear_factor, self.shear_factor)
-        
-        shear_factor = random.uniform(*self.shear_factor)
-        
-    def __call__(self, img, bboxes):
+    def set_shear_factor_x(self, shear_factor_x):
+        self._shear_factor_x = shear_factor_x
+    shear_factor_x = property(get_shear_factor_x, set_shear_factor_x)
+
+    def get_shear_factor_y(self):
+        return self._shear_factor_y
     
-        shear_factor = random.uniform(*self.shear_factor)
+    def set_shear_factor_y(self, shear_factor_y):
+        self._shear_factor_y = shear_factor_y
+        pass
+    shear_factor_y = property(get_shear_factor_y, set_shear_factor_y)
+
+    def aug_done(self):
+        self._shear_factor_x = None 
+        self._shear_factor_y = None
+        pass
+
+        
+class Shear(ImageShear, pAug.AugFunc):
+    '''
+     @brief Shears an image in horizontal direction   
+     Bounding boxes which have an area of less than 25% in the remaining in the 
+     transformed image is dropped. The resolution is maintained, and the remaining
+     area if any is filled by black color.
+     @param[in] shear_factor: float
+         Factor by which the image is sheared in the x-direction
+     @ret
+     numpy.ndaaray
+         Sheared image in the numpy format of shape `HxWxC`
+    '''
+    def __init__(self):
+        ImageShear.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
     
-        w,h = img.shape[1], img.shape[0]
-    
+    def __call__(self, *args):
+        image = args[0]
+        image_shape = image.shape
+
+        shear_factor = self.shear_factor_x
         if shear_factor < 0:
-            img, bboxes = HorizontalFlip()(img, bboxes)
-    
-        M = np.array([[1, abs(shear_factor), 0],[0,1,0]])
-    
-        nW =  img.shape[1] + abs(shear_factor*img.shape[0])
-    
-        bboxes[:,[0,2]] += ((bboxes[:,[1,3]]) * abs(shear_factor) ).astype(int) 
-    
-    
-        img = cv2.warpAffine(img, M, (int(nW), img.shape[0]))
-    
-        if shear_factor < 0:
-        	img, bboxes = HorizontalFlip()(img, bboxes)
-    
-        img = cv2.resize(img, (w,h))
-    
-        scale_factor_x = nW / w
-    
-        bboxes[:,:4] /= [scale_factor_x, 1, scale_factor_x, 1] 
-    
-    
-        return img, bboxes
-        
-class Shear(object):
-    """Shears an image in horizontal direction   
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    shear_factor: float
-        Factor by which the image is sheared in the x-direction
-       
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-
-    def __init__(self, shear_factor = 0.2):
-        self.shear_factor = shear_factor
-        
-    
-    def __call__(self, img, bboxes):
-        
-        shear_factor = self.shear_factor
-        if shear_factor < 0:
-            img, bboxes = HorizontalFlip()(img, bboxes)
+            image, = HorizontalFlip()(image)
 
         
-        M = np.array([[1, abs(shear_factor), 0],[0,1,0]])
+        M = np.array([[1, abs(shear_factor), 0], [0, 1, 0]])
                 
-        nW =  img.shape[1] + abs(shear_factor*img.shape[0])
+        nW =  image.shape[1] + abs(shear_factor * image.shape[0])
         
-        bboxes[:,[0,2]] += ((bboxes[:,[1,3]])*abs(shear_factor)).astype(int) 
-        
-
-        img = cv2.warpAffine(img, M, (int(nW), img.shape[0]))
+        image = cv2.warpAffine(image, M, (int(nW), image.shape[0]))
         
         if shear_factor < 0:
-             img, bboxes = HorizontalFlip()(img, bboxes)
-             
-        
-        return img, bboxes
+             image, = HorizontalFlip()(image)
+            
+        image = cv2.resize(image, image_shape[0: 2])
+
+        self.aug_done() 
+        return image,
     
 class Resize(object):
     """Resize the image in accordance to `image_letter_box` function in darknet 

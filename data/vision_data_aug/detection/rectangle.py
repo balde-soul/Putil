@@ -14,6 +14,7 @@ from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
 from Putil.data.vision_data_aug.image_aug import Translate as IT
 from Putil.data.vision_data_aug.image_aug import Rotate as IRE
 from Putil.data.vision_data_aug.image_aug import rotate_im as rotate_im
+from Putil.data.vision_data_aug.image_aug import Shear as IS
 
 
 def clip_box(bboxes, image):
@@ -45,9 +46,9 @@ class HorizontalFlip(IH):
         bboxes = args[1]
         bboxes = np.array(bboxes)
         bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
-        return bboxes.tolist()
+        return bboxes.tolist(), 
 
-class CombineAugFuncHF(pAug.AugFunc):
+class CombineHorizontalFlip(pAug.AugFunc):
     def __init__(self):
         self._image_aug = IH()
         self._bboxes_aug = HorizontalFlip()
@@ -57,9 +58,16 @@ class CombineAugFuncHF(pAug.AugFunc):
         image = args[0]
         bboxes = args[1]
 
-        image = self._image_aug(image)
-        bboxes = self._bboxes_aug(image, bboxes)
-        return image, bboxes
+        img,  = self._image_aug(image)
+        bboxes,  = self._bboxes_aug(image, bboxes)
+        return img, bboxes
+
+    @property
+    def doc(self):
+        return 'flip the image follow the horizon'
+    @property
+    def name(self):
+        return 'HorizontalFlip'
 
 class Resample(IR):
     def __init__(self, diff = False):
@@ -90,7 +98,7 @@ class Resample(IR):
         # : 需要检查是否越界
         bboxes = clip_box(bboxes, image)
         self._aug_done()
-        return bboxes.tolist()
+        return bboxes.tolist(), 
 
 class RandomResampleCombine(pAug.AugFunc):
     '''
@@ -129,11 +137,19 @@ class RandomResampleCombine(pAug.AugFunc):
 
         self._image_scale.resample_scale_x = resize_scale_x
         self._image_scale.resample_scale_y = resize_scale_y
-        img_ret = self._image_scale(img)
+        img_ret,  = self._image_scale(img)
         self._bboxes_scale.resample_scale_x = resize_scale_x
         self._bboxes_scale.resample_scale_y = resize_scale_y
-        bboxes = self._bboxes_scale(img, bboxes)
+        bboxes,  = self._bboxes_scale(img, bboxes)
         return img_ret, bboxes
+
+    @property
+    def doc(self):
+        return 'resample the image and crop into the original image shape'
+
+    @property
+    def name(self):
+        return 'Resample'
 
 
 class Translate(IT):
@@ -174,7 +190,7 @@ class Translate(IT):
         # : 需要检查是否越界
         bboxes = clip_box(bboxes, image)
         self._aug_done()
-        return bboxes.tolist()
+        return bboxes.tolist(),
     pass
 
 
@@ -229,37 +245,40 @@ class RandomTranslateConbine(object):
 
         self._image_translate.translate_factor_x = translate_factor_x
         self._image_translate.translate_factor_y = translate_factor_y
-        img_ret = self._image_translate(img)
+        img_ret,  = self._image_translate(img)
 
         self._bboxes_translate.translate_factor_x = translate_factor_x
         self._bboxes_translate.translate_factor_y = translate_factor_y
-        bboxes = self._bboxes_translate(img, bboxes)
+        bboxes,  = self._bboxes_translate(img, bboxes)
             
         return img_ret, bboxes
+
+    @property
+    def doc(self):
+        return 'move the image and crop outof the field'
+
+    @property
+    def name(self):
+        return 'Translate'
 
     
 def get_corners(bboxes):
     width = bboxes[:, 2: 3]
     height = bboxes[:, 3: 4]
-    
     x1 = bboxes[:, 0].reshape(-1, 1)
     y1 = bboxes[:, 1].reshape(-1, 1)
-    
     x2 = x1 + width
     y2 = y1 
-    
     x3 = x1
     y3 = y1 + height
-    
     x4 = x1 + width
     y4 = y1 + height
-    
     corners = np.hstack((x1, y1, x2, y2, x3, y3, x4, y4))
     return corners
 
 
 def rotate_box(corners, angle,  cx, cy, h, w):
-    """
+    '''
      @brief Rotate the bounding box.
      @paran[in] corners : numpy.ndarray
         Numpy array of shape `N x 8` containing N bounding boxes each described by their 
@@ -274,12 +293,10 @@ def rotate_box(corners, angle,  cx, cy, h, w):
         height of the image
      @param[in] w : int 
         width of the image
-     @ret
-    -------
-    numpy.ndarray
-        Numpy array of shape `N x 8` containing N rotated bounding boxes each described by their 
-        corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`
-    """
+     @ret numpy.ndarray
+         Numpy array of shape `N x 8` containing N rotated bounding boxes each described by their 
+         corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`
+    '''
     corners = corners.reshape(-1,2)
     corners = np.hstack((corners, np.ones((corners.shape[0],1), dtype = type(corners[0][0]))))
     
@@ -302,34 +319,23 @@ def rotate_box(corners, angle,  cx, cy, h, w):
 
 
 def get_enclosing_box(corners):
-    """Get an enclosing box for ratated corners of a bounding box
-    
-    Parameters
-    ----------
-    
-    corners : numpy.ndarray
-        Numpy array of shape `N x 8` containing N bounding boxes each described by their 
-        corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`  
-    
-    Returns 
-    -------
-    
-    numpy.ndarray
-        Numpy array containing enclosing bounding boxes of shape `N X 4` where N is the 
-        number of bounding boxes and the bounding boxes are represented in the
-        format `x1 y1 x2 y2`
-        
-    """
+    '''
+     @briefGet an enclosing box for ratated corners of a bounding box
+     @param[in] corners : numpy.ndarray
+         Numpy array of shape `N x 8` containing N bounding boxes each described by their 
+         corner co-ordinates `x1 y1 x2 y2 x3 y3 x4 y4`  
+     @ret numpy.ndarray
+         Numpy array containing enclosing bounding boxes of shape `N X 4` where N is the 
+         number of bounding boxes and the bounding boxes are represented in the
+         format `x1 y1 x2 y2 
+    '''
     x_ = corners[:, [0, 2, 4, 6]]
     y_ = corners[:, [1, 3, 5, 7]]
-    
     xmin = np.min(x_, 1).reshape(-1,1)
     ymin = np.min(y_, 1).reshape(-1,1)
     xmax = np.max(x_, 1).reshape(-1,1)
     ymax = np.max(y_, 1).reshape(-1,1)
-    
     final = np.hstack((xmin, ymin, xmax, ymax, corners[:, 8: ]))
-    
     return final
 
 
@@ -370,7 +376,8 @@ class Rotate(IRE):
         new_bbox[:, 2: 4] = new_bbox[:, 2: 4] - new_bbox[:, 0: 2]
         bboxes  = new_bbox
         bboxes = clip_box(bboxes, image)
-        return bboxes.tolist()
+        self.aug_done()
+        return bboxes.tolist(), 
 
 
 class RandomRotateCombine(object):
@@ -379,7 +386,6 @@ class RandomRotateCombine(object):
         
         if type(self.angle) == tuple:
             assert len(self.angle) == 2, "Invalid range"  
-            
         else:
             self.angle = (-self.angle, self.angle)
             pass
@@ -393,134 +399,122 @@ class RandomRotateCombine(object):
         angle = random.uniform(*self.angle)
         
         self._image_rotate.angle = angle
-        img = self._image_rotate(image)
+        img,  = self._image_rotate(image)
 
         self._bboxes_rotate.angle = angle
-        bboxes = self._bboxes_rotate(image, bboxes)
-    
+        bboxes,  = self._bboxes_rotate(image, bboxes)
         return img, bboxes
+
+    @property
+    def doc(self):
+        return 'rotate the image, and than resize to the original image shape'
+    
+    @property
+    def name(self):
+        return 'Rotate'
        
 
-
-class RandomShear(object):
-    """Randomly shears an image in horizontal direction   
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    shear_factor: float or tuple(float)
-        if **float**, the image is sheared horizontally by a factor drawn 
-        randomly from a range (-`shear_factor`, `shear_factor`). If **tuple**,
-        the `shear_factor` is drawn randomly from values specified by the 
-        tuple
+class Shear(IS):
+    '''
+     @note Shears an image in horizontal direction   
+     Bounding boxes which have an area of less than 25% in the remaining in the 
+     transformed image is dropped. The resolution is maintained, and the remaining
+     area if any is filled by black color.
+     @param[in] shear_factor: float
+         Factor by which the image is sheared in the x-direction
+     @ret
+     numpy.ndarray
+         Tranformed bounding box co-ordinates of the format `n x 4` where n is 
+         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    '''
+    def __init__(self):
+        IS.__init__(self)
         
-    Returns
-    -------
     
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    def __call__(self, *args):
+        image = args[0]
+        image_shape = image.shape
+        bboxes = args[1]
+        bboxes = np.array(bboxes)
         
-    """
+        shear_factor = self.shear_factor_x
 
+        if shear_factor < 0:
+            bboxes, = HorizontalFlip()(image, bboxes)
+            image, = IH()(image) 
+            bboxes = np.array(bboxes)
+            pass
+        bboxes[:, [0, 2]] = bboxes[:, [0, 2]] + (bboxes[:, [1, 3]] * abs(shear_factor))
+        new_width = (image_shape[1] + image_shape[0] * shear_factor)
+        fractor_width = image_shape[1] / new_width
+        print(fractor_width)
+        bboxes[:, [0, 2]] *= fractor_width
+        if shear_factor < 0:
+            bboxes, = HorizontalFlip()(image, bboxes.tolist())
+            image, = IH()(image) 
+            bboxes = np.array(bboxes)
+            pass
+        bboxes = clip_box(bboxes, image)
+        self.aug_done()
+
+        return bboxes.tolist(),
+    
+
+class CombineRandomShear(pAug.AugFunc):
+    '''
+     @note Randomly shears an image in horizontal direction   
+     Bounding boxes which have an area of less than 25% in the remaining in the 
+     transformed image is dropped. The resolution is maintained, and the remaining
+     area if any is filled by black color.
+     @param[in] shear_factor: float or tuple(float)
+         if **float**, the image is sheared horizontally by a factor drawn 
+         randomly from a range (-`shear_factor`, `shear_factor`). If **tuple**,
+         the `shear_factor` is drawn randomly from values specified by the 
+         tuple
+     @ret 
+     numpy.ndaaray
+         Sheared image in the numpy format of shape `HxWxC`
+     numpy.ndarray
+         Tranformed bounding box co-ordinates of the format `n x 4` where n is 
+         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    '''
     def __init__(self, shear_factor = 0.2):
+        pAug.AugFunc.__init__(self)
         self.shear_factor = shear_factor
         
         if type(self.shear_factor) == tuple:
             assert len(self.shear_factor) == 2, "Invalid range for scaling factor"   
         else:
             self.shear_factor = (-self.shear_factor, self.shear_factor)
+            pass
+        self._image_shear = IS()
+        self._bboxes_shear = Shear()
+        pass
         
+        
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+    
         shear_factor = random.uniform(*self.shear_factor)
-        
-    def __call__(self, img, bboxes):
-    
-        shear_factor = random.uniform(*self.shear_factor)
-    
-        w,h = img.shape[1], img.shape[0]
-    
-        if shear_factor < 0:
-            img, bboxes = HorizontalFlip()(img, bboxes)
-    
-        M = np.array([[1, abs(shear_factor), 0],[0,1,0]])
-    
-        nW =  img.shape[1] + abs(shear_factor*img.shape[0])
-    
-        bboxes[:,[0,2]] += ((bboxes[:,[1,3]]) * abs(shear_factor) ).astype(int) 
-    
-    
-        img = cv2.warpAffine(img, M, (int(nW), img.shape[0]))
-    
-        if shear_factor < 0:
-        	img, bboxes = HorizontalFlip()(img, bboxes)
-    
-        img = cv2.resize(img, (w,h))
-    
-        scale_factor_x = nW / w
-    
-        bboxes[:,:4] /= [scale_factor_x, 1, scale_factor_x, 1] 
-    
-    
-        return img, bboxes
-        
-class Shear(object):
-    """Shears an image in horizontal direction   
-    
-    
-    Bounding boxes which have an area of less than 25% in the remaining in the 
-    transformed image is dropped. The resolution is maintained, and the remaining
-    area if any is filled by black color.
-    
-    Parameters
-    ----------
-    shear_factor: float
-        Factor by which the image is sheared in the x-direction
-       
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Tranformed bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
 
-    def __init__(self, shear_factor = 0.2):
-        self.shear_factor = shear_factor
-        
-    
-    def __call__(self, img, bboxes):
-        
-        shear_factor = self.shear_factor
-        if shear_factor < 0:
-            img, bboxes = HorizontalFlip()(img, bboxes)
-
-        
-        M = np.array([[1, abs(shear_factor), 0],[0,1,0]])
-                
-        nW =  img.shape[1] + abs(shear_factor*img.shape[0])
-        
-        bboxes[:,[0,2]] += ((bboxes[:,[1,3]])*abs(shear_factor)).astype(int) 
-        
-
-        img = cv2.warpAffine(img, M, (int(nW), img.shape[0]))
-        
-        if shear_factor < 0:
-             img, bboxes = HorizontalFlip()(img, bboxes)
-             
-        
+        self._image_shear.shear_factor_x = shear_factor
+        self._image_shear.shear_factor_y = shear_factor
+        img, = self._image_shear(image)
+        self._bboxes_shear.shear_factor_x = shear_factor
+        self._bboxes_shear.shear_factor_y = shear_factor
+        bboxes, = self._bboxes_shear(image, bboxes)
         return img, bboxes
     
+    @property
+    def doc(self):
+        return 'shear the image follow the x and y'
+
+    @property
+    def name(self):
+        return 'Shear'
+        
+
 class Resize(object):
     """Resize the image in accordance to `image_letter_box` function in darknet 
     

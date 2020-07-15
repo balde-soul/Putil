@@ -9,10 +9,14 @@ from Putil.data.common_data import CommonDataWithAug
 
 from Putil.data.vision_data_aug.detection.rectangle import HorizontalFlip as BH
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
+from Putil.data.vision_data_aug.detection.rectangle import CombineHorizontalFlip as CHF
 from Putil.data.vision_data_aug.detection.rectangle import RandomResampleCombine as RRC
 from Putil.data.vision_data_aug.detection.rectangle import RandomTranslateConbine as RTC
 from Putil.data.vision_data_aug.detection.rectangle import RandomRotateCombine as RRB
+from Putil.data.vision_data_aug.detection.rectangle import CombineRandomShear as CRS
 from Putil.data.aug import AugFunc
+
+image_wh = (800, 800)
 
 class Data(CommonDataWithAug):
 
@@ -35,37 +39,39 @@ class Data(CommonDataWithAug):
         self._index = [0]
     
     def _generate_from_origin_index(self, index):
-        img_path = os.path.join(os.path.split(os.path.split(os.path.abspath(__file__))[0])[0], 'test_image.jpg')
-        image = cv2.imread(img_path)
+        image = np.zeros(shape=[image_wh[1], image_wh[0], 3], dtype=np.uint8)
         assert image is not None
+        begin = 20
         bboxes = [
-            [5, 5, image.shape[1] // 2, image.shape[0] // 2], 
-            [image.shape[1] // 3, image.shape[0] // 3, (image.shape[1] - image.shape[1] // 3) // 3, (image.shape[0] - image.shape[0] // 3) // 3], 
-            [image.shape[1] // 4, image.shape[0] // 4, (image.shape[1] - image.shape[1] // 4) // 4, (image.shape[0] - image.shape[0] // 4) // 4],
-            [image.shape[1] // 2, image.shape[0] // 2, (image.shape[1] - image.shape[1] // 4) // 4, (image.shape[0] - image.shape[0] // 4) // 4],
-            [image.shape[1] // 1.5, image.shape[0] // 1.5, (image.shape[1] - image.shape[1] // 2) // 2, (image.shape[0] - image.shape[0] // 2) // 2] 
+            [begin, begin, image.shape[1] // 2 - begin, image.shape[0] // 2 - begin], 
+            [begin, begin + image.shape[0] // 2, image.shape[1] // 2 - 2 * begin, image.shape[0] // 2 - 2 * begin],
+            [begin + image.shape[1] // 2, begin, image.shape[1] // 2 - 2 * begin, image.shape[0] // 2 - 2 * begin],
+            [begin + image.shape[1] // 2, begin + image.shape[0] // 2, image.shape[1] // 2 - 2 * begin, image.shape[0] // 2 - 2 * begin]
             ] # LTWHCR
+        color = {0: (125, 0, 0), 1: (0, 125, 0), 2: (0, 0, 125), 3: (125, 125, 0)}
+        for index, bbox in enumerate(bboxes):
+            image[bbox[1]: bbox[1] + bbox[3], bbox[0]: bbox[0] + bbox[2], :] = color[index]
+        bboxes = np.array(bboxes, dtype=np.float64).tolist()
         return image, bboxes
 
 
 class CombineAugFuncHF(AugFunc):
     def __init__(self):
-        self._image_aug = IH()
-        self._bboxes_aug = BH()
+        AugFunc.__init__(self)
+        self._aug = CHF()
         pass
 
     def __call__(self, *args):
         image = args[0]
         bboxes = args[1]
 
-        image = self._image_aug(image)
-        bboxes = self._bboxes_aug(image, bboxes)
-        return image, bboxes
+        return self._aug(image, bboxes)
     pass
 
 
 class CombineAugFuncRRC(AugFunc):
     def __init__(self):
+        AugFunc.__init__(self)
         self._aug = RRC(scale=1)
         pass
 
@@ -80,6 +86,7 @@ class CombineAugFuncRRC(AugFunc):
 
 class CombineAugFuncRTC(AugFunc):
     def __init__(self):
+        AugFunc.__init__(self)
         self._aug = RTC(translate=0.5)
         pass
 
@@ -89,11 +96,16 @@ class CombineAugFuncRTC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
 class CombineAugFuncRRB(AugFunc):
     def __init__(self):
+        AugFunc.__init__(self)
         self._aug = RRB(50)
         pass
 
@@ -103,7 +115,24 @@ class CombineAugFuncRRB(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
+
+
+class CombineAugFuncRSC(AugFunc):
+    def __init__(self):
+        AugFunc.__init__(self)
+        self._aug = CRS(0.9)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+        img, bboxes = self._aug(image, bboxes)
+        return img, bboxes
 
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
@@ -115,7 +144,13 @@ RRCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRC()))
 #RRCNode.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 RTCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 RRBNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRB()))
+RSCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
 root_node.freeze_node()
+
+for index in range(0, len(root_node)):
+    node = root_node[index]
+    print('name: {0}'.format(node.func.name))
+    pass
 
 data = Data()
 data.set_aug_node_root(root_node)
@@ -125,16 +160,22 @@ import matplotlib.patches as patches
 
 print(len(data))
 
+rect_color = ['m', 'c', 'y', 'w']
 for index in range(0, len(data)):
     image, bboxes = data[index]
     print(bboxes)
     #print(image.shape)
+    assert image.shape == (image_wh[0], image_wh[1], 3), 'image shape: {0}'.format(image.shape)
     plt.imshow(image[:, :, ::-1])
     currentAxis=plt.gca()
-    for bbox in bboxes:
+    for i, bbox in enumerate(bboxes):
         #cv2.rectangle(image, (bbox[0], bbox[1]), (bbox[0] + bbox[2], bbox[1] + bbox[3]), (0, 255, 0), thickness=5)
-        rect = patches.Rectangle(bbox[0: 2], bbox[2], bbox[3], linewidth=3,edgecolor='r',facecolor='none')
+        rect = patches.Rectangle(bbox[0: 2], bbox[2], bbox[3], linewidth=2, edgecolor=rect_color[i], facecolor='none')
         currentAxis.add_patch(rect)
         pass
     plt.show()
     pass
+
+
+
+# %%
