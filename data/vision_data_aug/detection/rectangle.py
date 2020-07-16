@@ -11,10 +11,12 @@ from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterB
 from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
 from Putil.data.vision_data_aug.image_aug import Resample as IR
 from Putil.data.vision_data_aug.image_aug import HorizontalFlip as IH
+from Putil.data.vision_data_aug.image_aug import VerticalFlip as IV
 from Putil.data.vision_data_aug.image_aug import Translate as IT
 from Putil.data.vision_data_aug.image_aug import Rotate as IRE
 from Putil.data.vision_data_aug.image_aug import rotate_im as rotate_im
 from Putil.data.vision_data_aug.image_aug import Shear as IS
+from Putil.data.vision_data_aug.image_aug import HSV as IHSV
 
 
 def clip_box(bboxes, image):
@@ -23,6 +25,7 @@ def clip_box(bboxes, image):
     bboxes[:, 2] = np.min([bboxes[:, 2], image.shape[1] - 1 - bboxes[:, 0]], axis=0)
     bboxes[:, 3] = np.min([bboxes[:, 3], image.shape[0] - 1 - bboxes[:, 1]], axis=0)
     return bboxes
+
 
 class HorizontalFlip(IH):
     '''
@@ -48,7 +51,8 @@ class HorizontalFlip(IH):
         bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
         return bboxes.tolist(), 
 
-class CombineHorizontalFlip(pAug.AugFunc):
+
+class HorizontalFlipCombine(pAug.AugFunc):
     def __init__(self):
         self._image_aug = IH()
         self._bboxes_aug = HorizontalFlip()
@@ -65,9 +69,61 @@ class CombineHorizontalFlip(pAug.AugFunc):
     @property
     def doc(self):
         return 'flip the image follow the horizon'
+
     @property
     def name(self):
         return 'HorizontalFlip'
+    pass
+
+
+class VerticalFlip(IV): 
+    ''' 
+     @brief aug the bboxes
+     @note
+     @ret
+    '''
+    def __init__(self):
+        IV.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        '''
+         @brief 
+         @param[in] args
+         [0] image [height, width, channel]
+         [1] bboxes list format LTWHCR
+         @ret bboxes list format LTWHCR
+        '''
+        image = args[0]
+        bboxes = args[1]
+        bboxes = np.array(bboxes)
+        bboxes[:, 1] = image.shape[0] - 1 - bboxes[:, 1] - bboxes[:, 3]
+        return bboxes.tolist(), 
+
+
+class VerticalFlipCombine(pAug.AugFunc):
+    def __init__(self):
+        self._image_aug = IV()
+        self._bboxes_aug = VerticalFlip()
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        img,  = self._image_aug(image)
+        bboxes,  = self._bboxes_aug(image, bboxes)
+        return img, bboxes
+
+    @property
+    def doc(self):
+        return 'flip the image follow the horizon'
+
+    @property
+    def name(self):
+        return 'HorizontalFlip'
+    pass
+
 
 class Resample(IR):
     def __init__(self, diff = False):
@@ -461,7 +517,6 @@ class Shear(IS):
         ## test
         new_width = (image_shape[1] + image_shape[0] * abs(shear_factor))
         fractor_width = image_shape[1] / new_width
-        print(fractor_width)
         bboxes[:, [0, 2]] *= fractor_width
         ## test
         #print('after resize')
@@ -488,7 +543,7 @@ class Shear(IS):
         return bboxes.tolist(),
     
 
-class CombineRandomShear(pAug.AugFunc):
+class RandomShearCombine(pAug.AugFunc):
     '''
      @note Randomly shears an image in horizontal direction   
      Bounding boxes which have an area of less than 25% in the remaining in the 
@@ -541,148 +596,155 @@ class CombineRandomShear(pAug.AugFunc):
     @property
     def name(self):
         return 'Shear'
+
+
+def letterbox_image(img, inp_dim):
+    '''
+     @note resize image with unchanged aspect ratio using padding
+     @param[in] img : numpy.ndarray
+         Image 
+     @param[in] inp_dim: tuple(int)
+         shape of the reszied image
+     @ret numpy.ndarray:
+         Resized image
+    '''
+
+    inp_dim = (inp_dim, inp_dim)
+    img_w, img_h = img.shape[1], img.shape[0]
+    w, h = inp_dim
+    new_w = int(img_w * min(w/img_w, h/img_h))
+    new_h = int(img_h * min(w/img_w, h/img_h))
+    resized_image = cv2.resize(img, (new_w,new_h))
+    canvas = np.full((inp_dim[1], inp_dim[0], 3), 0)
+    canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
+    return canvas
         
 
 class Resize(object):
-    """Resize the image in accordance to `image_letter_box` function in darknet 
-    
-    The aspect ratio is maintained. The longer side is resized to the input 
-    size of the network, while the remaining space on the shorter side is filled 
-    with black color. **This should be the last transform**
-    
-    
-    Parameters
-    ----------
-    inp_dim : tuple(int)
-        tuple containing the size to which the image will be resized.
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Resized bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-    
-    def __init__(self, inp_dim):
-        self.inp_dim = inp_dim
+    '''
+     @note 
+     Resize the image in accordance to `image_letter_box` function in darknet 
+     The aspect ratio is maintained. The longer side is resized to the input 
+     size of the network, while the remaining space on the shorter side is filled 
+     with black color. **This should be the last transform**
+     @param[in] inp_dim : tuple(int)
+         tuple containing the size to which the image will be resized.
+     @ret 
+     numpy.ndaaray
+         Sheared image in the numpy format of shape `HxWxC`
+     numpy.ndarray
+         Resized bounding box co-ordinates of the format `n x 4` where n is 
+         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    '''
+    def __init__(self):
+        pass
         
     def __call__(self, img, bboxes):
-        w,h = img.shape[1], img.shape[0]
-        img = letterbox_image(img, self.inp_dim)
+        w, h = img.shape[1], img.shape[0]
+        inp_dim = (w, h)
+        img = letterbox_image(img, inp_dim)
     
+        scale = min(inp_dim / h, inp_dim / w)
+        bboxes[:, : 4] *= (scale)
     
-        scale = min(self.inp_dim/h, self.inp_dim/w)
-        bboxes[:,:4] *= (scale)
-    
-        new_w = scale*w
-        new_h = scale*h
-        inp_dim = self.inp_dim   
+        new_w = scale * w
+        new_h = scale * h
+        inp_dim = inp_dim   
     
         del_h = (inp_dim - new_h)/2
         del_w = (inp_dim - new_w)/2
     
         add_matrix = np.array([[del_w, del_h, del_w, del_h]]).astype(int)
     
-        bboxes[:,:4] += add_matrix
-    
+        bboxes[:, : 4] += add_matrix
         img = img.astype(np.uint8)
-    
         return img, bboxes 
+
+
+class HSV(IHSV):
+    def __init__(self):
+        IHSV.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+        return bboxes,
     
 
-class RandomHSV(object):
-    """HSV Transform to vary hue saturation and brightness
-    
-    Hue has a range of 0-179
-    Saturation and Brightness have a range of 0-255. 
-    Chose the amount you want to change thhe above quantities accordingly. 
-    
-    
-    
-    
-    Parameters
-    ----------
-    hue : None or int or tuple (int)
-        If None, the hue of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-hue, hue) and added to the 
-        hue of the image. If tuple, the int is sampled from the range 
-        specified by the tuple.   
-        
-    saturation : None or int or tuple(int)
-        If None, the saturation of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-saturation, saturation) 
-        and added to the hue of the image. If tuple, the int is sampled
-        from the range  specified by the tuple.   
-        
-    brightness : None or int or tuple(int)
-        If None, the brightness of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-brightness, brightness) 
-        and added to the hue of the image. If tuple, the int is sampled
-        from the range  specified by the tuple.   
-    
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Transformed image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Resized bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-    
-    def __init__(self, hue = None, saturation = None, brightness = None):
-        if hue:
-            self.hue = hue 
+class RandomHSVCombine(pAug.AugFunc):
+    '''
+     @note HSV Transform to vary hue saturation and brightness
+     Hue has a range of 0-179
+     Saturation and Brightness have a range of 0-255. 
+     Chose the amount you want to change thhe above quantities accordingly. 
+     @param[in] hue : None or int or tuple (int)
+         If None, the hue of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-hue, hue) and added to the 
+         hue of the image. If tuple, the int is sampled from the range 
+         specified by the tuple.   
+     @param[in] saturation : None or int or tuple(int)
+         If None, the saturation of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-saturation, saturation) 
+         and added to the hue of the image. If tuple, the int is sampled
+         from the range  specified by the tuple.   
+     @param[in] brightness : None or int or tuple(int)
+         If None, the brightness of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-brightness, brightness) 
+         and added to the hue of the image. If tuple, the int is sampled
+         from the range  specified by the tuple.   
+     @ret
+     numpy.ndaaray
+         Transformed image in the numpy format of shape `HxWxC`
+     numpy.ndarray
+         Resized bounding box co-ordinates of the format `n x 4` where n is 
+         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    '''
+    def __init__(self, hue_fractor = None, saturation_fractor = None, brightness_fractor = None):
+        if hue_fractor:
+            self._hue_fractor = hue_fractor 
         else:
-            self.hue = 0
+            self._hue_fractor = 0
             
-        if saturation:
-            self.saturation = saturation 
+        if saturation_fractor:
+            self._saturation_fractor = saturation_fractor
         else:
-            self.saturation = 0
+            self._saturation_fractor = 0
             
-        if brightness:
-            self.brightness = brightness
+        if brightness_fractor:
+            self._brightness_fractor = brightness_fractor
         else:
-            self.brightness = 0
+            self._brightness_fractor = 0
+        if type(self._hue_fractor) != tuple:
+            self._hue_fractor = (-self._hue_fractor, self._hue_fractor)
             
-            
-
-        if type(self.hue) != tuple:
-            self.hue = (-self.hue, self.hue)
-            
-        if type(self.saturation) != tuple:
-            self.saturation = (-self.saturation, self.saturation)
+        if type(self._saturation_fractor) != tuple:
+            self._saturation_fractor = (-self._saturation_fractor, self._saturation_fractor)
         
-        if type(brightness) != tuple:
-            self.brightness = (-self.brightness, self.brightness)
+        if type(brightness_fractor) != tuple:
+            self._brightness_fractor = (-self._brightness_fractor, self._brightness_fractor)
+            pass
+        self._image_aug = IHSV()
+        self._bboxes_aug = HSV()
     
-    def __call__(self, img, bboxes):
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
 
-        hue = random.randint(*self.hue)
-        saturation = random.randint(*self.saturation)
-        brightness = random.randint(*self.brightness)
-        
-        img = img.astype(int)
-        
-        a = np.array([hue, saturation, brightness]).astype(int)
-        img += np.reshape(a, (1,1,3))
-        
-        img = np.clip(img, 0, 255)
-        img[:,:,0] = np.clip(img[:,:,0],0, 179)
-        
-        img = img.astype(np.uint8)
+        hue = random.randint(*self._hue_fractor)
+        saturation = random.randint(*self._saturation_fractor)
+        brightness = random.randint(*self._brightness_fractor)
 
-        
-        
+        self._image_aug.hue = hue
+        self._image_aug.saturation = saturation
+        self._image_aug.brightness = brightness
+        img, = self._image_aug(image)
+        self._bboxes_aug.hue = hue
+        self._bboxes_aug.saturation = saturation
+        self._bboxes_aug.brightness = brightness
+        bboxes, = self._bboxes_aug(image, bboxes)
         return img, bboxes
+
     
 class Sequence(object):
 

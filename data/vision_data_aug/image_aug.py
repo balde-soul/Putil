@@ -25,6 +25,23 @@ class HorizontalFlip(ImageHorizontalFlip, pAug.AugFunc):
         return img, 
 
 
+class ImageVerticalFlip:
+    def __init__(self):
+        pass
+
+
+class VerticalFlip(ImageVerticalFlip, pAug.AugFunc):
+    def __init__(self):
+        ImageVerticalFlip.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        img = args[0]
+        img = img[::-1, :, :]
+        return img,
+
+
 class ImageResample:
     def __init__(self):
         self._resample_scale_x = None
@@ -77,7 +94,7 @@ class Resample(ImageResample, pAug.AugFunc):
 
         img=  cv2.resize(img, None, fx = self._resample_scale_x, fy = self._resample_scale_y)
         
-        canvas = np.zeros(img_shape, dtype = np.uint8)
+        canvas = np.zeros(img_shape, dtype = img.dtype)
         
         y_lim = int(min(self._resample_scale_y, 1) * img_shape[0])
         x_lim = int(min(self._resample_scale_x, 1) * img_shape[1])
@@ -135,9 +152,10 @@ class RandomTranslate(pAug.AugFunc):
 
 
 class ImageTranslate:
-    def __init__(self):
+    def __init__(self, dtype=None):
         self._translate_factor_x = None
         self._translate_factor_y = None
+        self._dtype = dtype
         pass
 
     def set_translate_factor_x(self, translate_x):
@@ -184,7 +202,7 @@ class Translate(ImageTranslate, pAug.AugFunc):
         translate_factor_x = self.translate_factor_x
         translate_factor_y = self.translate_factor_y
         
-        canvas = np.zeros(img_shape).astype(np.uint8)
+        canvas = np.zeros(img_shape).astype(img.dtype)
 
         #get the top-left corner co-ordinates of the shifted box 
         corner_x = int(translate_factor_x * img.shape[1])
@@ -378,7 +396,6 @@ class Shear(ImageShear, pAug.AugFunc):
         if shear_factor < 0:
             image, = HorizontalFlip()(image)
 
-        
         M = np.array([[1, abs(shear_factor), 0], [0, 1, 0]])
                 
         nW =  image.shape[1] + abs(shear_factor * image.shape[0])
@@ -392,147 +409,117 @@ class Shear(ImageShear, pAug.AugFunc):
 
         self.aug_done() 
         return image,
-    
-class Resize(object):
-    """Resize the image in accordance to `image_letter_box` function in darknet 
-    
-    The aspect ratio is maintained. The longer side is resized to the input 
-    size of the network, while the remaining space on the shorter side is filled 
-    with black color. **This should be the last transform**
-    
-    
-    Parameters
-    ----------
-    inp_dim : tuple(int)
-        tuple containing the size to which the image will be resized.
-        
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Sheared image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Resized bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-    
-    def __init__(self, inp_dim):
-        self.inp_dim = inp_dim
-        
-    def __call__(self, img, bboxes):
-        w,h = img.shape[1], img.shape[0]
-        img = letterbox_image(img, self.inp_dim)
-    
-    
-        scale = min(self.inp_dim/h, self.inp_dim/w)
-        bboxes[:,:4] *= (scale)
-    
-        new_w = scale*w
-        new_h = scale*h
-        inp_dim = self.inp_dim   
-    
-        del_h = (inp_dim - new_h)/2
-        del_w = (inp_dim - new_w)/2
-    
-        add_matrix = np.array([[del_w, del_h, del_w, del_h]]).astype(int)
-    
-        bboxes[:,:4] += add_matrix
-    
-        img = img.astype(np.uint8)
-    
-        return img, bboxes 
-    
 
-class RandomHSV(object):
-    """HSV Transform to vary hue saturation and brightness
-    
-    Hue has a range of 0-179
-    Saturation and Brightness have a range of 0-255. 
-    Chose the amount you want to change thhe above quantities accordingly. 
-    
-    
-    
-    
-    Parameters
-    ----------
-    hue : None or int or tuple (int)
-        If None, the hue of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-hue, hue) and added to the 
-        hue of the image. If tuple, the int is sampled from the range 
-        specified by the tuple.   
-        
-    saturation : None or int or tuple(int)
-        If None, the saturation of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-saturation, saturation) 
-        and added to the hue of the image. If tuple, the int is sampled
-        from the range  specified by the tuple.   
-        
-    brightness : None or int or tuple(int)
-        If None, the brightness of the image is left unchanged. If int, 
-        a random int is uniformly sampled from (-brightness, brightness) 
-        and added to the hue of the image. If tuple, the int is sampled
-        from the range  specified by the tuple.   
-    
-    Returns
-    -------
-    
-    numpy.ndaaray
-        Transformed image in the numpy format of shape `HxWxC`
-    
-    numpy.ndarray
-        Resized bounding box co-ordinates of the format `n x 4` where n is 
-        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-        
-    """
-    
+
+class ImageHSV:
+    def __init__(self):
+        pass
+
+    def aug_done(self):
+        self._hue = None
+        self._saturation = None
+        self._brightness = None
+        pass
+
+    def set_hue(self, hue):
+        self._hue = hue
+        pass
+
+    def get_hue(self):
+        return self._hue
+    hue = property(get_hue, set_hue)
+
+    def get_saturation(self):
+        return self._saturation
+
+    def set_saturation(self, saturation):
+        self._saturation = saturation
+    saturation = property(get_saturation, set_saturation)
+
+    def get_brightness(self):
+        return self._brightness
+
+    def set_brightness(self, brightness):
+        self._brightness = brightness
+    brightness = property(get_brightness, set_brightness)
+
+
+class HSV(ImageHSV, pAug.AugFunc):
+    '''
+     @note HSV Transform to vary hue saturation and brightness
+     Hue has a range of 0-179
+     Saturation and Brightness have a range of 0-255. 
+     Chose the amount you want to change thhe above quantities accordingly. 
+     @param[in] hue : None or int or tuple (int)
+         If None, the hue of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-hue, hue) and added to the 
+         hue of the image. If tuple, the int is sampled from the range 
+         specified by the tuple.   
+     @param[in] saturation : None or int or tuple(int)
+         If None, the saturation of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-saturation, saturation) 
+         and added to the hue of the image. If tuple, the int is sampled
+         from the range  specified by the tuple.   
+     @param[in] brightness : None or int or tuple(int)
+         If None, the brightness of the image is left unchanged. If int, 
+         a random int is uniformly sampled from (-brightness, brightness) 
+         and added to the hue of the image. If tuple, the int is sampled
+         from the range  specified by the tuple.   
+     @ret
+     numpy.ndaaray
+         Transformed image in the numpy format of shape `HxWxC`
+     
+     numpy.ndarray
+         Resized bounding box co-ordinates of the format `n x 4` where n is 
+         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    '''
     def __init__(self, hue = None, saturation = None, brightness = None):
-        if hue:
-            self.hue = hue 
-        else:
-            self.hue = 0
-            
-        if saturation:
-            self.saturation = saturation 
-        else:
-            self.saturation = 0
-            
-        if brightness:
-            self.brightness = brightness
-        else:
-            self.brightness = 0
-            
-            
-
-        if type(self.hue) != tuple:
-            self.hue = (-self.hue, self.hue)
-            
-        if type(self.saturation) != tuple:
-            self.saturation = (-self.saturation, self.saturation)
-        
-        if type(brightness) != tuple:
-            self.brightness = (-self.brightness, self.brightness)
+        ImageHSV.__init__(self)
+        pAug.AugFunc.__init__(self)
+        #if hue:
+        #    self.hue = hue 
+        #else:
+        #    self.hue = 0
+        #if saturation:
+        #    self.saturation = saturation 
+        #else:
+        #    self.saturation = 0
+        #if brightness:
+        #    self.brightness = brightness
+        #else:
+        #    self.brightness = 0
+        #if type(self.hue) != tuple:
+        #    self.hue = (-self.hue, self.hue)
+        #if type(self.saturation) != tuple:
+        #    self.saturation = (-self.saturation, self.saturation)
+        #if type(brightness) != tuple:
+        #    self.brightness = (-self.brightness, self.brightness)
     
-    def __call__(self, img, bboxes):
+    def __call__(self, *args):
+        image = args[0]
 
-        hue = random.randint(*self.hue)
-        saturation = random.randint(*self.saturation)
-        brightness = random.randint(*self.brightness)
+        #hue = random.randint(*self.hue)
+        #saturation = random.randint(*self.saturation)
+        #brightness = random.randint(*self.brightness)
+        hue = self.hue
+        saturation = self.saturation
+        brightness = self.brightness
         
-        img = img.astype(int)
-        
-        a = np.array([hue, saturation, brightness]).astype(int)
-        img += np.reshape(a, (1,1,3))
-        
-        img = np.clip(img, 0, 255)
-        img[:,:,0] = np.clip(img[:,:,0],0, 179)
-        
-        img = img.astype(np.uint8)
+        image = (image * 255).astype(np.uint8)
 
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        image = (image / 255).astype(np.float32)
         
+        #a = np.array([hue, saturation, brightness]).astype(int)
+        #image += np.reshape(a, (1,1,3))
         
-        return img, bboxes
+        #image = np.clip(image, 0, 255)
+        #image[:,:,0] = np.clip(image[:, :, 0], 0, 179)
+        
+        #image = image.astype(np.uint8)
+        
+        return image, 
     
 class Sequence(object):
 
