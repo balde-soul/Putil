@@ -70,7 +70,8 @@ class CombineAugFuncHF(AugFunc):
         image = args[0]
         bboxes = args[1]
 
-        return self._aug(image, bboxes)
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
     pass
 
 
@@ -83,7 +84,9 @@ class CombineAugFuncVF(AugFunc):
     def __call__(self, *args):
         image = args[0]
         bboxes = args[1]
-        return self._aug(image, bboxes)
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
     pass
 
 
@@ -149,8 +152,9 @@ class CombineAugFuncRSC(AugFunc):
     def __call__(self, *args):
         image = args[0]
         bboxes = args[1]
-        img, bboxes = self._aug(image, bboxes)
-        return img, bboxes
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
     pass
 
 

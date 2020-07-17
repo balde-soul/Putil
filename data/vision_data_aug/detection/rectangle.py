@@ -17,14 +17,7 @@ from Putil.data.vision_data_aug.image_aug import Rotate as IRE
 from Putil.data.vision_data_aug.image_aug import rotate_im as rotate_im
 from Putil.data.vision_data_aug.image_aug import Shear as IS
 from Putil.data.vision_data_aug.image_aug import HSV as IHSV
-
-
-def clip_box(bboxes, image):
-    bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 0] > (image.shape[1] - 1)), axis=0)
-    bboxes = np.delete(bboxes, np.argwhere(bboxes[:, 1] > (image.shape[0] - 1)), axis=0)
-    bboxes[:, 2] = np.min([bboxes[:, 2], image.shape[1] - 1 - bboxes[:, 0]], axis=0)
-    bboxes[:, 3] = np.min([bboxes[:, 3], image.shape[0] - 1 - bboxes[:, 1]], axis=0)
-    return bboxes
+from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box
 
 
 class HorizontalFlip(IH):
@@ -152,7 +145,7 @@ class Resample(IR):
 
         bboxes[:, : 4] *= [self._resample_scale_x, self._resample_scale_y, self._resample_scale_x, self._resample_scale_y]
         # : 需要检查是否越界
-        bboxes = clip_box(bboxes, image)
+        bboxes = np.array(clip_box(bboxes, image))
         self._aug_done()
         return bboxes.tolist(), 
 
@@ -244,7 +237,7 @@ class Translate(IT):
         
         bboxes[:, 0: 2] += [corner_x, corner_y]
         # : 需要检查是否越界
-        bboxes = clip_box(bboxes, image)
+        bboxes = np.array(clip_box(bboxes, image))
         self._aug_done()
         return bboxes.tolist(),
     pass
@@ -431,7 +424,7 @@ class Rotate(IRE):
         new_bbox[:, : 4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y]
         new_bbox[:, 2: 4] = new_bbox[:, 2: 4] - new_bbox[:, 0: 2]
         bboxes  = new_bbox
-        bboxes = clip_box(bboxes, image)
+        bboxes = np.array(clip_box(bboxes, image))
         self.aug_done()
         return bboxes.tolist(), 
 
@@ -537,7 +530,7 @@ class Shear(IS):
             image, = IH()(image) 
             bboxes = np.array(bboxes)
             pass
-        bboxes = clip_box(bboxes, image)
+        bboxes = np.array(clip_box(bboxes, image))
         self.aug_done()
 
         return bboxes.tolist(),

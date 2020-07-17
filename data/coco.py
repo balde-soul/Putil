@@ -1,4 +1,5 @@
 # coding=utf-8
+import json
 from skimage import io
 #import matplotlib.pyplot as plt
 import cv2
@@ -18,6 +19,8 @@ COCODataLogger = logger.getChild('COCOData')
 COCODataLogger.setLevel(plog.DEBUG)
 
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
+from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
+from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box 
 
 
 class COCOData(pcd.CommonDataWithAug):
@@ -105,7 +108,7 @@ class COCOData(pcd.CommonDataWithAug):
         self._dense_pose = dense_pose
         self._captions = captions
         
-        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
+        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
         self._person_keypoints_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
         self._person_keypoints_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
@@ -135,7 +138,21 @@ class COCOData(pcd.CommonDataWithAug):
         self._image_test_img_ids = self._captions_coco.getImgIds() if image_test_load else None
 
         # we know use the detectio only
-        self._index= COCOData.__get_common_id([self._instances_img_ids])
+        self._index = COCOData.__get_common_id([self._instances_img_ids])
+        
+        # check the ann
+        image_without_ann = dict()
+        for index in self._index:
+            image_ann = self._instances_coco.loadImgs(index)
+            ann_ids = self._instances_coco.getAnnIds(index)
+            if len(ann_ids) == 0:
+                image_without_ann[index] = image_ann
+        for index_out in list(image_without_ann.keys()):
+            self._index.remove(index_out)
+        with open('./image_without_ann.json', 'w') as fp:
+            str_ = json.dumps(image_without_ann, indent=4)
+            fp.write(str_)
+            pass
 
         if self._instances_coco is not None:
             self._instances_category_ids = self._instances_coco.getCatIds()
@@ -185,16 +202,18 @@ class COCOData(pcd.CommonDataWithAug):
         self._instances_coco.showAnns(anns, draw_bbox=True)
         #plt.show()
 
-        boxes = list()
+        bboxes = list()
         classes = list()
         for ann in anns:
             box = ann['bbox']
             classes.append(self._instances_category_ids.index(ann['category_id']))
-            boxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
+            bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
             pass
-        #for box in boxes:
+        #for box in bboxes:
         #    cv2.rectangle(image, (box[0] - box[])
-        return image, boxes, classes
+        #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
+        bboxes = clip_box(bboxes, image)
+        return image, bboxes, classes
 
     @staticmethod
     def statistic(coco_root='', year=''):
@@ -214,6 +233,36 @@ class COCOData(pcd.CommonDataWithAug):
     pass
 
 pcd.CommonDataManager.register('COCOData', COCOData)
+
+
+class COCOCommonAugBase:
+    def _repack(self, *original_input, image=None, bboxes=None, classes=None):
+        image = image if image is not None else original_input[self.image_index]
+        bboxes = bboxes if bboxes is not None else original_input[self.bboxes_index]
+        classes = classes if classes is not None else original_input[self.classes_index]
+        return image, bboxes, classes
+
+    @property
+    def image_index(self):
+        return 0
+
+    @property
+    def bboxes_index(self):
+        return 1
+
+    @property
+    def classes_index(self):
+        return 2
+    
+    def image(self, *args):
+        return args[self.image_index]
+
+    def bboxes(self, *args):
+        return args[self.bboxes_index]
+    
+    def classes(self, *args):
+        return args[self.classes_index]
+
 ##In[]:
 #import json
 #person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_val2017.json'
