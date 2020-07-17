@@ -476,89 +476,28 @@ class HSV(ImageHSV, pAug.AugFunc):
     def __init__(self, hue = None, saturation = None, brightness = None):
         ImageHSV.__init__(self)
         pAug.AugFunc.__init__(self)
-        #if hue:
-        #    self.hue = hue 
-        #else:
-        #    self.hue = 0
-        #if saturation:
-        #    self.saturation = saturation 
-        #else:
-        #    self.saturation = 0
-        #if brightness:
-        #    self.brightness = brightness
-        #else:
-        #    self.brightness = 0
-        #if type(self.hue) != tuple:
-        #    self.hue = (-self.hue, self.hue)
-        #if type(self.saturation) != tuple:
-        #    self.saturation = (-self.saturation, self.saturation)
-        #if type(brightness) != tuple:
-        #    self.brightness = (-self.brightness, self.brightness)
-    
+        pass
+
     def __call__(self, *args):
         image = args[0]
 
-        #hue = random.randint(*self.hue)
-        #saturation = random.randint(*self.saturation)
-        #brightness = random.randint(*self.brightness)
         hue = self.hue
         saturation = self.saturation
         brightness = self.brightness
         
         image = (image * 255).astype(np.uint8)
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV).astype(np.int32)
+        
+        a = np.array([hue, saturation, brightness]).astype(np.int32)
+        image += np.reshape(a, (1,1,3))
+        
+        image = np.clip(image, 0, 255)
+        image[:, :, 0] = np.clip(image[:, :, 0], 0, 179)
+
+        image = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_HSV2BGR)
 
         image = (image / 255).astype(np.float32)
         
-        #a = np.array([hue, saturation, brightness]).astype(int)
-        #image += np.reshape(a, (1,1,3))
-        
-        #image = np.clip(image, 0, 255)
-        #image[:,:,0] = np.clip(image[:, :, 0], 0, 179)
-        
-        #image = image.astype(np.uint8)
-        
         return image, 
-    
-class Sequence(object):
-
-    """Initialise Sequence object
-    
-    Apply a Sequence of transformations to the images/boxes.
-    
-    Parameters
-    ----------
-    augemnetations : list 
-        List containing Transformation Objects in Sequence they are to be 
-        applied
-    
-    probs : int or list 
-        If **int**, the probability with which each of the transformation will 
-        be applied. If **list**, the length must be equal to *augmentations*. 
-        Each element of this list is the probability with which each 
-        corresponding transformation is applied
-    
-    Returns
-    -------
-    
-    Sequence
-        Sequence Object 
-        
-    """
-    def __init__(self, augmentations, probs = 1):
-
-        
-        self.augmentations = augmentations
-        self.probs = probs
-        
-    def __call__(self, images, bboxes):
-        for i, augmentation in enumerate(self.augmentations):
-            if type(self.probs) == list:
-                prob = self.probs[i]
-            else:
-                prob = self.probs
-                
-            if random.random() < prob:
-                images, bboxes = augmentation(images, bboxes)
-        return images, bboxes
+    pass

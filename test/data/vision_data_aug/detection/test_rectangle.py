@@ -156,7 +156,7 @@ class CombineAugFuncRSC(AugFunc):
 
 class CombineAugFuncRHC(pAug.AugFunc):
     def __init__(self):
-        self._aug = RHC(20.0, 2.0, 2.0)
+        self._aug = RHC(0.0, 50.0, 50.0)
         pass
 
     def __call__(self, *args):
@@ -210,52 +210,3 @@ for index in range(0, len(data)):
         pass
     plt.show()
     pass
-
-
-
-#In[]
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-
-image = cv2.imread(image_path)
-plt.imshow(image[:, :, ::-1])
-plt.show()
-
-ihsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-assert ihsv.dtype == np.uint8
-print(ihsv.shape)
-
-vreduce = np.clip((ihsv - np.reshape(np.array([0, 0, 20]), [1, 1, 3])).astype(np.uint8), 0, 255)
-print(vreduce.max())
-plt.imshow(cv2.cvtColor(vreduce, cv2.COLOR_HSV2BGR)[:, :, ::-1])
-plt.show()
-
-#In[]
-import cv2
-import numpy as np
-alpha = 0.3
-beta = 80
-img = cv2.imread(image_path)
-img2 = cv2.imread(image_path)
-def updateAlpha(x):
-    global alpha, img, img2
-    alpha = cv2.getTrackbarPos('Alpha', 'image')
-    alpha = alpha * 0.01
-    img = np.uint8(np.clip((alpha * img2 + beta), 0, 255))
-def updateBeta(x):
-    global beta, img, img2
-    beta = cv2.getTrackbarPos('Beta', 'image')
-    img = np.uint8(np.clip((alpha * img2 + beta), 0, 255))
-# 创建窗口
-cv2.namedWindow('image')
-cv2.createTrackbar('Alpha', 'image', 0, 300, updateAlpha)
-cv2.createTrackbar('Beta', 'image', 0, 255, updateBeta)
-cv2.setTrackbarPos('Alpha', 'image', 100)
-cv2.setTrackbarPos('Beta', 'image', 10)
-while (True):
-    cv2.imshow('image', img)
-    if cv2.waitKey(1) == ord('q'):
-        break
-cv2.destroyAllWindows()

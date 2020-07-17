@@ -598,69 +598,6 @@ class RandomShearCombine(pAug.AugFunc):
         return 'Shear'
 
 
-def letterbox_image(img, inp_dim):
-    '''
-     @note resize image with unchanged aspect ratio using padding
-     @param[in] img : numpy.ndarray
-         Image 
-     @param[in] inp_dim: tuple(int)
-         shape of the reszied image
-     @ret numpy.ndarray:
-         Resized image
-    '''
-
-    inp_dim = (inp_dim, inp_dim)
-    img_w, img_h = img.shape[1], img.shape[0]
-    w, h = inp_dim
-    new_w = int(img_w * min(w/img_w, h/img_h))
-    new_h = int(img_h * min(w/img_w, h/img_h))
-    resized_image = cv2.resize(img, (new_w,new_h))
-    canvas = np.full((inp_dim[1], inp_dim[0], 3), 0)
-    canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
-    return canvas
-        
-
-class Resize(object):
-    '''
-     @note 
-     Resize the image in accordance to `image_letter_box` function in darknet 
-     The aspect ratio is maintained. The longer side is resized to the input 
-     size of the network, while the remaining space on the shorter side is filled 
-     with black color. **This should be the last transform**
-     @param[in] inp_dim : tuple(int)
-         tuple containing the size to which the image will be resized.
-     @ret 
-     numpy.ndaaray
-         Sheared image in the numpy format of shape `HxWxC`
-     numpy.ndarray
-         Resized bounding box co-ordinates of the format `n x 4` where n is 
-         number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
-    '''
-    def __init__(self):
-        pass
-        
-    def __call__(self, img, bboxes):
-        w, h = img.shape[1], img.shape[0]
-        inp_dim = (w, h)
-        img = letterbox_image(img, inp_dim)
-    
-        scale = min(inp_dim / h, inp_dim / w)
-        bboxes[:, : 4] *= (scale)
-    
-        new_w = scale * w
-        new_h = scale * h
-        inp_dim = inp_dim   
-    
-        del_h = (inp_dim - new_h)/2
-        del_w = (inp_dim - new_w)/2
-    
-        add_matrix = np.array([[del_w, del_h, del_w, del_h]]).astype(int)
-    
-        bboxes[:, : 4] += add_matrix
-        img = img.astype(np.uint8)
-        return img, bboxes 
-
-
 class HSV(IHSV):
     def __init__(self):
         IHSV.__init__(self)
@@ -744,46 +681,4 @@ class RandomHSVCombine(pAug.AugFunc):
         self._bboxes_aug.brightness = brightness
         bboxes, = self._bboxes_aug(image, bboxes)
         return img, bboxes
-
-    
-class Sequence(object):
-
-    """Initialise Sequence object
-    
-    Apply a Sequence of transformations to the images/boxes.
-    
-    Parameters
-    ----------
-    augemnetations : list 
-        List containing Transformation Objects in Sequence they are to be 
-        applied
-    
-    probs : int or list 
-        If **int**, the probability with which each of the transformation will 
-        be applied. If **list**, the length must be equal to *augmentations*. 
-        Each element of this list is the probability with which each 
-        corresponding transformation is applied
-    
-    Returns
-    -------
-    
-    Sequence
-        Sequence Object 
-        
-    """
-    def __init__(self, augmentations, probs = 1):
-
-        
-        self.augmentations = augmentations
-        self.probs = probs
-        
-    def __call__(self, images, bboxes):
-        for i, augmentation in enumerate(self.augmentations):
-            if type(self.probs) == list:
-                prob = self.probs[i]
-            else:
-                prob = self.probs
-                
-            if random.random() < prob:
-                images, bboxes = augmentation(images, bboxes)
-        return images, bboxes
+    pass
