@@ -85,6 +85,15 @@ class GeneratedData:
         pass
     pass
 
+
+class ConvertPostOperation:
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def __call__(self, *args):
+        return args
+
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
@@ -144,8 +153,15 @@ class CommonData(Dataset, metaclass=ABCMeta):
     def set_convert_to_input_method(self, method):
         self._convert_to_input_method = method
 
+    def _convert_check(self, *args):
+        '''
+         @brief follow after _convert_to_input_method
+         @note default : do nothing
+        '''
+        return args
+
     def generate_from_specified(self, index):
-        return self._convert_to_input_method(*self._generate_from_specified(index))
+        return self._convert_check(*self._convert_to_input_method(*self._generate_from_specified(index)))
 
     def restart_data(self, restart_param):
         '''
@@ -326,7 +342,7 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
     def _generate_from_specified(self, index):
         oindex = index // len(self._aug_node)
         aindex = index % len(self._aug_node)
-        return self._aug_node[aindex](*self._generate_from_origin_index(oindex))
+        return self._aug_check(*self._aug_node[aindex](*self._generate_from_origin_index(oindex)))
     
     @abstractmethod
     def _generate_from_origin_index(self, oindex):
@@ -334,6 +350,13 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
          @brief return the data which is origin read from the dataset(without augment), tuple
         '''
         pass
+
+    def _aug_check(self, *args):
+        '''
+         @brief follow after _aug_node
+         @note default : do nothing
+        '''
+        return args
     pass
 
 class CombineCommonData(CommonDataWithAug):

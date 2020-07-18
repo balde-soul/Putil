@@ -115,3 +115,5 @@ venv.bak/
 
 # vscode
 .vscode*
+
+image_without_ann.json

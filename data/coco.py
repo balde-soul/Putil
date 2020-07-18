@@ -98,7 +98,7 @@ class COCOData(pcd.CommonDataWithAug):
         pcd.CommonDataWithAug.__init__(self)
         self._coco_root_dir = coco_root_dir
         self._stage = stage
-        self._img_root_name = 'val2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
+        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
             ('val2017' if self._stage == COCOData.Stage.STAGE_EVAL else 'test2017')
         self._img_root_dir = os.path.join(self._coco_root_dir, self._img_root_name)
         self._detection = detection
@@ -207,13 +207,24 @@ class COCOData(pcd.CommonDataWithAug):
         for ann in anns:
             box = ann['bbox']
             classes.append(self._instances_category_ids.index(ann['category_id']))
-            bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
+            #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
+            bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
             pass
         #for box in bboxes:
         #    cv2.rectangle(image, (box[0] - box[])
         #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
+        if index == 823:
+            print('break')
         bboxes = clip_box(bboxes, image)
-        return image, bboxes, classes
+        return self._aug_check(image, bboxes, classes)
+
+    def _aug_check(self, *args):
+        bboxes = args[1]
+        classes = args[2]
+        assert len(bboxes) == len(classes)
+        COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
+        assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
+        return args
 
     @staticmethod
     def statistic(coco_root='', year=''):
@@ -238,9 +249,11 @@ pcd.CommonDataManager.register('COCOData', COCOData)
 class COCOCommonAugBase:
     def _repack(self, *original_input, image=None, bboxes=None, classes=None):
         image = image if image is not None else original_input[self.image_index]
-        bboxes = bboxes if bboxes is not None else original_input[self.bboxes_index]
-        classes = classes if classes is not None else original_input[self.classes_index]
-        return image, bboxes, classes
+        bboxes = np.array(bboxes if bboxes is not None else original_input[self.bboxes_index])
+        classes = np.array(classes if classes is not None else original_input[self.classes_index])
+        classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
+        bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
+        return image, bboxes.tolist(), classes.tolist()
 
     @property
     def image_index(self):

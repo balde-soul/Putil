@@ -42,7 +42,12 @@ class HorizontalFlip(IH):
         bboxes = args[1]
         bboxes = np.array(bboxes)
         bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
+        bboxes = np.array(clip_box(bboxes, image))
         return bboxes.tolist(), 
+
+    @property
+    def name(self):
+        return 'RectFlip'
 
 
 class HorizontalFlipCombine(pAug.AugFunc):
@@ -91,6 +96,7 @@ class VerticalFlip(IV):
         bboxes = args[1]
         bboxes = np.array(bboxes)
         bboxes[:, 1] = image.shape[0] - 1 - bboxes[:, 1] - bboxes[:, 3]
+        bboxes = np.array(clip_box(bboxes, image))
         return bboxes.tolist(), 
 
 
@@ -427,6 +433,10 @@ class Rotate(IRE):
         bboxes = np.array(clip_box(bboxes, image))
         self.aug_done()
         return bboxes.tolist(), 
+    
+    @property
+    def name(self):
+        return 'RectRotate'
 
 
 class RandomRotateCombine(object):
@@ -535,6 +545,10 @@ class Shear(IS):
 
         return bboxes.tolist(),
     
+    @property
+    def name(self):
+        return 'RectShear'
+    
 
 class RandomShearCombine(pAug.AugFunc):
     '''
@@ -600,6 +614,10 @@ class HSV(IHSV):
         image = args[0]
         bboxes = args[1]
         return bboxes,
+
+    @property
+    def name(self):
+        return 'RectHSV'
     
 
 class RandomHSVCombine(pAug.AugFunc):
@@ -674,4 +692,8 @@ class RandomHSVCombine(pAug.AugFunc):
         self._bboxes_aug.brightness = brightness
         bboxes, = self._bboxes_aug(image, bboxes)
         return img, bboxes
+
+    @property
+    def name(self):
+        return 'HSV'
     pass
