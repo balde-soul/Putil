@@ -59,6 +59,10 @@ class CombineAugFuncHF(COCOCommonAugFuncBase):
 
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         return self.repack(*args, image=image, bboxes=bboxes)
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -73,6 +77,10 @@ class CombineAugFuncVF(COCOCommonAugFuncBase):
         bboxes = args[1]
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         return self.repack(*args, image=image, bboxes=bboxes)
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -88,6 +96,10 @@ class CombineAugFuncRRC(COCOCommonAugFuncBase):
 
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         return self.repack(*args, image=image, bboxes=bboxes)
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -140,6 +152,10 @@ class CombineAugFuncRSC(COCOCommonAugFuncBase):
         bboxes = args[1]
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         return self.repack(*args, image=image, bboxes=bboxes)
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -155,6 +171,10 @@ class CombineAugFuncRHC(COCOCommonAugFuncBase):
 
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         return self.repack(*args, image=image, bboxes=bboxes)
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 seed = 64
