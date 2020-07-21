@@ -216,7 +216,7 @@ class COCOData(pcd.CommonDataWithAug):
         if index == 823:
             print('break')
         bboxes = clip_box(bboxes, image)
-        return self._aug_check(image, bboxes, classes)
+        return self._aug_check(*COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes))
 
     def _aug_check(self, *args):
         bboxes = args[1]
@@ -247,34 +247,30 @@ pcd.CommonDataManager.register('COCOData', COCOData)
 
 
 class COCOCommonAugBase:
-    def _repack(self, *original_input, image=None, bboxes=None, classes=None):
-        image = image if image is not None else original_input[self.image_index]
-        bboxes = np.array(bboxes if bboxes is not None else original_input[self.bboxes_index])
-        classes = np.array(classes if classes is not None else original_input[self.classes_index])
+    image_index = 0
+    bboxes_index = 1
+    classes_index= 2
+
+    @staticmethod
+    def _repack(*original_input, image=None, bboxes=None, classes=None):
+        image = image if image is not None else original_input[COCOCommonAugBase.image_index]
+        bboxes = np.array(bboxes if bboxes is not None else original_input[COCOCommonAugBase.bboxes_index])
+        classes = np.array(classes if classes is not None else original_input[COCOCommonAugBase.classes_index])
         classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
         bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
         return image, bboxes.tolist(), classes.tolist()
 
-    @property
-    def image_index(self):
-        return 0
+    @staticmethod
+    def image(args):
+        return args[COCOCommonAugBase.image_index]
 
-    @property
-    def bboxes_index(self):
-        return 1
-
-    @property
-    def classes_index(self):
-        return 2
+    @staticmethod
+    def bboxes(args):
+        return args[COCOCommonAugBase.bboxes_index]
     
-    def image(self, *args):
-        return args[self.image_index]
-
-    def bboxes(self, *args):
-        return args[self.bboxes_index]
-    
-    def classes(self, *args):
-        return args[self.classes_index]
+    @staticmethod
+    def classes(args):
+        return args[COCOCommonAugBase.classes_index]
 
 ##In[]:
 #import json

@@ -41,7 +41,7 @@ class COCOCommonAugFuncBase(AugFunc, COCOCommonAugBase):
         pass
 
     def get_image_and_bboxes(self, *args):
-        return args[self.image_index], args[self.bboxes_index]
+        return args[COCOCommonAugBase.image_index], args[COCOCommonAugBase.bboxes_index]
     
     def repack(self, *args, image, bboxes):
         return self._repack(*args, image=image, bboxes=bboxes, classes=None)
@@ -182,12 +182,12 @@ seed = 64
 COCO.COCOData.set_seed(seed)
 dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
-#Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
-#root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
-#root_node.add_child(pAug.AugNode(CombineAugFuncRHC()))
-#root_node.add_child(pAug.AugNode(CombineAugFuncRRB()))
-#root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
-#root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
+Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
+root_node.add_child(pAug.AugNode(CombineAugFuncRHC()))
+root_node.add_child(pAug.AugNode(CombineAugFuncRRB()))
+root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
+root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 root_node.add_child(pAug.AugNode(CombineAugFuncVF()))
 root_node.freeze_node()
 dataset_train.set_aug_node_root(root_node)
@@ -198,3 +198,16 @@ TestCocoLogger.info('data amount: {0}'.format(len(dataset_train)))
 for i in range(0, len(dataset_train)):
     image, bboxes, classes, weight = dataset_train[i]
     TestCocoLogger.info('count: {0}'.format(i))
+
+##In[]:
+#class A:
+#    @staticmethod
+#    def t():
+#        print('t')
+#    
+#    def __init__(self):
+#        pass
+#
+#
+#a = A()
+#a.t()
