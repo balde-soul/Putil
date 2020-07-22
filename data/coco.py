@@ -199,7 +199,7 @@ class COCOData(pcd.CommonDataWithAug):
         y_scale = float(resize_height) / image.shape[0]
         image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
 
-        self._instances_coco.showAnns(anns, draw_bbox=True)
+        #self._instances_coco.showAnns(anns, draw_bbox=True)
         #plt.show()
 
         bboxes = list()

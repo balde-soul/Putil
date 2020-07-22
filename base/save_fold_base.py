@@ -50,7 +50,6 @@ class BaseSaveFold:
     @property
     def Name(self):
         return self._name
-        pass
 
     @property
     def Date(self):
@@ -62,7 +61,6 @@ class BaseSaveFold:
     @property
     def Repo(self):
         return self._repo
-        pass
 
     @property
     def FullPath(self):
@@ -70,5 +68,4 @@ class BaseSaveFold:
         the full path of the target path
         '''
         return self._full_path
-        pass
     pass

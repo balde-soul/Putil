@@ -139,6 +139,7 @@ class CommonData(Dataset, metaclass=ABCMeta):
         self._index = None
 
         self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
+        self._data_type_adapter = convert_to_input.ConvertToInputNoOp()
         pass
 
     @staticmethod
@@ -162,8 +163,22 @@ class CommonData(Dataset, metaclass=ABCMeta):
         '''
         return args
 
+    def set_data_type_adapter(self, adapter):
+        '''
+         @brief 
+         @note 
+         set the data type adapter, set the slef._data_type_adapter
+         the adapter transform the data type such as numpy.array to torch, etc
+         @param[in] adapter
+         the adapter is a function which receive a *args and return the transformed args
+         the default self._data_type_adapter do nothing
+         set
+        '''
+        self._data_type_adapter = adapter
+        pass
+
     def generate_from_specified(self, index):
-        return self._convert_check(*self._convert_to_input_method(*self._generate_from_specified(index)))
+        return self._data_type_adapter(*self._convert_check(*self._convert_to_input_method(*self._generate_from_specified(index))))
 
     def restart_data(self, restart_param):
         '''
