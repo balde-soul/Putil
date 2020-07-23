@@ -216,6 +216,7 @@ class COCOData(pcd.CommonDataWithAug):
         if index == 823:
             print('break')
         bboxes = clip_box(bboxes, image)
+        COCODataLogger.debug('original check:')
         return self._aug_check(*COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes))
 
     def _aug_check(self, *args):
