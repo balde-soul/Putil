@@ -1,15 +1,9 @@
 # coiding=utf-8
 # Putil
-import Putil.base.logger as plog
-
 import git
 import time
 import os
 
-SaveFoldBaseLogger = plog.PutilLogConfig('save_fold_base').logger()
-SaveFoldBaseLogger.setLevel(plog.DEBUG)
-BaseSaveFoldLogger = SaveFoldBaseLogger.getChild('BaseSaveFoldLogger')
-BaseSaveFoldLogger.setLevel(plog.DEBUG)
 
 class BaseSaveFold:
     def __init__(self, **kwargs):
@@ -25,7 +19,7 @@ class BaseSaveFold:
         self._should_be_new = kwargs.get('should_be_new', True)
         self._repo = git.Repo('./') if self._use_git_info is True else None
         if self._use_git_info:
-            assert self._repo is not None, BaseSaveFoldLogger.fatal('this project \'{0}\'is not in git dir, please build a git repo or do not use git info'.format(os.getcwd()))
+            assert self._repo is not None, print('this project \'{0}\'is not in git dir, please build a git repo or do not use git info'.format(os.getcwd()))
             self._repo.commit().hexsha[0:6]
         else:
             pass
@@ -39,12 +33,25 @@ class BaseSaveFold:
 
     def mkdir(self, root_dir):
         self._root_dir = root_dir
-        assert os.path.exists(self._root_dir) is True, BaseSaveFoldLogger.fatal('{0} should be existed'.format(self._root_dir))
+        assert os.path.exists(self._root_dir) is True, print('{0} should be existed'.format(self._root_dir))
         self._full_path = os.path.join(root_dir, self._name)
         self._fold_existed = os.path.exists(self._full_path)
-        assert self._fold_existed is False, BaseSaveFoldLogger.fatal('fold: {0} should be not in the {1}, please check the path'.format(self._name, root_dir)) if self._should_be_new is True else None
+        assert self._fold_existed is False, print('fold: {0} should be not in the {1}, please check the path'.format(self._name, root_dir)) if self._should_be_new is True else None
         flag = os.mkdir(self._full_path) if self._should_be_new is True else os.mkdir(self._full_path) if self._fold_existed is False else None
         assert flag is None
+        pass
+
+    def try_mkdir(self, root_dir):
+        self._root_dir = root_dir
+        assert os.path.exists(self._root_dir) is True, print('{0} should be existed'.format(self._root_dir))
+        self._full_path = os.path.join(root_dir, self._name)
+        self._fold_existed = os.path.exists(self._full_path)
+        if self._fold_existed is False:
+            print('fold: {0} should be not in the {1}, please check the path'.format(self._name, root_dir)) if self._should_be_new is True else None
+        else:
+            flag = os.mkdir(self._full_path) if self._should_be_new is True else os.mkdir(self._full_path) if self._fold_existed is False else None
+            assert flag is None
+            pass
         pass
 
     @property

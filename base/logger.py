@@ -50,7 +50,7 @@ stream_method = int('02', 16)
 handlers = int('0', 16)
 
 Format = logging.BASIC_FORMAT
-FormatRecommend = "%(filename)s: %(lineno)d: %(levelname)s: %(name)s: %(message)s"
+FormatRecommend = "%(asctime)s: %(filename)s: %(lineno)d: %(levelname)s: %(name)s: %(message)s"
 
 # file name
 if sys.platform == 'win32':
