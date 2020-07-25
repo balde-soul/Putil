@@ -224,6 +224,8 @@ class COCOData(pcd.CommonDataWithAug):
         classes = args[2]
         assert len(bboxes) == len(classes)
         COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
+        if len(bboxes) == 0:
+            print('sa')
         assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
         return args
 

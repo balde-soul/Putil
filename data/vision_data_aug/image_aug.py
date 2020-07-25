@@ -152,6 +152,13 @@ class RandomTranslate(pAug.AugFunc):
 
 
 class ImageTranslate:
+    '''
+     @brief base common class for Translate
+     @note
+     hanlde the translate_factor_x and the translate_factor_y
+     translate_factor_x: the translate factor of width, sample in (-1, 1)
+     translate_factor_y: the translate factor of height, sample in (-1, 1)
+    '''
     def __init__(self, dtype=None):
         self._translate_factor_x = None
         self._translate_factor_y = None

@@ -11,7 +11,7 @@ import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
 plog.PutilLogConfig.config_format(plog.FormatRecommend)
-plog.PutilLogConfig.config_log_level(stream=plog.INFO)
+plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
 root_logger = plog.PutilLogConfig('test_coco').logger()
 root_logger.setLevel(plog.DEBUG)
 TestCocoLogger = root_logger.getChild('TestCoco')
@@ -110,11 +110,12 @@ class CombineAugFuncRTC(COCOCommonAugFuncBase):
         pass
 
     def __call__(self, *args):
-        image = args[0]
-        bboxes = args[1]
-
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
-        return self.repack(*args, image=image, bboxes=bboxes)
+        ret = self.repack(*args, image=image, bboxes=bboxes)
+        while len(self.bboxes(ret)) == 0:
+            image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
+            ret = self.repack(*args, image=image, bboxes=bboxes)
+        return ret
     
     @property
     def name(self):
@@ -180,7 +181,7 @@ class CombineAugFuncRHC(COCOCommonAugFuncBase):
 seed = 64
 
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True)
+dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_TRAIN, './result', detection=True)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 root_node.add_child(pAug.AugNode(CombineAugFuncHF()))

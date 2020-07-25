@@ -1,5 +1,8 @@
 # coding=utf-8
-
+'''
+ @file rectangle.py
+ @note 
+'''
 import random
 import numpy as np
 import cv2
@@ -50,6 +53,9 @@ class HorizontalFlip(IH):
         return 'RectFlip'
 
 
+"""
+@package asds
+"""
 class HorizontalFlipCombine(pAug.AugFunc):
     def __init__(self):
         self._image_aug = IH()
@@ -160,6 +166,9 @@ class RandomResampleCombine(pAug.AugFunc):
      @brief RandomResampleImageAndBBoxes
     '''
     def __init__(self, scale=0.2, diff=False):
+        '''
+         @todo write the doc
+        '''
         self.scale = scale
         
         if type(self.scale) == tuple:
@@ -213,6 +222,16 @@ class Translate(IT):
  
 
     def __call__(self, *args):
+        '''
+         @brief
+         @note before calling this function, you should set the IT.translate_factor_x and the IT.translate_factor_y
+         @warning translate can not guarantee object remain after translating
+         @param[in] args, tuple
+         [0] image ndarray with shape [height, width[, channel]]
+         [1] bboxes list of list [[x, y, widht, height]]
+         @ret
+         bboxes list of list [[x, y, width, height]]
+        '''
         self.check_factor()
         image = args[0]
         bboxes = np.array(args[1])
@@ -253,11 +272,14 @@ class RandomTranslateConbine(object):
     def __init__(self, translate = 0.2, diff = False):
         '''
          @brief random translate which combine the ImageTranslate and the bboxesTranslate 
-         @note
+         @note resample translate_x and translate_y in the case of all object is out of the field
          @param[in] translate
-         float, tuple with float
-         while float, this means the translate range: [-translate, translate]
-         while tuple, this means the translate range: [translate[0], translate[1]]
+         float, tuple with float, (.0, 1.0)
+         @warning more object is translated out of the field as the translate grow \n
+         and cause the reduction sampling efficiency 
+         while float, this means the translate range: [-translate, translate], translate should be the subset of (0, 1) \n
+         and the actually translate range would be subset of (-1, 1)
+         while tuple, this means the translate range: [translate[0], translate[1]], translate should be the subset of (0, 1)
          @param[in] diff
          bool
          while False, x_translate and y_translate use the same random variable
