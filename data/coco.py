@@ -1,4 +1,5 @@
 # coding=utf-8
+import random
 import json
 from skimage import io
 #import matplotlib.pyplot as plt
@@ -214,10 +215,17 @@ class COCOData(pcd.CommonDataWithAug):
         #    cv2.rectangle(image, (box[0] - box[])
         #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
         if index == 823:
-            print('break')
+            pass
         bboxes = clip_box(bboxes, image)
         COCODataLogger.debug('original check:')
-        return self._aug_check(*COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes))
+        ret = COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes)
+        ret = self._aug_check(*ret)
+        _bboxes = COCOCommonAugBase.bboxes(*ret)
+        if len(_bboxes) == 0:
+            COCODataLogger.warning('original data generate no obj, regenerate')
+            ret = self._generate_from_specified(random.choice(range(0, len(self))))
+            pass
+        return ret
 
     def _aug_check(self, *args):
         bboxes = args[1]
@@ -225,7 +233,7 @@ class COCOData(pcd.CommonDataWithAug):
         assert len(bboxes) == len(classes)
         COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
         if len(bboxes) == 0:
-            print('sa')
+            pass
         assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
         return args
 
@@ -264,15 +272,15 @@ class COCOCommonAugBase:
         return image, bboxes.tolist(), classes.tolist()
 
     @staticmethod
-    def image(args):
+    def image(*args):
         return args[COCOCommonAugBase.image_index]
 
     @staticmethod
-    def bboxes(args):
+    def bboxes(*args):
         return args[COCOCommonAugBase.bboxes_index]
     
     @staticmethod
-    def classes(args):
+    def classes(*args):
         return args[COCOCommonAugBase.classes_index]
 
 ##In[]:

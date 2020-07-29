@@ -112,7 +112,7 @@ class CombineAugFuncRTC(COCOCommonAugFuncBase):
     def __call__(self, *args):
         image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
         ret = self.repack(*args, image=image, bboxes=bboxes)
-        while len(self.bboxes(ret)) == 0:
+        while len(self.bboxes(*ret)) == 0:
             image, bboxes = self._aug(*self.get_image_and_bboxes(*args))
             ret = self.repack(*args, image=image, bboxes=bboxes)
         return ret
@@ -181,7 +181,7 @@ class CombineAugFuncRHC(COCOCommonAugFuncBase):
 seed = 64
 
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_TRAIN, './result', detection=True)
+dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
