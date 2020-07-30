@@ -3,11 +3,12 @@ import Putil.trainer.multiprocess_auto_save as mas
 from multiprocessing.managers import BaseManager
 
 
-BaseManager.register('T', mas.T)
-manager = BaseManager()
-manager.start()
+if __name__ == 'main':
+    BaseManager.register('T', mas.T)
+    manager = BaseManager(address=('127.0.0.1', 4000), authkey=b'test')
+    manager.start()
 
-t = manager.T()
+    t = manager.T()
 
 def main():
     mp.spawn()
