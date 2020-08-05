@@ -75,7 +75,8 @@ class COCOData(pcd.CommonDataWithAug):
         stuff=False,
         panoptic=False,
         dense_pose=False,
-        captions=False):
+        captions=False,
+        use_rate=1.0):
         '''
          @brief focus on coco2017
          @note 
@@ -95,8 +96,10 @@ class COCOData(pcd.CommonDataWithAug):
          read the dense_pose label or not
          @param[in] captions
          read the captions label or not
+         @param[in] use_rate
+         data used rate
         '''
-        pcd.CommonDataWithAug.__init__(self)
+        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate)
         self._coco_root_dir = coco_root_dir
         self._stage = stage
         self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
@@ -140,6 +143,7 @@ class COCOData(pcd.CommonDataWithAug):
 
         # we know use the detectio only
         self._index = COCOData.__get_common_id([self._instances_img_ids])
+        self._fix_index()
         
         # check the ann
         image_without_ann = dict()

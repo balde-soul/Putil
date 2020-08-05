@@ -1,4 +1,5 @@
 # coding=utf-8
+import random
 import Putil.PutilEnvSet as penv
 import inspect
 import traceback
@@ -127,7 +128,8 @@ class CommonData(Dataset, metaclass=ABCMeta):
         the format of the data returned should be: {key: data.follow(shape: [batch, **])}
         '''
         pass
-    def __init__(self):
+
+    def __init__(self, use_rate=1.0):
         #self._device_batch_mutex = threading.Lock()
         self._device_batch = None
         self._critical_process = None
@@ -140,6 +142,12 @@ class CommonData(Dataset, metaclass=ABCMeta):
 
         self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
         self._data_type_adapter = convert_to_input.ConvertToInputNoOp()
+
+        self._use_rate = use_rate
+        pass
+
+    def _fix_index(self):
+        self._index = random.sample(self._index, int(len(self._index) * self._use_rate))
         pass
 
     @staticmethod
@@ -343,8 +351,8 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
      @note
         this class complete the generate_from_specified which contain aug
     '''
-    def __init__(self):
-        CommonData.__init__(self)
+    def __init__(self, use_rate=1.0):
+        CommonData.__init__(self, use_rate=use_rate)
         self._aug_node = Aug.AugNode(Aug.AugFuncNoOp())
         self._aug_node.freeze_node()
         pass
