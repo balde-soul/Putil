@@ -102,7 +102,7 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
          @brief generate the box_label from the input
          @param[in] args
          [image, bboxes]
-         bboxes: [[top_left_col_i, top_left_row_i, width, height], ...]
+         bboxes: [[obj_or_not, top_left_col_i, top_left_row_i, width, height], ...]
          @ret 
          [image, center_box_label_with_weight]
         '''
