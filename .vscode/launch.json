@@ -12,6 +12,13 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "test_giou",
+            "type": "python",
+            "request": "launch",
+            "program": "test/torch/indicator/vision/object_detection/test_giou.py",
+            "console": "integratedTerminal"
+        }
+        {
             "name": "test_diou",
             "type": "python",
             "request": "launch",

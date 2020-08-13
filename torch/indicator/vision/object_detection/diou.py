@@ -1,41 +1,53 @@
-def compute_diou(bboxes1, bboxes2):
-    rows = bboxes1.shape[0]
-    cols = bboxes2.shape[0]
-    dious = torch.zeros((rows, cols))
-    if rows * cols == 0:#
-        return dious
-    exchange = False
-    if bboxes1.shape[0] > bboxes2.shape[0]:
-        bboxes1, bboxes2 = bboxes2, bboxes1
-        dious = torch.zeros((cols, rows))
-        exchange = True
-    # #xmin,ymin,xmax,ymax->[:,0],[:,1],[:,2],[:,3]
-    w1 = bboxes1[:, 2] - bboxes1[:, 0]
-    h1 = bboxes1[:, 3] - bboxes1[:, 1] 
-    w2 = bboxes2[:, 2] - bboxes2[:, 0]
-    h2 = bboxes2[:, 3] - bboxes2[:, 1]
-    
-    area1 = w1 * h1
-    area2 = w2 * h2
+# coding=utf-8
 
-    center_x1 = (bboxes1[:, 2] + bboxes1[:, 0]) / 2 
-    center_y1 = (bboxes1[:, 3] + bboxes1[:, 1]) / 2 
-    center_x2 = (bboxes2[:, 2] + bboxes2[:, 0]) / 2
-    center_y2 = (bboxes2[:, 3] + bboxes2[:, 1]) / 2
+import torch 
 
-    inter_max_xy = torch.min(bboxes1[:, 2:],bboxes2[:, 2:]) 
-    inter_min_xy = torch.max(bboxes1[:, :2],bboxes2[:, :2]) 
-    out_max_xy = torch.max(bboxes1[:, 2:],bboxes2[:, 2:]) 
-    out_min_xy = torch.min(bboxes1[:, :2],bboxes2[:, :2])
 
-    inter = torch.clamp((inter_max_xy - inter_min_xy), min=0)
-    inter_area = inter[:, 0] * inter[:, 1]
-    inter_diag = (center_x2 - center_x1)**2 + (center_y2 - center_y1)**2
-    outer = torch.clamp((out_max_xy - out_min_xy), min=0)
-    outer_diag = (outer[:, 0] ** 2) + (outer[:, 1] ** 2)
-    union = area1+area2-inter_area
-    dious = inter_area / union - (inter_diag) / outer_diag
-    dious = torch.clamp(dious,min=-1.0,max = 1.0)
-    if exchange:
-        dious = dious.T
-    return dious
+def compute_diou(pre, gt):
+    '''
+     @brief
+     @note
+     https://arxiv.org/pdf/1911.08287.pdf
+     DIoU = IoU - \
+     @param[in] pre
+     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+     @prarm[in] gt 
+     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+     @ret
+     0: the iou [batch_size, ..., 1]
+     1: the giou [batch_size, ..., 1]
+    '''
+    x1, y1, width, height = torch.split(pre, 1, dim=-1)
+    x1g, y1g, widthgt, heightgt = torch.split(gt, 1, dim=-1)
+    x2, y2 = (x1 + width, y1 + height)
+    x2g, y2g = (x1g + widthgt, y1g + heightgt)
+
+    center_x = (x1 + x2) / 2 
+    center_y = (y1 + y2) / 2 
+    center_xgt = (x1g + x2g) / 2
+    center_ygt = (y1g + y2g) / 2
+
+    cap_x1 = torch.max(x1, x1g)
+    cap_y1 = torch.max(y1, y1g)
+    cap_x2 = torch.min(x2, x2g)
+    cap_y2 = torch.min(y2, y2g)
+
+    closure_x1 = torch.min(x1, x1g)
+    closure_y1 = torch.min(y1, y1g)
+    closure_x2 = torch.max(x2, x2g)
+    closure_y2 = torch.max(y2, y2g)
+
+    cap = torch.zeros(x1.shape).to(pre)
+    mask = (cap_y2 > cap_y1) * (cap_x2 > cap_x1)
+    cap[mask] = (cap_x2[mask] - cap_x1[mask]) * (cap_y2[mask] - cap_y1[mask]) # cap 
+    cup = (x2 - x1) * (y2 - y1) + (x2g - x1g) * (y2g - y1g) - cap + 1e-32 # pre \cup gtr
+
+    iou = cap / cup # whild the cap is zero , there would be no grad backpropagation(take a look at where the cap come from)
+
+    inter_diag = (center_x - center_xgt)**2 + (center_y - center_ygt)**2
+
+    outer_diag = (closure_x1 - closure_x2) ** 2 + (closure_y1 - closure_y2) ** 2 + 1e-32
+
+    dious = iou - (inter_diag) / outer_diag
+
+    return iou, dious
