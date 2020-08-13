@@ -39,7 +39,6 @@ class AutoSave(auto_save):
     @staticmethod
     def get_improve_from_args(args):
         return args.AutoSaverImprove
-        pass
 
     @staticmethod
     def get_delta_from_args(args):
