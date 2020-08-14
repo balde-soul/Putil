@@ -2,8 +2,10 @@
 import numpy as np
 import Putil.base.logger as plog
 
-plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
-plog.PutilLogConfig.config_handler(plog.stream_method)
+if __name__ == '__main__':
+    plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+    plog.PutilLogConfig.config_format(plog.FormatRecommend)
+    plog.PutilLogConfig.config_handler(plog.stream_method)
 logger = plog.PutilLogConfig('TesCommonData').logger()
 logger.setLevel(plog.DEBUG)
 MainLogger = logger.getChild('Main')

@@ -1,4 +1,5 @@
 # coding=utf-8
+import random
 import copy
 import queue
 from abc import ABCMeta, abstractmethod, ABC
@@ -38,6 +39,10 @@ class AugFunc(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self, *args):
         raise NotImplementedError("this func is not implement")
+
+    @staticmethod
+    def seed(seed):
+        random.seed(seed)
     pass
 
 class AugFuncNoOp(AugFunc):

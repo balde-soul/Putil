@@ -2,18 +2,20 @@
 import sys
 import traceback
 import numpy as np
+import os
 import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+plog.PutilLogConfig.config_format(plog.FormatRecommend)
 plog.PutilLogConfig.config_handler(plog.stream_method)
 logger = plog.PutilLogConfig('TesCommonData').logger()
 logger.setLevel(plog.DEBUG)
 MainLogger = logger.getChild('Main')
 MainLogger.setLevel(plog.DEBUG)
 
+import Putil.test.data.test_common_data_unit as tbase
 import Putil.data.common_data as pcd
 import multiprocessing
-import Putil.test.data.test_common_data_unit as tbase
 
 
 if __name__ == '__main__':

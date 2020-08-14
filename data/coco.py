@@ -76,7 +76,9 @@ class COCOData(pcd.CommonDataWithAug):
         panoptic=False,
         dense_pose=False,
         captions=False,
-        use_rate=1.0):
+        use_rate=1.0,
+        image_width=128,
+        image_height=128):
         '''
          @brief focus on coco2017
          @note 
@@ -111,6 +113,7 @@ class COCOData(pcd.CommonDataWithAug):
         self._panoptic = panoptic
         self._dense_pose = dense_pose
         self._captions = captions
+        assert True in [self._detection, self._key_points, self._stuff, self._panoptic, self._dense_pose, self._captions]
         
         self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
@@ -129,44 +132,65 @@ class COCOData(pcd.CommonDataWithAug):
         self._instances_coco, instances_load = (COCO(self._instances_file_train \
             if self._stage == COCOData.Stage.STAGE_TRAIN else self._instances_file_eval), True) \
                 if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
-        self._instances_img_ids = self._instances_coco.getImgIds() if instances_load else None
+        self._instances_img_ids = self._instances_coco.getImgIds() if instances_load else list() 
         self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoints_train \
             if self._stage == COCOData.Stage.STAGE_TRAIN else self._person_keypoints_eval), True) \
                 if ((self._stage in with_label) and (self._key_points)) else (None, False)
-        self._persion_keypoints_img_ids = self._person_keypoints_coco.getImgIds() if key_point_load else None
+        self._persion_keypoints_img_ids = self._person_keypoints_coco.getImgIds() if key_point_load else list()
         self._captions_coco, captions_load = (COCO(self._captions_train \
             if self._stage == COCOData.Stage.STAGE_TRAIN else self._captions_eval), True) \
                 if ((self._stage in with_label) and (self._captions)) else (None, False)
-        self._captions_img_ids = self._captions_coco.getImgIds() if captions_load else None
+        self._captions_img_ids = self._captions_coco.getImgIds() if captions_load else list()
         self._image_test, image_test_load = (COCO(self._image_info_test), True) if self._stage in without_label else (None, False)
-        self._image_test_img_ids = self._captions_coco.getImgIds() if image_test_load else None
+        self._image_test_img_ids = self._image_test.getImgIds() if image_test_load else list()
+
+        assert [instances_load, key_point_load, captions_load, image_test_load].count(True) == 1, "only support one ann file"
 
         # we know use the detectio only
-        self._index = COCOData.__get_common_id([self._instances_img_ids])
-        self._fix_index()
+        #self._data_field = COCOData.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
+        #     self._captions_img_ids, self._image_test_img_ids])
+        self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
+        self._fix_field()
         
         # check the ann
-        image_without_ann = dict()
-        for index in self._index:
-            image_ann = self._instances_coco.loadImgs(index)
-            ann_ids = self._instances_coco.getAnnIds(index)
-            if len(ann_ids) == 0:
-                image_without_ann[index] = image_ann
-        for index_out in list(image_without_ann.keys()):
-            self._index.remove(index_out)
-        with open('./image_without_ann.json', 'w') as fp:
-            str_ = json.dumps(image_without_ann, indent=4)
-            fp.write(str_)
-            pass
+        if self._stage in with_label:
+            image_without_ann = dict()
+            for index in self._data_field:
+                image_ann = self._instances_coco.loadImgs(index)
+                ann_ids = self._instances_coco.getAnnIds(index)
+                if len(ann_ids) == 0:
+                    image_without_ann[index] = image_ann
+            for index_out in list(image_without_ann.keys()):
+                self._data_field.remove(index_out)
+            with open('./image_without_ann.json', 'w') as fp:
+                str_ = json.dumps(image_without_ann, indent=4)
+                fp.write(str_)
+                pass
 
         if self._instances_coco is not None:
             self._instances_category_ids = self._instances_coco.getCatIds()
+            pass
+
+        self._image_width = image_width
+        self._image_height = image_height
         pass
 
     def _restart_process(self, restart_param):
+        self._image_width = restart_param('image_width', self._image_width)
+        self._image_height = restart_param.get('image_height', self._image_height)
         pass
 
     def _inject_operation(self, inject_param):
+        pass
+
+    def __read_image(self, file_name):
+
+        image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.float32)
+        image_min = np.min(np.min(image, axis=0, keepdims=True), axis=1, keepdims=True)
+        image_max = np.max(np.max(image, axis=0, keepdims=True), axis=1, keepdims=True)
+        image = (image - image_min) / (image_max - image_min)
+        assert(image is not None)
+        return image
         pass
 
     def _generate_from_origin_index(self, index):
@@ -174,71 +198,86 @@ class COCOData(pcd.CommonDataWithAug):
          @brief generate the image [detection_label ]
          @note
          @ret 
-         (image, boxes)
+         image [height, width, channel] numpy.float32
+         bboxes 
         '''
-        image_ann = self._instances_coco.loadImgs(self._index[index])
-        ann_ids = self._instances_coco.getAnnIds(self._index[index])
-        anns = self._instances_coco.loadAnns(ann_ids)
+        if self._stage == COCOData.Stage.STAGE_TEST:
+            return self.__generate_test_from_origin_index(index)
+        elif True in [self._detection, self._stuff, self._panoptic]:
+            image_ann = self._instances_coco.loadImgs(self._data_field[index])
+            ann_ids = self._instances_coco.getAnnIds(self._data_field[index])
+            anns = self._instances_coco.loadAnns(ann_ids)
 
-        image = cv2.imread(os.path.join(self._img_root_dir, image_ann[0]['file_name'])).astype(np.float32)
-        image_min = np.min(np.min(image, axis=0, keepdims=True), axis=1, keepdims=True)
-        image_max = np.max(np.max(image, axis=0, keepdims=True), axis=1, keepdims=True)
-        image = (image - image_min) / (image_max - image_min)
-        assert(image is not None)
+            image = self.__read_image(image_ann[0]['file_name'])
 
-        # debug check
-        for ann in anns:
-            box = ann['bbox']
-            if (box[0] + box[2] > image.shape[1]) or (box[1] + box[3] > image.shape[0]):
-                COCODataLogger.info(box)
+            # debug check
+            for ann in anns:
+                box = ann['bbox']
+                if (box[0] + box[2] > image.shape[1]) or (box[1] + box[3] > image.shape[0]):
+                    COCODataLogger.info(box)
+                    pass
                 pass
-            pass
 
-        #plt.axis('off')
-        ##COCODataLogger.debug(image.shape)
-        #plt.imshow(image)
+            #plt.axis('off')
+            ##COCODataLogger.debug(image.shape)
+            #plt.imshow(image)
 
-        resize_width = 128
-        resize_height = 128 
-        x_scale = float(resize_width) / image.shape[1]
-        y_scale = float(resize_height) / image.shape[0]
-        image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
+            resize_width = self._image_width
+            resize_height = self._image_height
+            x_scale = float(resize_width) / image.shape[1]
+            y_scale = float(resize_height) / image.shape[0]
+            image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
 
-        #self._instances_coco.showAnns(anns, draw_bbox=True)
-        #plt.show()
+            #self._instances_coco.showAnns(anns, draw_bbox=True)
+            #plt.show()
 
-        bboxes = list()
-        classes = list()
-        for ann in anns:
-            box = ann['bbox']
-            classes.append(self._instances_category_ids.index(ann['category_id']))
-            #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
-            bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
+            bboxes = list()
+            classes = list()
+            for ann in anns:
+                box = ann['bbox']
+                classes.append(self._instances_category_ids.index(ann['category_id']))
+                #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
+                bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
+                pass
+            #for box in bboxes:
+            #    cv2.rectangle(image, (box[0] - box[])
+            #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
+            if index == 823:
+                pass
+            bboxes = clip_box(bboxes, image)
+            COCODataLogger.debug('original check:')
+            ret = COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes)
+            ret = self._aug_check(*ret)
+            _bboxes = COCOCommonAugBase.bboxes(*ret)
+            if len(_bboxes) == 0:
+                COCODataLogger.warning('original data generate no obj, regenerate')
+                ret = self._generate_from_specified(random.choice(range(0, len(self))))
+                pass
+            return ret
+        else:
+            raise NotImplementedError('unimplemented')
             pass
-        #for box in bboxes:
-        #    cv2.rectangle(image, (box[0] - box[])
-        #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
-        if index == 823:
-            pass
-        bboxes = clip_box(bboxes, image)
-        COCODataLogger.debug('original check:')
-        ret = COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes)
-        ret = self._aug_check(*ret)
-        _bboxes = COCOCommonAugBase.bboxes(*ret)
-        if len(_bboxes) == 0:
-            COCODataLogger.warning('original data generate no obj, regenerate')
-            ret = self._generate_from_specified(random.choice(range(0, len(self))))
-            pass
-        return ret
+        pass
 
     def _aug_check(self, *args):
-        bboxes = args[1]
-        classes = args[2]
-        assert len(bboxes) == len(classes)
-        COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
-        if len(bboxes) == 0:
+        if self._stage == COCOData.Stage.STAGE_TRAIN or (self._stage == COCOData.Stage.STAGE_EVAL):
+            if True in [self._detection, self._stuff, self._panoptic]:
+                bboxes = args[1]
+                classes = args[2]
+                assert len(bboxes) == len(classes)
+                COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
+                if len(bboxes) == 0:
+                    pass
+                assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
+                pass
+            else:
+                # TODO: other type
+                pass
+        elif self._stage == COCOData.Stage.STAGE_TEST:
             pass
-        assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
+        else:
+            raise ValueError('stage: {} not supported'.format(self._stage))
+            pass
         return args
 
     @staticmethod
@@ -256,15 +295,33 @@ class COCOData(pcd.CommonDataWithAug):
         # if the image does not exist, download the image
         # instances
         pass
+
+    def __generate_test_from_origin_index(self, index):
+        image_ann = self._image_test.loadImgs(self._image_test_img_ids[index])
+        image = self.__read_image(image_ann[0]['file_name'])
+        return image,
+
+    def __generate_instance_from_origin_index(self, index):
+        pass
+
+    def __generate_keypoint_from_origin_index(self, index):
+        pass
+
+    def __generate_caption_from_origin_index(self, index):
+        pass
     pass
+
 
 pcd.CommonDataManager.register('COCOData', COCOData)
 
 
 class COCOCommonAugBase:
-    image_index = 0
-    bboxes_index = 1
-    classes_index= 2
+    instance_image_index = 0
+    image_index = instance_image_index
+    instance_bboxes_index = 1
+    bboxes_index = instance_bboxes_index
+    instance_classes_index= 2
+    class_index = instance_classes_index
 
     @staticmethod
     def _repack(*original_input, image=None, bboxes=None, classes=None):
@@ -286,98 +343,3 @@ class COCOCommonAugBase:
     @staticmethod
     def classes(*args):
         return args[COCOCommonAugBase.classes_index]
-
-##In[]:
-#import json
-#person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_val2017.json'
-#instance_file = '/data2/Public_Data/COCO/annotations/instances_val2017.json'
-#image_file = '/data2/Public_Data/COCO/annotations/image_info_test2017.json'
-#captions_file = '/data2/Public_Data/COCO/annotations/captions_val2017.json'
-#panno = json.loads(open(person_file, 'r').read())
-#print(panno.keys())
-#ianno = json.loads(open(instance_file, 'r').read())
-#print(ianno.keys())
-#imanno = json.loads(open(image_file, 'r').read())
-#print(imanno.keys())
-#canno = json.loads(open(captions_file, 'r').read())
-#print(canno.keys())
-##In[]:
-#canno['annotations']
-##In[]:
-#from pycocotools.coco import COCO
-#ic = COCO(instance_file)
-#len(ic.getImgIds())
-##In[]:
-#from pycocotools.coco import COCO
-#cc = COCO(captions_file)
-#len(cc.getImgIds())
-##In[]:
-#from pycocotools.coco import COCO
-#cc = COCO(person_file)
-#len(cc.getImgIds())
-##In[]:
-#import json
-#data_root = '/data2/Public_Data/COCO/train2017'
-#person_file = '/data2/Public_Data/COCO/annotations/person_keypoints_train2017.json'
-#instance_file = '/data2/Public_Data/COCO/annotations/instances_train2017.json'
-#captions_file = '/data2/Public_Data/COCO/annotations/captions_train2017.json'
-##panno = json.loads(open(person_file, 'r').read())
-##print(panno.keys())
-##ianno = json.loads(open(instance_file, 'r').read())
-##print(ianno.keys())
-##imanno = json.loads(open(image_file, 'r').read())
-##print(imanno.keys())
-##canno = json.loads(open(captions_file, 'r').read())
-##print(canno.keys())
-##In[]:
-#canno['annotations']
-##In[]:
-#from pycocotools.coco import COCO
-#ic = COCO(instance_file)
-##In[]:
-#from skimage import io
-#from matplotlib import pyplot as plt
-#import os
-#imgids = ic.getImgIds()
-#img = ic.loadImgs(imgids[0:1])
-#print('imageid len: {0}'.format(len(imgids)))
-#labids = ic.getAnnIds(imgids[0:1])
-#print('label len: {0} for image: {1}'.format(len(labids), imgids[0:1]))
-#labels = ic.loadAnns(labids)
-#print(labels[0])
-#I = io.imread(os.path.join(data_root, img[0]['file_name']))
-#plt.axis('off')
-#plt.imshow(I) #绘制图像，显示交给plt.show()处理
-#ic.showAnns(labels[0:1], draw_bbox=True)
-#plt.show()
-##In[]:
-#from pycocotools.coco import COCO
-#cc = COCO(captions_file)
-#len(cc.getImgIds())
-##In[]:
-#from pycocotools.coco import COCO
-#cc = COCO(person_file)
-#len(cc.getImgIds())
-##In[]:
-#from PIL import Image
-#import numpy as np
-#import matplotlib.pyplot as plt
-#import cv2
-#
-#print('array')
-#arr = np.reshape(np.linspace(1, 9, num=9), [3, 3])
-#print(arr)
-#
-#print('Image')
-#img = Image.fromarray(arr)
-#print(np.array(img))
-#rimg = img.resize([6, 6], Image.BILINEAR)
-#print(np.array(rimg))
-#bimg = rimg.resize([3, 3], Image.BILINEAR)
-#print(np.array(bimg))
-#
-#print('cv')
-#rimg = cv2.resize(arr, (6, 6), interpolation=cv2.INTER_LINEAR)
-#print(rimg)
-#bimg = cv2.resize(rimg, (3, 3), interpolation=cv2.INTER_LINEAR)
-#print(bimg)

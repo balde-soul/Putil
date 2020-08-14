@@ -27,6 +27,7 @@ DataPutProcessLogger.setLevel(plog.DEBUG)
 GeneratedDataLogger = logger.getChild('GeneratedData')
 GeneratedDataLogger.setLevel(plog.DEBUG)
 import Putil.data.convert_to_input as convert_to_input
+import Putil.data.data_type_adapter as data_type_adapter
 
 
 class CommonDataManager(BaseManager):
@@ -100,6 +101,7 @@ class ConvertPostOperation:
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
+
 class CommonData(Dataset, metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
@@ -141,13 +143,13 @@ class CommonData(Dataset, metaclass=ABCMeta):
         self._index = None
 
         self._convert_to_input_method = convert_to_input.ConvertToInputNoOp()
-        self._data_type_adapter = convert_to_input.ConvertToInputNoOp()
+        self._data_type_adapter = data_type_adapter.DataTypeAdapterNoOp()
 
         self._use_rate = use_rate
         pass
 
-    def _fix_index(self):
-        self._index = random.sample(self._index, int(len(self._index) * self._use_rate))
+    def _fix_field(self):
+        self._data_field = random.sample(self._data_field, int(len(self._data_field) * self._use_rate))
         pass
 
     @staticmethod
@@ -358,7 +360,7 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
         pass
 
     def __len__(self):
-        return len(self._index) * len(self._aug_node) 
+        return len(self._data_field) * len(self._aug_node) 
 
     def set_aug_node_root(self, aug_node_root):
         self._aug_node = aug_node_root
