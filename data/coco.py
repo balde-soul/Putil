@@ -321,7 +321,7 @@ class COCOCommonAugBase:
     instance_bboxes_index = 1
     bboxes_index = instance_bboxes_index
     instance_classes_index= 2
-    class_index = instance_classes_index
+    classes_index = instance_classes_index
 
     @staticmethod
     def _repack(*original_input, image=None, bboxes=None, classes=None):

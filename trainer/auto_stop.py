@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 import Putil.base.logger as plog
 from colorama import Fore
+from Putil.trainer.auto_stop_args import generate_args
 
 
 auto_stop_logger = plog.PutilLogConfig('auto_stop').logger()
@@ -35,30 +36,23 @@ class auto_stop(ABC):
 class AutoStop:
     @staticmethod
     def generate_args(parser):
-        parser.add_argument('--auto_stop_patience', dest='AutoStopPatience', type=int, action='store', default=8, 
-        help='when the time count to patience, it would stop, default: 8')
-        parser.add_argument('--auto_stop_mode', dest='AutoStopMode', type=str, action='store', default='max', 
-        help='max or min, the change meaning the indicator is better, if the change do not match the mode, \
-        we would cound the time, default: max')
+        generate_args(parser)
         pass
 
     @staticmethod
     def get_patience_from_args(args):
-        return args.AutoStopPatience
-        pass
+        return args.auto_stop_patience
 
     @staticmethod
     def get_mode_from_args(args):
-        return args.AutoStopMode
-        pass
+        return args.auto_stop_mode
 
     @staticmethod
     def generate_AutoStop_from_args(args):
         params = dict()
-        params['patience'] = args.AutoStopPatience
-        params['mode'] = args.AutoStopMode
+        params['patience'] = args.auto_stop_patience
+        params['mode'] = args.auto_stop_mode
         return AutoStop(**params)
-        pass
 
     def __init__(self, patience, mode='max'):
         self._patience = patience

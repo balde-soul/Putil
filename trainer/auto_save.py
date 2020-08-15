@@ -4,6 +4,7 @@ from abc import ABC, ABCMeta
 import numpy as np
 import Putil.base.logger as plog
 from colorama import Fore
+from Putil.trainer.auto_save_args import generate_args
 
 auto_save_logger = plog.PutilLogConfig("auto_savE").logger()
 auto_save_logger.setLevel(plog.DEBUG)
@@ -27,74 +28,63 @@ class AutoSave(auto_save):
 
     @staticmethod
     def generate_args(parser):
-        parser.add_argument('--auto_save_mode', dest='AutoSaveMode', type=str, action='store', default='max', help='the AutoSaverImprove, default: True')
-        parser.add_argument('--auto_save_delta', dest='AutoSaveDelta', type=float, action='store', default=0.001, help='the AutoSaverDelta, default: 0.001')
-        parser.add_argument('--auto_save_keep_save_range', dest='AutoSaveKeepSaveRange', type=list, action='store', default=[], help='the AutoSaverKeepSaveRange, default: []')
-        parser.add_argument('--auto_save_abandon_range', dest='AutoSaveAbandonRange', type=list, action='store', default=[], help='the AutoSaverAbandonRange, default: []')
-        parser.add_argument('--auto_save_base_line', dest='AutoSaveBaseLine', type=int, action='store', default=None, help='the AutoSaverBaseLine, default: None')
-        parser.add_argument('--auto_save_limit_line', dest='AutoSaveLimitLine', type=int, action='store', default=None, help='the AutoSaverLimitLine, default: None')
-        parser.add_argument('--auto_save_history_amount', dest='AutoSaveHistoryAmount', type=int, action='store', default=100, help='the AutoSaverHistoryAmount, default: 100')
+        generate_args(parser)
         pass
 
     @staticmethod
-    def get_improve_from_args(args):
-        return args.AutoSaverImprove
+    def get_mode_from_args(args):
+        return args.auto_save_mode
 
     @staticmethod
     def get_delta_from_args(args):
-        return args.AutoSaverDelta
-        pass
+        return args.auto_save_delta
 
     @staticmethod
     def get_keep_save_range_from_args(args):
-        return args.AutoSaverKeepSAverRange
-        pass
+        return args.auto_save_keep_save_range
 
     @staticmethod
     def get_abandon_range_from_args(args):
-        return args.AutoSaverAbandonRange
-        pass
+        return args.auto_save_abandon_range
 
     @staticmethod
     def get_base_line_from_args(args):
-        return args.AutoSaverBaseLine
-        pass
+        return args.auto_save_base_line
 
     @staticmethod
     def get_limit_line_from_args(args):
-        return args.AutoSaverLimitLine
-        pass
+        return args.auto_save_limit_line
 
     @staticmethod
     def get_history_amount_from_args(args):
-        return args.AutoSaverHistoryAmount
-        pass
+        return args.auto_save_history_amount
 
     @staticmethod
     def generate_AutoSave_from_args(args):
         params = dict()
-        params['mode'] = args.AutoSaveMode
-        params['delta'] = args.AutoSaveDelta
-        params['keep_save_range'] = args.AutoSaveKeepSaveRange
-        params['abandon_range'] = args.AutoSaveAbandonRange
-        params['base_line'] = args.AutoSaveBaseLine
-        params['limit_line'] = args.AutoSaveLimitLine
-        params['history_amount'] = args.AutoSaveHistoryAmount
+        params['mode'] = args.auto_save_mode
+        params['delta'] = args.auto_save_delta
+        params['keep_save_range'] = args.auto_save_keep_save_range
+        params['abandon_range'] = args.auto_save_abandon_range
+        params['base_line'] = args.auto_save_base_line
+        params['limit_line'] = args.auto_save_limit_line
+        params['history_amount'] = args.auto_save_history_amount
         return AutoSave(**params)
-        pass
 
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=too-many-arguments
     def __init__(self, mode='max', delta=0.001, keep_save_range=[], abandon_range=[], base_line=None, limit_line=None, history_amount=10):
         """
-        param:
-            improve: represent the direction of the target, True means the larger indicator is better, False means the smaller indicator is better
-            delta: represent the threshold , while the value which the target indicator improve is larger than the delta, we want to save the short cut
-            keep_save_range: while the step is inside keep_save_range, we want to save the short cut anyway
-            abandon_range: while the step is inside abandon_range, we do not want to save the short cut anyway
-            base_line: while the target indicator is worst than the base_line , we suggest not to save the short cut
-            limit_line: while the target indicator is better than the limit_line , we suggest not to save the short cut
-            history_amount: the amount of the hitorical indicator which suggest to save the short cut we keep
+         @brief
+         @note
+         @param[in] mode
+            represent the direction of the target, True means the larger indicator is better, False means the smaller indicator is better
+         @param[in] delta: represent the threshold , while the value which the target indicator improve is larger than the delta, we want to save the short cut
+         @param[in] keep_save_range(not implemented): while the step is inside keep_save_range, we want to save the short cut anyway
+         @param[in] abandon_range(not implemented): while the step is inside abandon_range, we do not want to save the short cut anyway
+         @param[in] base_line(not implemented): while the target indicator is worst than the base_line , we suggest not to save the short cut
+         @param[in] limit_line(not implemented): while the target indicator is better than the limit_line , we suggest not to save the short cut
+         @param[in] history_amount: the amount of the hitorical indicator which suggest to save the short cut we keep
         according to the information : the importance of the parameter: keep_save_range==abandon_range>base_line==limit_line
         """
         ksr = sorted(keep_save_range)
@@ -106,20 +96,6 @@ class AutoSave(auto_save):
             self._abandon_range = abandon_range
         else:
             raise ValueError('keep_save_range vs. abandon_range : {0} vs. {1}'.format(keep_save_range, abandon_range))
-            pass
-        
-        assert ((base_line is None) ^ (limit_line is None)) is False
-        assert ((base_line is not None) ^ (limit_line is not None)) is False
-        self._base_line = base_line
-        self._limit_line = limit_line
-        if base_line is not None:
-            if base_line < limit_line == improve:
-                self._base_line = base_line
-                self._limit_line = limit_line
-            else:
-                raise ValueError('base_line vs. limit_line : {0} vs. {1} base on : {2}'.format(base_line, limit_line, self._direction_info(improve)))
-                pass
-            pass
 
         self._mode = mode 
         self._delta = delta
@@ -133,6 +109,17 @@ class AutoSave(auto_save):
         #   self._compare(best_indicator, target_indicaotr)
         #   use register_comparator to register the funtion
         self._comparator = None
+        
+        assert ((base_line is None) ^ (limit_line is None)) is False
+        assert ((base_line is not None) ^ (limit_line is not None)) is False
+        self._base_line = base_line
+        self._limit_line = limit_line
+        if base_line is not None:
+            if base_line < limit_line == (self._direction == 1):
+                pass
+            else:
+                raise ValueError('base_line vs. limit_line : {0} vs. {1} base on : {2}'.format(base_line, limit_line, self._direction_info(improve)))
+            pass
 
     def register_comparator(self, comparator):
         self._comparator = comparator
@@ -157,13 +144,15 @@ class AutoSave(auto_save):
             self._best = indicator
             AutoSaveLogger.info(Fore.YELLOW + 'save at first val' + Fore.RESET)
             return True
-            pass
         else:
             if ((self._best - indicator) * self._direction) <= -self._delta:
                 AutoSaveLogger.info(Fore.GREEN + 'improve from {0} to {1}, save weight and collection to collection'.format(self._best, indicator)+ Fore.RESET)
                 self._best_collection.append(self._best)
                 self._best = indicator
                 AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
+                #if self._base_line is not None:
+                #    if self._best > self._base_line:
+                #        if self._best < self._limit_line
                 return True
             else:
                 AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)

@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 import Putil.base.logger as plog
 from colorama import Fore
+from Putil.trainer.lr_reduce_args import generate_args
 
 lr_reduce_logger = plog.PutilLogConfig('auto_stop').logger()
 lr_reduce_logger.setLevel(plog.DEBUG)
@@ -15,69 +16,47 @@ LrReduceLogger.setLevel(plog.DEBUG)
 class LrReduce:
     @staticmethod 
     def generate_args(parser):
-        parser.add_argument('--lr_reduce_init_lr', dest='LrReduceInitLr', type=float, action='store', default=0.1, 
-        help='the init lr, defautl: 0.1')
-        parser.add_argument('--lr_reduce_lr_factor', dest='LrReduceLrFactor', type=float, action='store', default=0.1, 
-        help='the reduce factor for lr reducion, default: 0.1')
-        parser.add_argument('--lr_reduce_lr_epsilon', dest='LrReduceLrEpsilon', type=float, action='store', default=0.001, 
-        help='the threshold which decide the reducion is triggered or not, default: 0.001')
-        parser.add_argument('--lr_reduce_lr_patience', dest='LrReduceLrPatience', type=int, action='store', default=3, 
-        help='while reducion is triggered in LrReduceLrPatience time, the lr whould be reduce, default: 3')
-        parser.add_argument('--lr_reduce_lr_cool_down', dest='LrReduceLrCoolDown', type=int, action='store', default=2, 
-        help='the epoch in which the reducion trigger would not be count, default: 2')
-        parser.add_argument('--lr_reduce_lr_min', dest='LrReduceLrMin', type=float, action='store', default=0.0000001, 
-        help='the minimum of the lr, default: 0.0000001')
-        parser.add_argument('--lr_reduce_mode', dest='LrReduceMode', type=str, action='store', default='max', 
-        help='the mode which we want the indicator to be, \
-        if not or the transformation is not upper the LrReduceEpsilon, \
-        the reducion would be triggered, defautl: max')
+        generate_args(parser)
         pass
 
     @staticmethod
     def get_init_lr_from_args(args):
-        return args.LrReduceInitLr
-        pass
+        return args.lr_reduce_init_lr
 
     @staticmethod
     def get_lr_factor_from_args(args):
-        return args.LrReduceLrFactor
-        pass
+        return args.lr_reduce_lr_factor
 
     @staticmethod
     def get_lr_epsilon_from_args(args):
-        return args.LrReduceLrEpsilon
-        pass
+        return args.lr_reduce_lr_epsilon
 
     @staticmethod
     def get_lr_patience_from_args(args):
-        return args.LrReduceLrPatience
-        pass
+        return args.lr_reduce_lr_patience
 
     @staticmethod
     def get_lr_cool_down_from_args(args):
-        return args.LrReduceLrCoolDown
-        pass
+        return args.lr_reduce_cool_down
 
     @staticmethod
     def get_lr_min_from_args(args):
-        return args.LrReduceLrMin
-        pass
+        return args.lr_reduce_lr_min
 
     @staticmethod
     def get_mode_from_args(args):
-        return args.LrReduceMode
-        pass
+        return args.lr_reduce_mode
 
     @staticmethod
     def generate_LrReduce_from_args(args):
         params = dict()
-        params['init_lr'] = args.LrReduceInitLr
-        params['lr_factor'] = args.LrReduceLrFactor
-        params['lr_epsilon'] = args.LrReduceLrEpsilon
-        params['lr_patience'] = args.LrReduceLrPatience
-        params['lr_cool_down'] = args.LrReduceLrCoolDown
-        params['lr_min'] = args.LrReduceLrMin
-        params['mode'] = args.LrReduceMode
+        params['init_lr'] = args.lr_reduce_init_lr
+        params['lr_factor'] = args.lr_reduce_lr_factor
+        params['lr_epsilon'] = args.lr_reduce_lr_epsilon
+        params['lr_patience'] = args.lr_reduce_lr_patience
+        params['lr_cool_down'] = args.lr_reduce_cool_down
+        params['lr_min'] = args.lr_reduce_lr_min
+        params['mode'] = args.lr_reduce_mode
         return LrReduce(**params)
         pass
 
