@@ -5,9 +5,9 @@ import Putil.base.logger as plog
 from colorama import Fore
 from Putil.trainer.lr_reduce_args import generate_args
 
-lr_reduce_logger = plog.PutilLogConfig('auto_stop').logger()
+lr_reduce_logger = plog.PutilLogConfig('lr_reduce').logger()
 lr_reduce_logger.setLevel(plog.DEBUG)
-LrReduceLogger = lr_reduce_logger.getChild('AutoStop')
+LrReduceLogger = lr_reduce_logger.getChild('LrReduce')
 LrReduceLogger.setLevel(plog.DEBUG)
 
 # while the indicator does not improve for patience epoch, this while return the reduce learn rate
@@ -148,13 +148,13 @@ class LrReduce:
             else:
                 pass
             plog.api_function_out_log(LrReduceLogger, 'reduce_or_not')
+            LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
             return False
-            pass
         else:
             if self._best is None:
                 self._best = indicator 
+                LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 return False
-                pass
             else:
                 if (self._best - indicator) * self._direction < -self._lr_epsilon:
                     self._best = indicator
@@ -177,7 +177,25 @@ class LrReduce:
             else:
                 LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 return False
-                pass
             pass
             LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
+        pass
+
+    def state_dict(self):
+        state_dict = {}
+        state_dict['cool_count'] = self._cool_count
+        state_dict['best'] = self._best
+        state_dict['direction'] = self._direction
+        state_dict['lr_epsilon'] = self._lr_epsilon
+        state_dict['lr_now'] = self._lr_now
+        state_dict['lr_factor'] = self._lr_factor
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self._cool_count = state_dict['cool_count']
+        self._best = state_dict['best']
+        self._direction = state_dict['direction']
+        self._lr_epsilon = state_dict['lr_epsilon']
+        self._lr_now = state_dict['lr_now']
+        self._lr_factor = state_dict['lr_factor']
         pass

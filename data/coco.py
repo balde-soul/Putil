@@ -299,7 +299,12 @@ class COCOData(pcd.CommonDataWithAug):
     def __generate_test_from_origin_index(self, index):
         image_ann = self._image_test.loadImgs(self._image_test_img_ids[index])
         image = self.__read_image(image_ann[0]['file_name'])
-        return image,
+        resize_width = self._image_width
+        resize_height = self._image_height
+        x_scale = float(resize_width) / image.shape[1]
+        y_scale = float(resize_height) / image.shape[0]
+        image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
+        return image, image_ann[0]['id']
 
     def __generate_instance_from_origin_index(self, index):
         pass

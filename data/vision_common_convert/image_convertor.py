@@ -17,6 +17,6 @@ class ImageConvertToInputMethod(convert_to_input.ConvertToInput):
         pass
 
     def __call__(self, *args):
-        image = args[1]
-        origin_shape = args[1]
-        return image, np.array(origin_shape, shape=[1, len(origin_shape)], dtype=np.float32)
+        image = args[0]
+        image_id = args[1]
+        return image, np.array(image_id)

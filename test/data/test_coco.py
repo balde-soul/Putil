@@ -48,4 +48,5 @@ class_amount = 80
 dataset_test.set_data_type_adapter(data_type_adapter())
 dataset_test.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('test data amount: {0}'.format(len(dataset_test)))
-dataset_test[0]
+t = dataset_test[0]
+print(t)

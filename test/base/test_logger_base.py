@@ -16,7 +16,7 @@ parser.add_option(
     default=False,
     help='while you want to test LoggerBase , set this flag'
 )
-level_default = 'Debug'
+level_default = 'Info'
 parser.add_option(
     '--level',
     action='store',

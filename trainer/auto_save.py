@@ -1,18 +1,26 @@
 # coding=utf-8
 
-from abc import ABC, ABCMeta
+from abc import ABC, ABCMeta, abstractmethod
 import numpy as np
 import Putil.base.logger as plog
 from colorama import Fore
 from Putil.trainer.auto_save_args import generate_args
 
-auto_save_logger = plog.PutilLogConfig("auto_savE").logger()
+auto_save_logger = plog.PutilLogConfig("auto_save").logger()
 auto_save_logger.setLevel(plog.DEBUG)
 AutoSaveLogger = auto_save_logger.getChild("AutoSaveLogger")
 
 
 class auto_save(metaclass=ABCMeta):
     def __init__(self):
+        pass
+
+    @abstractmethod
+    def load_state_dict(self, state_dice):
+        pass
+
+    @abstractmethod
+    def state_dict(self):
         pass
     pass
 
@@ -143,6 +151,7 @@ class AutoSave(auto_save):
         if self._best is None:
             self._best = indicator
             AutoSaveLogger.info(Fore.YELLOW + 'save at first val' + Fore.RESET)
+            AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
             return True
         else:
             if ((self._best - indicator) * self._direction) <= -self._delta:
@@ -158,4 +167,19 @@ class AutoSave(auto_save):
                 AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
                 return False
             pass
+        pass
+
+    def state_dict(self):
+        state_dict = {}
+        state_dict['best_collection'] = self._best_collection
+        state_dict['best'] = self._best
+        state_dict['direction'] = self._direction
+        state_dict['delta'] = self._delta
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self._best = state_dict['best']
+        self._direction = state_dict['direction']
+        self._delta = state_dict['delta']
+        self._best_collection = state_dict['best_collection']
         pass

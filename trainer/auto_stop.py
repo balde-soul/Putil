@@ -31,6 +31,14 @@ class auto_stop(ABC):
         # process
         # decision
         pass
+
+    @abstractmethod
+    def state_dict(self):
+        pass
+
+    @abstractmethod
+    def load_state_dict(self, state_dict):
+        pass
     pass
 
 class AutoStop:
@@ -91,5 +99,20 @@ class AutoStop:
             return True
         else:
             return False
+        pass
+
+    def state_dict(self):
+        state_dict = {}
+        state_dict['best'] = self._best
+        state_dict['direction'] = self._direction
+        state_dict['count'] = self._count
+        state_dict['patience'] = self._patience
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self._best = state_dict['best']
+        self._direction = state_dict['direction']
+        self._count = state_dict['count']
+        self._patience = state_dict['patience']
         pass
     pass

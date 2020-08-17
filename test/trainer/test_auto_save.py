@@ -14,6 +14,18 @@ auto_save.info()
 
 indicator = [0, -1, 0.0001, 0.1, 0.2]
 
-for i in indicator:
+state_dict = None
+reload_index = 3
+for index, i in enumerate(indicator):
+    auto_save.save_or_not(i)
+    if index == reload_index:
+        print('checkpoint')
+        state_dict = auto_save.state_dict()
+    pass
+
+print('load')
+auto_save.load_state_dict(state_dict)
+for i in indicator[reload_index + 1: ]:
     auto_save.save_or_not(i)
     pass
+    
