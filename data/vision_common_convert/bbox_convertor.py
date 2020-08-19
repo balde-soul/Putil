@@ -67,7 +67,7 @@ class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
     pass
 
 
-class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
+class CenterNerIOConvertor(convert_to_input.IOConvertor):
     def __init__(
         self, 
         sample_rate, 
@@ -75,7 +75,8 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         input_bbox_format=BBoxToBBoxTranslator.BBoxFormat.LTWHCR,
         sigma=None,
         mu=None,
-        resolution=0.05):
+        resolution=0.05,
+        **kwargs):
         '''
          @brief
          @note
@@ -101,19 +102,29 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
         '''
          @brief generate the box_label from the input
          @param[in] args
+         [0] image
+         image with shape [height, width, channel] in numpy
+         [1] boxes
+         [[top_left_col_i, top_left_row_i, width, height], ...]
+         [2] classes 
+         [[class], ...]
          [image, bboxes]
          bboxes: [[obj_or_not, top_left_col_i, top_left_row_i, width, height], ...]
          @ret 
-         [image, center_box_label_with_weight]
+         [0]
         '''
         image = args[0]
         boxes = args[1]
         classes = args[2]
-        box_label = np.zeros(shape=[5, image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+        out_height = image.shape[0] // self._sample_rate
+        out_width = image.shape[1] // self._sample_rate
+        obj_label = np.zeros(shape=[1, out_height, out_width], \
             dtype=np.float32)
-        class_label = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+        box_label = np.zeros(shape=[4, out_height, out_width], \
+            dtype=np.float32)
+        class_label = np.zeros(shape=[out_height, out_width], \
             dtype=np.int64)
-        radiance_factor = np.zeros(shape=[image.shape[0] // self._sample_rate, image.shape[1] // self._sample_rate], \
+        radiance_factor = np.zeros(shape=[out_height, out_width], \
             dtype=np.float32)
         for box_iter, class_iter in zip(boxes, classes): 
             box = self._format_translator(box_iter)
@@ -141,13 +152,15 @@ class BBoxConvertToCenterBox(convert_to_input.ConvertToInput):
             weights = np.pad(weights, ((yregion[0], image.shape[0] - yregion[1]), (xregion[0], image.shape[1] - xregion[1])), mode=lambda vector, iaxis_pad_width, iaxis, kwargs: 0)
             weights = cv2.resize(weights, radiance_factor.shape, interpolation=cv2.INTER_LINEAR)
 
-            box_label[0, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = 1.0
-            box_label[1: 5, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
+            obj_label[0, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = 1.0
+            box_label[:, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
 
             radiance_factor = np.max(np.stack([radiance_factor, weights], axis=0), axis=0)
 
             class_label[int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = class_iter
 
         radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor) + 1e-32)
-        return image, box_label, class_label, radiance_factor
+        return image, box_label, class_label, obj_label, radiance_factor
     pass
+
+BBoxConvertToCenterBox = CenterNerIOConvertor

@@ -1,9 +1,17 @@
 # coding=utf-8
 #In[]:
 from abc import ABCMeta, abstractmethod
+from enum import Enum
 
 
-class ConvertToInput(metaclass=ABCMeta):
+class IOConvertor(metaclass=ABCMeta):
+
+    class IODirection(Enum):
+        InputConvertion = 0
+        OutputConvertion = 1
+        Unknow = 2
+        pass
+
     @abstractmethod
     def __call__(self, *args):
         '''
@@ -13,13 +21,16 @@ class ConvertToInput(metaclass=ABCMeta):
          the input data
         '''
 
-    def __init__(self):
+    def __init__(self, io):
+        self._io = io
         pass
     pass
 
-class ConvertToInputNoOp(ConvertToInput):
+ConvertToInput = IOConvertor
+
+class IOConvertorNoOp(ConvertToInput):
     def __init__(self):
-        ConvertToInput.__init__(self)
+        ConvertToInput.__init__(self, IOConvertor.IODirection.Unknow)
 
     def __call__(self, *args):
         '''
@@ -30,6 +41,9 @@ class ConvertToInputNoOp(ConvertToInput):
         '''
         return args
     pass
+
+ConvertToInputNoOp = IOConvertorNoOp
+
 #
 #t = ConvertToInputNoOp()
 #t(*t(1,))

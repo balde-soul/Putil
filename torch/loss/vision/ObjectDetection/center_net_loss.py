@@ -33,7 +33,7 @@ class CenterNetLoss(Module):
         self._class_loss = torch.nn.CrossEntropyLoss(class_weight)
         pass
 
-    def forward(self, obj_net_out, box_net_out, class_net_out, box_label, class_label, radiance_factor):
+    def forward(self, obj_net_out, box_net_out, class_net_out, box_label, class_label, obj_label, radiance_factor):
         '''
          @brief 
          @note
@@ -41,6 +41,10 @@ class CenterNetLoss(Module):
          shape [batch, 1, h, w], represent there is obj in the cell or not
          @param[in] box_net_out
          shape: [batch, 4, h, w], five dimension represent:[x_shift, y_shift, w, h]
+         @param[in] class_net_out
+         [batch, class_amount, ...]
+         @param[in] obj_label
+         [batch, 1, ...]
          @param[in] box_label
          shape: [batch, 6, h, w], five dimension represent: [obj, x_shift, y_shift, w, h]
          @param[in] class_label
@@ -60,26 +64,26 @@ class CenterNetLoss(Module):
         #CenterNetLossLogger.debug(box_net_out[0, 0, :, :].shape)
         center_offset_out = box_net_out[:, 0: 2, :, :]
         wh_out = box_net_out[:, 2: 4, :, :]
-        obj = box_label[:, 0: 1, :, :]
-        n_obj = 1 - box_label[:, 0: 1, :, :]
+        obj = obj_label
+        n_obj = 1 - obj_label
         obj_cell_amount = torch.nonzero(obj).size(0)
         n_obj_cell_amount = torch.nonzero(n_obj).size(0)
         p_obj_loss = torch.pow(1 - obj_net_out, self._focal_alpha) * \
-            box_label[:, 0: 1, :, :] * torch.log(obj_net_out)
+            obj_label * torch.log(obj_net_out)
         n_obj_loss = torch.pow(1 - radiance_factor, self._decay_beta) * \
             torch.pow(obj_net_out, self._focal_alpha) \
-            * (1 - box_label[:, 0: 1, :, :]) * torch.log(1 - obj_net_out)
+            * (1 - obj_label) * torch.log(1 - obj_net_out)
         obj_loss = -torch.mean((1.0 - obj_cell_amount / (obj_cell_amount + n_obj_cell_amount)) * p_obj_loss + \
             (1.0 - n_obj_cell_amount / (obj_cell_amount + n_obj_cell_amount)) * n_obj_loss)
         CenterNetLossLogger.debug('obj_loss: {0}'.format(obj_loss))
 
         offset_loss = 1.0 / obj_cell_amount \
-            * torch.sum(box_label[:, 0: 1, :, :] * \
+            * torch.sum(obj_label * \
                 torch.abs(box_label[:, 1: 3, :, :] - center_offset_out))
         CenterNetLossLogger.debug('offset_loss: {0}'.format(offset_loss))
 
         wh_loss = 1.0 / obj_cell_amount \
-            * torch.sum(box_label[:, 0: 1, :, :] * \
+            * torch.sum(obj_label * \
                 torch.abs(box_label[:, 3: 5, :, :] - wh_out))
         CenterNetLossLogger.debug('wh_loss: {0}'.format(wh_loss))
 
