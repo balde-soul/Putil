@@ -10,7 +10,7 @@ class ClassifyAcc(Module):
         self._class_amount = class_amount
         pass
 
-    def forward(self, x):
+    def forward(self, pre, gt):
         '''
          @brief
          @note
@@ -18,8 +18,6 @@ class ClassifyAcc(Module):
          [0] pre [batch, class_one_hot, ...]
          [1] gt [batch, class_one_hot, ...]
         '''
-        pre = x[0]
-        gt = x[1]
 
         shape = pre.shape
         batch = shape[0]

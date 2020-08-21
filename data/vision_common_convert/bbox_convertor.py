@@ -2,7 +2,7 @@
 import cv2
 import numpy as np
 import Putil.base.logger as plog
-import Putil.data.convert_to_input as convert_to_input
+from Putil.data.io_convertor import IOConvertor
 import Putil.function.gaussian as Gaussion
 from enum import Enum
 
@@ -55,11 +55,11 @@ class BBoxToBBoxTranslator:
         return self._translate_func(*args)
     pass
 
-class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
+class BBoxConvertToInputMethod(IOConvertor):
     def __init__(self, format):
         '''
         '''
-        convert_to_input.ConvertToInput.__init__(self)
+        IOConvertor.__init__(self, IOConvertor.IODirection.Unknow)
         pass
 
     def __call__(self, *args):
@@ -67,11 +67,12 @@ class BBoxConvertToInputMethod(convert_to_input.ConvertToInput):
     pass
 
 
-class CenterNerIOConvertor(convert_to_input.IOConvertor):
+class CenterNerIOConvertor(IOConvertor):
     def __init__(
         self, 
         sample_rate, 
         class_amount,
+        io,
         input_bbox_format=BBoxToBBoxTranslator.BBoxFormat.LTWHCR,
         sigma=None,
         mu=None,
@@ -86,7 +87,7 @@ class CenterNerIOConvertor(convert_to_input.IOConvertor):
          @param[in] mu default: [[0.0], [0.0]]
          @param[in] resolution default: 0.05
         '''
-        convert_to_input.ConvertToInput.__init__(self)
+        IOConvertor.__init__(self, io)
         self._sample_rate = sample_rate
         self._class_amount = class_amount
         self._weight_func = Gaussion.Gaussian()
@@ -96,6 +97,8 @@ class CenterNerIOConvertor(convert_to_input.IOConvertor):
         self._resolution = resolution
 
         self._format_translator = BBoxToBBoxTranslator(input_bbox_format, BBoxToBBoxTranslator.BBoxFormat.LTWHCR)
+
+        assert self._io != IOConvertor.IODirection.Unknow
         pass
 
     def __call__(self, *args):
@@ -113,54 +116,60 @@ class CenterNerIOConvertor(convert_to_input.IOConvertor):
          @ret 
          [0]
         '''
-        image = args[0]
-        boxes = args[1]
-        classes = args[2]
-        out_height = image.shape[0] // self._sample_rate
-        out_width = image.shape[1] // self._sample_rate
-        obj_label = np.zeros(shape=[1, out_height, out_width], \
-            dtype=np.float32)
-        box_label = np.zeros(shape=[4, out_height, out_width], \
-            dtype=np.float32)
-        class_label = np.zeros(shape=[out_height, out_width], \
-            dtype=np.int64)
-        radiance_factor = np.zeros(shape=[out_height, out_width], \
-            dtype=np.float32)
-        for box_iter, class_iter in zip(boxes, classes): 
-            box = self._format_translator(box_iter)
-            x_cell_index = (box[0]) // self._sample_rate
-            y_cell_index = (box[1]) // self._sample_rate
+        if self._io == IOConvertor.IODirection.InputConvertion:
+            image = args[0]
+            boxes = args[1]
+            classes = args[2]
+            out_height = image.shape[0] // self._sample_rate
+            out_width = image.shape[1] // self._sample_rate
+            obj_label = np.zeros(shape=[1, out_height, out_width], \
+                dtype=np.float32)
+            box_label = np.zeros(shape=[4, out_height, out_width], \
+                dtype=np.float32)
+            class_label = np.zeros(shape=[out_height, out_width], \
+                dtype=np.int64)
+            radiance_factor = np.zeros(shape=[out_height, out_width], \
+                dtype=np.float32)
+            for box_iter, class_iter in zip(boxes, classes): 
+                box = self._format_translator(box_iter)
+                x_cell_index = (box[0]) // self._sample_rate
+                y_cell_index = (box[1]) // self._sample_rate
 
-            x_cell_shift = (box[0]) % self._sample_rate
-            y_cell_shift = (box[1]) % self._sample_rate
-            w_cell = box[2] / self._sample_rate
-            h_cell = box[3] / self._sample_rate
+                x_cell_shift = (box[0]) % self._sample_rate
+                y_cell_shift = (box[1]) % self._sample_rate
+                w_cell = box[2] / self._sample_rate
+                h_cell = box[3] / self._sample_rate
 
-            xregion = [max(round(box[0] - box[2] * 0.5), 0), min(round(box[0] + box[2] * 0.5), image.shape[1])]
-            yregion = [max(round(box[1] - box[3] * 0.5), 0), min(round(box[1] + box[3] * 0.5), image.shape[1])]
-            #xregion = [round(box[0] - box[2] * 0.5), round(box[0] + box[2] * 0.5)]
-            #yregion = [round(box[1] - box[3] * 0.5), round(box[1] + box[3] * 0.5)]
-            xamount = xregion[1] - xregion[0]
-            x = np.linspace(-1, 1, num=xamount)
-            yamount = yregion[1] - yregion[0]
-            y = np.linspace(-1, 1, num=yamount)
-            x, y = np.meshgrid(x, y)
-            shape = x.shape
-            coor = np.reshape(np.stack([x, y], axis=-1), [-1, 2])
-            weights = self._weight_func(coor).astype(np.float32)
-            weights = np.reshape(weights, shape)
-            weights = np.pad(weights, ((yregion[0], image.shape[0] - yregion[1]), (xregion[0], image.shape[1] - xregion[1])), mode=lambda vector, iaxis_pad_width, iaxis, kwargs: 0)
-            weights = cv2.resize(weights, radiance_factor.shape, interpolation=cv2.INTER_LINEAR)
+                xregion = [max(round(box[0] - box[2] * 0.5), 0), min(round(box[0] + box[2] * 0.5), image.shape[1])]
+                yregion = [max(round(box[1] - box[3] * 0.5), 0), min(round(box[1] + box[3] * 0.5), image.shape[1])]
+                #xregion = [round(box[0] - box[2] * 0.5), round(box[0] + box[2] * 0.5)]
+                #yregion = [round(box[1] - box[3] * 0.5), round(box[1] + box[3] * 0.5)]
+                xamount = xregion[1] - xregion[0]
+                x = np.linspace(-1, 1, num=xamount)
+                yamount = yregion[1] - yregion[0]
+                y = np.linspace(-1, 1, num=yamount)
+                x, y = np.meshgrid(x, y)
+                shape = x.shape
+                coor = np.reshape(np.stack([x, y], axis=-1), [-1, 2])
+                weights = self._weight_func(coor).astype(np.float32)
+                weights = np.reshape(weights, shape)
+                weights = np.pad(weights, ((yregion[0], image.shape[0] - yregion[1]), (xregion[0], image.shape[1] - xregion[1])), mode=lambda vector, iaxis_pad_width, iaxis, kwargs: 0)
+                weights = cv2.resize(weights, radiance_factor.shape, interpolation=cv2.INTER_LINEAR)
 
-            obj_label[0, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = 1.0
-            box_label[:, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
+                obj_label[0, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = 1.0
+                box_label[:, int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = [x_cell_shift, y_cell_shift, w_cell, h_cell]
 
-            radiance_factor = np.max(np.stack([radiance_factor, weights], axis=0), axis=0)
+                radiance_factor = np.max(np.stack([radiance_factor, weights], axis=0), axis=0)
 
-            class_label[int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = class_iter
+                class_label[int(y_cell_index + 0.5), int(x_cell_index + 0.5)] = class_iter
 
-        radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor) + 1e-32)
-        return image, box_label, class_label, obj_label, radiance_factor
+            radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor) + 1e-32)
+            return image, box_label, class_label, obj_label, radiance_factor
+        else:
+            box_out = args[0]
+            class_out = args[1]
+            obj_out = args[2]
+            return 
     pass
 
 BBoxConvertToCenterBox = CenterNerIOConvertor

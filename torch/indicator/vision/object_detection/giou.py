@@ -11,9 +11,11 @@ class GIoU(Module):
      https://arxiv.org/pdf/1902.09630.pdf
      iou在iou为0时无法直接优化，针对bbox的回归无法等价于iou的回归，提出giou可作为目标进行优化
      @param[in] pre
-     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+     float or double, positivated, [batch_size, ..., one_box] content of box: 
+     (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
      @prarm[in] gt 
-     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+     float or double, positivated, [batch_size, ..., one_box] content of box: 
+     (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
      @ret
      0: the iou [batch_size, ..., 1]
      1: the giou [batch_size, ..., 1]
