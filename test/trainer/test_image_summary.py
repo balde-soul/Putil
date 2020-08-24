@@ -1,20 +1,35 @@
 # coding=utf-8
 
 import os
+from PIL import Image
 import numpy as np
 
 path = os.path.split(os.path.abspath(__file__))[0]
 
+
 import torch
 from tensorboardX import SummaryWriter
 
+summary_dir = os.path.join(path, 'test_summary_result/test_image_summary_result')
+#contents = os.listdir(summary_dir)
+#for content in contents:
+#    if content in ['.gitignore', '.', '..']:
+#        pass
+#    else:
+#        os.rmdir(os.path.join(summary_dir, content))
+#        pass
+from Putil.trainer.image_summary import torch_rectangle_image_summary as ImageSummary
 
-writer = SummaryWriter(logdir=os.path.join(path, 'test_summary_result/test_image_summary_result'))
-r = 5
-for i in range(100):
-    writer.add_scalars('run_14h', {'xsinx':i*np.sin(i/r),
-                                    'xcosx':i*np.cos(i/r),
-                                    'tanx': np.tan(i/r)}, i)
-    writer.add_scalars('run_14h', {'xsinxshift':i*np.sin((i + 1)/r)}, i)
-    writer.add_scalar('run_14h/tyes', torch.tensor(i * np.sin(i/ (r+1))), i)
-writer.close()
+
+writer = SummaryWriter(logdir=summary_dir)
+
+image = Image.open('./test/test_used_data/000000177842.jpg')
+image_array = np.array(image)
+
+images_array = np.stack([image_array, image_array, image_array, image_array, image_array])
+images_array = np.transpose(images_array, [0, 3, 1, 2])
+images_tensor = torch.from_numpy(images_array)
+
+ImageSummary(writer, 'test', images_tensor.detach().cpu().numpy(), \
+    np.array([[[20, 20, 50, 50]], [[20, 20, 50, 50]], [[10, 10, 30, 30]], [[10, 10, 40, 40]], [[10, 10, 50, 50]]]), \
+        0)

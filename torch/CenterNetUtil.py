@@ -1,5 +1,6 @@
 # coding=utf-8
 
+import torch
 import numpy as np
 from torch.nn import Module
 import Putil.base.logger as plog

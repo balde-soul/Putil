@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 import cv2
 import numpy as np
 import Putil.base.logger as plog
@@ -135,8 +136,10 @@ class CenterNerIOConvertor(IOConvertor):
                 x_cell_index = (box[0]) // self._sample_rate
                 y_cell_index = (box[1]) // self._sample_rate
 
-                x_cell_shift = (box[0]) % self._sample_rate
-                y_cell_shift = (box[1]) % self._sample_rate
+                standard_cell_center_x = x_cell_index + 1.5
+                standard_cell_center_y = y_cell_index + 1.5
+                x_cell_shift = (box[0] - standard_cell_center_x) / self._sample_rate
+                y_cell_shift = (box[1] - standard_cell_center_y) / self._sample_rate
                 w_cell = box[2] / self._sample_rate
                 h_cell = box[3] / self._sample_rate
 
@@ -166,10 +169,47 @@ class CenterNerIOConvertor(IOConvertor):
             radiance_factor = (radiance_factor - np.min(radiance_factor)) / (np.max(radiance_factor) - np.min(radiance_factor) + 1e-32)
             return image, box_label, class_label, obj_label, radiance_factor
         else:
-            box_out = args[0]
-            class_out = args[1]
-            obj_out = args[2]
-            return 
+            image = args[0]
+            box_out = args[1]
+            class_out = args[2]
+            obj_out = args[3]
+
+            boxes = list()
+            classes = list()
+            batch_size = box_out.shape[0]
+            [(boxes.append([]), classes.append([])) for i in range(0, batch_size)]
+
+            for _box, _class, _obj , _image in enumerate(zip(box_out, class_out, obj_out, image)):
+                obj_out.shape
+                obj_out = np.round(obj_out)
+                indexs = np.where(obj_out == 1)
+
+                indexs_list = list(copy.deepcopy(indexs))
+                indexs_list = [np.expand_dims(index, -1) for index in indexs]
+                indexs_list[1] = np.meshgrid(list(range(0, class_out.shape[1])), indexs[1])[0]
+                standard_center_x_y = np.concatenate(indexs_list[2: ], -1) * self._sample_rate + 1.5
+                indexs_list = list(copy.deepcopy(indexs))
+                indexs_list = [np.expand_dims(index, -1) for index in indexs]
+                indexs_list[1] = np.meshgrid(list(range(0, class_out.shape[1])), indexs[1])[0]
+                general_class = np.argmax(class_out[indexs_list], axis=-1)
+                indexs_list = list(copy.deepcopy(indexs))
+                indexs_list = [np.expand_dims(index, -1) for index in indexs]
+                indexs_list[1] = np.meshgrid(list(range(0, box_out.shape[1])), indexs[1])[0]
+                general_box = box_out[indexs_list]
+                general_box[:, 2: 4] = general_box[:, 2: 4] * self._sample_rate
+                general_box[:, 0: 2] = general_box[:, 0: 2] * self._sample_rate + standard_center_x_y - general_box[:, 2: 4] * 0.5
+                # remove the box whose top-left is out of the image
+                # remove the box whose bottom-right is out of the image
+                top_left_index = np.where(general_box[:, 0: 2] > 0, True, False)
+                top_left_index = top_left_index[:, 0] * top_left_index[:, 1]
+                bottom_right_index = np.where((general_box[:, 0: 2] + general_box[:, 2:]) > [image.shape[-2], image.shape[1]], True, False)
+                bottom_right_index = bottom_right_index[:, 0] * bottom_right_index[:, 1]
+                accept_index = top_left_index * bottom_right_index
+                general_box = general_box[accept_index, :]
+                general_class = general_class[accept_index]
+                return image, general_box, general_class, obj_out
+            return image, boxes, classes, obj_out
+        pass
     pass
 
 BBoxConvertToCenterBox = CenterNerIOConvertor
