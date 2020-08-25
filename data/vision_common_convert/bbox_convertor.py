@@ -81,8 +81,13 @@ class CenterNerIOConvertor(IOConvertor):
         **kwargs):
         '''
          @brief
+         fit the output from the Data with the CenterNet 
          @note
          @param[in] sample_rate
+         the downsample rate of the CenterNet, the label
+         @param[in] class_amount
+         @param[in] io
+         take a look at IOConvertor.__init__.param{io}
          @param[in] input_bbox_format default: BBoxToBBox.BBoxFormat.LTWHCR
          @param[in] sigma default: [[0.5, 0.0], [0.0, 0.5]]
          @param[in] mu default: [[0.0], [0.0]]
@@ -106,7 +111,7 @@ class CenterNerIOConvertor(IOConvertor):
         '''
          @brief generate the box_label from the input
          @param[in] args
-         [0] image
+         [0] image[IOConvertor.IODirection.InputConvertor]
          image with shape [height, width, channel] in numpy
          [1] boxes
          [[top_left_col_i, top_left_row_i, width, height], ...]
@@ -174,24 +179,21 @@ class CenterNerIOConvertor(IOConvertor):
             classes = args[2]
             objs = args[3]
             objs = np.round(objs)
-            indexs = np.where(objs == 1)
 
             general_boxes = list()
             general_classes = list()
             standard_cell_center_x_y_s = list()
 
-            for _index, (box_out, class_out, obj_out, image, index) in enumerate(zip(boxes, classes, objs, images, indexs)):
-                index_list = list(copy.deepcopy(index))
-                index_list = [np.expand_dims(i, -1) for i in indexs[1:]]
-                index_list[0] = np.meshgrid(list(range(0, class_out.shape[0])), index[0])[0]
+            for _index, (box_out, class_out, obj_out, image) in enumerate(zip(boxes, classes, objs, images)):
+                indexs = np.where(obj_out == 1)
+                index_list = [np.expand_dims(i, -1) for i in indexs]
+                index_list[0] = np.meshgrid(list(range(0, class_out.shape[0])), index_list[0])[0]
                 standard_center_x_y = np.concatenate(index_list[1: ], -1) * self._sample_rate + 1.5
-                index_list = list(copy.deepcopy(index))
-                index_list = [np.expand_dims(i, -1) for i in indexs[1:]]
-                index_list[0] = np.meshgrid(list(range(0, class_out.shape[0])), index[0])[0]
+                index_list = [np.expand_dims(i, -1) for i in indexs]
+                index_list[0] = np.meshgrid(list(range(0, class_out.shape[0])), index_list[0])[0]
                 general_class = np.argmax(class_out[index_list], axis=-1)
-                index_list = list(copy.deepcopy(index))
-                index_list = [np.expand_dims(i, -1) for i in indexs[1:]]
-                index_list[0] = np.meshgrid(list(range(0, box_out.shape[0])), index[0])[0]
+                index_list = [np.expand_dims(i, -1) for i in indexs]
+                index_list[0] = np.meshgrid(list(range(0, box_out.shape[0])), index_list[0])[0]
                 general_box = box_out[index_list]
                 general_box[:, 2: 4] = general_box[:, 2: 4] * self._sample_rate
                 general_box[:, 0: 2] = general_box[:, 0: 2] * self._sample_rate + standard_center_x_y - general_box[:, 2: 4] * 0.5
@@ -205,10 +207,10 @@ class CenterNerIOConvertor(IOConvertor):
                 general_box = general_box[accept_index, :]
                 general_class = general_class[accept_index]
                 standard_center_x_y = standard_center_x_y[accept_index, :]
-                general_boxes.append(list(general_box))
-                general_classes.append(list(general_class))
-                standard_cell_center_x_y_s.append(list(standard_center_x_y))
-            return image, general_boxes, general_classes, standard_cell_center_x_y_s
+                general_boxes.append(general_box.tolist())
+                general_classes.append(general_class.tolist())
+                standard_cell_center_x_y_s.append(standard_center_x_y.tolist())
+            return images, general_boxes, general_classes, standard_cell_center_x_y_s
         pass
     pass
 

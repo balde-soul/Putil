@@ -30,6 +30,6 @@ images_array = np.stack([image_array, image_array, image_array, image_array, ima
 images_array = np.transpose(images_array, [0, 3, 1, 2])
 images_tensor = torch.from_numpy(images_array)
 
-ImageSummary(writer, 'test', images_tensor.detach().cpu().numpy(), \
-    np.array([[[20, 20, 50, 50]], [[20, 20, 50, 50]], [[10, 10, 30, 30]], [[10, 10, 40, 40]], [[10, 10, 50, 50]]]), \
+ImageSummary(writer, 'test', np.transpose(images_tensor.detach().cpu().numpy(), (0, 2, 3, 1)), \
+    [[[20, 20, 50, 50]], [[20, 20, 50, 50]], [[10, 10, 30, 30]], [[10, 10, 40, 40]], [[10, 10, 50, 50]]], \
         0)

@@ -370,7 +370,7 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
         oindex = index // len(self._aug_node)
         aindex = index % len(self._aug_node)
         CommonDataWithAugLogger.debug('original index: {0}, aug index: {1}, aug_naem: {2}'.format(oindex, aindex, self._aug_node[aindex].name))
-        ret = self._generate_from_origin_index(oindex)
+        #ret = self._generate_from_origin_index(oindex)
         ret = self._aug_node[aindex](*self._generate_from_origin_index(oindex))
         CommonDataWithAugLogger.debug('aug check:')
         ret = self._aug_check(*ret)
