@@ -52,7 +52,3 @@ class IOConvertorNoOp(ConvertToInput):
     pass
 
 ConvertToInputNoOp = IOConvertorNoOp
-
-#
-#t = ConvertToInputNoOp()
-#t(*t(1,))

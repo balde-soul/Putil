@@ -186,6 +186,7 @@ class COCOData(pcd.CommonDataWithAug):
     def __read_image(self, file_name):
 
         image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.uint8)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         assert(image is not None)
         return image
         pass
