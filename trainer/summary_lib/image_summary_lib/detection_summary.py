@@ -1,8 +1,30 @@
 # coding=utf-8
 
+import tensorboardX
+
 import numpy as np
 import torch
 import cv2
+from enum import Enum
+
+writer = tensorboardX.SummaryWriter('./')
+
+
+class DetectionSummary:
+    class BoundType(Enum):
+        '''
+        RegularRectangle in ObliqueRectangle in Polygon
+        '''
+        Polygon = 2
+        ObliqueRectangle = 0
+        RegularRectangle = 0
+    
+    def __init__(self, bound_type=, color_map=None, class_name=None):
+        self._class_color_map = None
+        pass
+
+    def record(self, image, general_result):
+        pass
 
 
 def torch_rectangle_image_summary(writer, tag, image_array, box_list, global_step, number=16, \
