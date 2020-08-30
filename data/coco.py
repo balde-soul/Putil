@@ -185,10 +185,8 @@ class COCOData(pcd.CommonDataWithAug):
 
     def __read_image(self, file_name):
 
-        image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.float32)
-        image_min = np.min(np.min(image, axis=0, keepdims=True), axis=1, keepdims=True)
-        image_max = np.max(np.max(image, axis=0, keepdims=True), axis=1, keepdims=True)
-        image = (image - image_min) / (image_max - image_min)
+        image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.uint8)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         assert(image is not None)
         return image
         pass

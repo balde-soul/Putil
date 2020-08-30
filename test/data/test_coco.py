@@ -40,7 +40,7 @@ seed = 64
 #dataset_evaluate.set_convert_to_input_method(convert_to_input())
 #TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 
-dataset_test = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_TEST, './result', detection=True)
+dataset_test = COCO.COCOData('/data2/Public_Data/COCO/unzip_data/2017', COCO.COCOData.Stage.STAGE_TEST, './result', detection=True)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
 dataset_test.set_aug_node_root(root_node)
