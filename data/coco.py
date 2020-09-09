@@ -196,8 +196,9 @@ class COCOData(pcd.CommonDataWithAug):
          @brief generate the image [detection_label ]
          @note
          @ret 
-         image [height, width, channel] numpy.float32
-         bboxes 
+         [0] image [height, width, channel] np.float32
+         [1] bboxes list float [[top_x, top_y, width, height], ....(boxes_amount)]
+         [2] classes list int [class_index, ....] 0 for the background
         '''
         if self._stage == COCOData.Stage.STAGE_TEST:
             return self.__generate_test_from_origin_index(index)
