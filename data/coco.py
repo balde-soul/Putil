@@ -347,3 +347,7 @@ class COCOCommonAugBase:
     @staticmethod
     def classes(*args):
         return args[COCOCommonAugBase.classes_index]
+    pass
+
+
+#pcd.CommonDataManager.register('COCO', COCO)
