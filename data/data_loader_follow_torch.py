@@ -34,6 +34,13 @@ default_collate = _utils.collate.default_collate
 
 
 class DataLoader(object):
+    #def __del__(self):
+    #    if self._multi_processing_data_loader_iter is not None:
+    #        del self._multi_processing_data_loader_iter 
+    #    if self._signle_process_data_loader_iter is not None:
+    #        del self._signle_process_data_loader_iter 
+    #    pass
+
     __initialized = False
 
     def __init__(self, dataset, batch_size=1, shuffle=False, sampler=None,
@@ -195,12 +202,16 @@ class DataLoader(object):
 
     def __iter__(self):
         if self.num_workers == 0:
+            #if self._multi_processing_data_loader_iter is not None:
+            #    del self._multi_processing_data_loader_iter
             if self._signle_process_data_loader_iter is None:
                 self._signle_process_data_loader_iter = _SingleProcessDataLoaderIter(self)
             else:
                 self._signle_process_data_loader_iter.restart()
             return self._signle_process_data_loader_iter
         else:
+            #if self._signle_process_data_loader_iter is not None:
+            #    del self._signle_process_data_loader_iter 
             if self._multi_processing_data_loader_iter is None:
                 self._multi_processing_data_loader_iter = _MultiProcessingDataLoaderIter(self)
             else:
@@ -358,35 +369,12 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
         [command.put(_MultiProcessingDataLoaderIter.Command.ContinueTheIteration) for command in self._command]
         pass
 
-    def __del__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
+    #def __del__(self):
+        #import pdb; pdb.set_trace()
         self._index_control_scommand.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration)
-        self._index_control_scommand.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration)
+        #self._index_control_scommand.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration)
         self._index_put_process.join()
-        print('join')
-        _BaseDataLoaderIter.__del__(self)
+        [command.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration) for command in self._command]
+        [process.join() for process in self._process]
         pass
-
-
-#class DT(dataset.Dataset):
-#    def __init__(self):
-#        dataset.Dataset.__init__(self)
-#    
-#    def __len__(self):
-#        return 100
-#
-#    def __getitem__(self, index):
-#        import time
-#        return np.array(index),
-#
-#import horovod.torch as hvd
-#hvd.init()
-#data = DT()
-#sampler = torch.utils.data.distributed.DistributedSampler(data, num_replicas=hvd.size(), rank=hvd.rank())
-#loader = DataLoader(data, 9, sampler=sampler, num_workers=2, pin_memory=True)
-#sampler.set_epoch(0)
-#for i in loader:
-#    print('get: {}'.format(i))
-#    pass
-#sampler.set_epoch(1)
-#for i in loader:
-#    print('get: {}'.format(i))
