@@ -30,14 +30,15 @@ if __name__ == '__main__':
     hvd.init()
     data = DT()
     sampler = DistributedSampler(data, num_replicas=hvd.size(), rank=hvd.rank())
-    loader = DataLoader(data, 9, sampler=sampler, num_workers=2, pin_memory=True)
+    loader = DataLoader(data, 9, sampler=sampler, num_workers=100, pin_memory=True)
     sampler.set_epoch(0)
     for i in loader:
-        Logger.info('get: {}'.format(i))
+        Logger.info('rank_{}: get: {}'.format(hvd.rank(), i))
         pass
+    Logger.info("Done 1")
     sampler.set_epoch(1)
     for i in loader:
-        Logger.info('get: {}'.format(i))
+        Logger.info('rank_{}: get: {}'.format(hvd.rank(), i))
         pass
-
+    Logger.info("Done 2")
     del loader

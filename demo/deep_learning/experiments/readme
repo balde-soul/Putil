@@ -1,0 +1,19 @@
+测试dataset是否正常 run_dataset_test.sh （可视化dataset输出数据）
+测试aug是否正常 run_data_aug_test.sh (可视化经过aug的数据)
+测试encoder与decoder是否正常 run_encoder_decoder_test.sh（使用encoder之前的数据与decoder之后的数据进行可视化）
+测试训练全流程是否正常 run_all_process_with_smallest_model.sh（使用小数据小模型运行两个epoch，第一个epoch之后，要所有可能情况发生，然后跑完第二个epoch）
+使用小的模型过拟合一个小数据（测试基本损失、优化可行性）overfitd_tiny_datase_with_tiny_model.sh
+针对即将使用的模型过拟合一个小数据 （测试模型基本可行性）overfit_tiny_dataset_*model_name*.sh
+针对即将使用的模型进行小规模数据的训练、验证、测试（测试模型拟合度）fit_tiny_data_naug_*model_name*.sh
+针对即将使用的模型进行小规模数据扩展的训练、验证、测试（测试模型拟合度）fit_tiny_data_aug_*model_name*.sh
+针对即将使用的模型进行大规模数据的训练、验证、测试（测试模型拟合度）fit_naug_*model_name*.sh
+针对即将使用的模型进行大规模数据扩展的训练、验证、测试（测试模型拟合度）fit_aug_*model_name*.sh
+
+数据扩展优化：
+针对不同的数据扩展等级进行训练测试（需要有一个预训练模型才会比较快）
+
+数据等级优化：
+针对不同目标进行数据等级分级，然后进行训练，量化数据等级拟合度（需要有一个预训练模型才会比较快）
+
+针对backbone进行优化：
+更改backbone进行训练测试

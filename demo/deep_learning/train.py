@@ -63,7 +63,40 @@ if __name__ == '__main__':
     ppa.parser.add_argument('--backbone_weight_path', type=str, default='', action='store', \
         help='specify the pre-trained model for the backbone, use while in finetune mode, '\
             'if the weight is specify, the backbone weight would be useless')
+    ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
+        help='specify the backbone name')
+    ppa.parser.add_argument('--name', type=str, action='store', default='', \
+        help='the ${backbone_name}${name} would be the name of the fold to save the result')
+
+    # image param
+    ppa.parser.add_argument('--input_height', type=int, action='store', default=${the default height}, \
+        help='the height of the input')
+    ppa.parser.add_argument('--input_width', action='store', type=int, default=${the default width}, \
+        help='the width of the input')
+
     args = ppa.parser.parse_args()
+
+    # the method for remote debug
+    if args.remote_debug:
+        import ptvsd
+        host = '127.0.0.1'
+        port = 12345
+        ptvsd.enable_attach(address=(host, port), redirect_output=True)
+        if __name__ == '__main__':
+            print('waiting for remote attach')
+            ptvsd.wait_for_attach()
+
+    import Putil.base.logger as plog
+    log_level = plog.LogReflect(args.Level).Level
+    plog.PutilLogConfig.config_format(plog.FormatRecommend)
+    plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
+    plog.PutilLogConfig.config_file_handler(filename=os.path.join('./', 'log'), mode='a')
+    plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
+    root_logger = plog.PutilLogConfig('train').logger()
+    root_logger.setLevel(log_level)
+    TrainLogger = root_logger.getChild('Trainer')
+    TrainLogger.setLevel(log_level)
+    pab.args_log(args, TrainLogger)
     
     # TODO: build the net
     # TODO: build the loss
@@ -72,6 +105,12 @@ if __name__ == '__main__':
     # TODO: build the evaluate
     # TODO: build the test
     # TODO: to_cuda
+
+    if hvd.rank() == 0:
+        bsf = psfb.BaseSaveFold(
+            use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
+        bsf.mkdir('./result')
+        writer = SummaryWriter(bsf.FullPath)
     
     if args.only_test:
         assert args.weight != '', 'should specify the pre-trained weight while run only_test, please specify the args.weight'
@@ -102,3 +141,5 @@ if __name__ == '__main__':
                     pass
                 pass
             pass
+        pass
+    pass

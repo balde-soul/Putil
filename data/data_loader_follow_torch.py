@@ -314,14 +314,14 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
         StopTheIteration = 0
         ContinueTheIteration = 1
 
-    def __init__(self, loader):
+    def __init__(self, loader, max_queue_size=8):
         _BaseDataLoaderIter.__init__(self, loader)
         if loader.multiprocessing_context is None:
             multiprocessing_context = multiprocessing
         else:
             multiprocessing_context = loader.multiprocessing_context
-        self._index_queue = multiprocessing_context.Queue()
-        self._data_queue = multiprocessing_context.Queue()
+        self._index_queue = multiprocessing_context.Queue(max_queue_size)
+        self._data_queue = multiprocessing_context.Queue(max_queue_size)
         self._command = list()
         self._cond = list()
         self._index_status = list()
@@ -331,9 +331,9 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
             lock = multiprocessing_context.Lock()
             cond = multiprocessing_context.Condition(lock)
             self._cond.append(lock)
-            command = multiprocessing_context.Queue()
+            command = multiprocessing_context.Queue(max_queue_size)
             self._command.append(command)
-            index_status = multiprocessing_context.Queue()
+            index_status = multiprocessing_context.Queue(max_queue_size)
             self._index_status.append(index_status)
             process = multiprocessing_context.Process(target=cwork, 
             args=(self._dataset, self._index_queue, self._data_queue, lock, command, index_status)) 
@@ -343,7 +343,7 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
             self._index_status_record.append(_MultiProcessingDataLoaderIter.IndexStatus.Going)
             pass
         self._index_control_scond = multiprocessing_context.Condition(multiprocessing_context.Lock())
-        self._index_control_scommand = multiprocessing_context.Queue()
+        self._index_control_scommand = multiprocessing_context.Queue(max_queue_size)
         self._index_put_process = multiprocessing_context.Process(target=index_put, 
         args=(loader.batch_sampler, self._index_queue, self._index_control_scond, self._index_control_scommand, self._num_workers))
         self._index_put_process.start()

@@ -43,6 +43,7 @@ class GIoU(Module):
         cap = torch.zeros(x1.shape).to(pre)
         mask = (cap_y2 > cap_y1) * (cap_x2 > cap_x1)
         cap[mask] = (cap_x2[mask] - cap_x1[mask]) * (cap_y2[mask] - cap_y1[mask]) # cap 
+        #cup = torch.zeros(x1.shape).to(pre)
         cup = (x2 - x1) * (y2 - y1) + (x2g - x1g) * (y2g - y1g) - cap + 1e-32 # pre \cup gtr
     
         iou = cap / cup # whild the cap is zero , there would be no grad backpropagation(take a look at where the cap come from)
