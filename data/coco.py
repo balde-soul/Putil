@@ -189,7 +189,25 @@ class COCOData(pcd.CommonDataWithAug):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         assert(image is not None)
         return image
-        pass
+
+    def __generate_base_image_information(self, image_ann):
+        #import pdb;pdb.set_trace()
+        return [image_ann[0]['height'], image_ann[0]['width'], image_ann[0]['id']]
+
+    class BaseInformationIndex(Enum):
+        ImageHeightIndex = 0
+        ImageWidthIndex = 1
+        ImageIdIndex = -1
+
+    @staticmethod
+    def get_image_height(base_information):
+        return base_information[COCOData.BaseInformationIndex.ImageHeightIndex]
+    
+    def get_image_width(base_information):
+        return base_information[COCOData.BaseInformationIndex.ImageWidthIndex]
+
+    def get_image_id(base_information):
+        return base_information[COCOData.BaseInformationIndex.ImageIdIndex]
 
     def _generate_from_origin_index(self, index):
         '''
@@ -204,6 +222,7 @@ class COCOData(pcd.CommonDataWithAug):
             return self.__generate_test_from_origin_index(index)
         elif True in [self._detection, self._stuff, self._panoptic]:
             image_ann = self._instances_coco.loadImgs(self._data_field[index])
+            base_information = self.__generate_base_image_information(image_ann)
             ann_ids = self._instances_coco.getAnnIds(self._data_field[index])
             anns = self._instances_coco.loadAnns(ann_ids)
 
@@ -245,7 +264,7 @@ class COCOData(pcd.CommonDataWithAug):
                 pass
             bboxes = clip_box(bboxes, image)
             COCODataLogger.debug('original check:')
-            ret = COCOCommonAugBase._repack(image, bboxes, classes, image=image, bboxes=bboxes, classes=classes)
+            ret = COCOCommonAugBase._repack(image, bboxes, base_information, classes, image=image, bboxes=bboxes, classes=classes)
             ret = self._aug_check(*ret)
             _bboxes = COCOCommonAugBase.bboxes(*ret)
             if len(_bboxes) == 0:
@@ -261,8 +280,8 @@ class COCOData(pcd.CommonDataWithAug):
     def _aug_check(self, *args):
         if self._stage == COCOData.Stage.STAGE_TRAIN or (self._stage == COCOData.Stage.STAGE_EVAL):
             if True in [self._detection, self._stuff, self._panoptic]:
-                bboxes = args[1]
-                classes = args[2]
+                bboxes = args[COCOCommonAugBase.bboxes_index]
+                classes = args[COCOCommonAugBase.classes_index]
                 assert len(bboxes) == len(classes)
                 COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
                 if len(bboxes) == 0:
@@ -324,17 +343,20 @@ class COCOCommonAugBase:
     image_index = instance_image_index
     instance_bboxes_index = 1
     bboxes_index = instance_bboxes_index
-    instance_classes_index= 2
+    base_information_index = 2
+    instance_classes_index= -1
     classes_index = instance_classes_index
 
     @staticmethod
     def _repack(*original_input, image=None, bboxes=None, classes=None):
+        #import pdb; pdb.set_trace()
         image = image if image is not None else original_input[COCOCommonAugBase.image_index]
         bboxes = np.array(bboxes if bboxes is not None else original_input[COCOCommonAugBase.bboxes_index])
         classes = np.array(classes if classes is not None else original_input[COCOCommonAugBase.classes_index])
+        base_information = np.array(original_input[COCOCommonAugBase.base_information_index])
         classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
         bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
-        return image, bboxes.tolist(), classes.tolist()
+        return image, bboxes.tolist(), base_information, classes.tolist()
 
     @staticmethod
     def image(*args):
@@ -347,6 +369,10 @@ class COCOCommonAugBase:
     @staticmethod
     def classes(*args):
         return args[COCOCommonAugBase.classes_index]
+
+    @staticmethod
+    def base_information(*args):
+        return args[COCOCommonAugBase.base_information_index]
     pass
 
 

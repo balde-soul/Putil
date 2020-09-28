@@ -28,6 +28,7 @@ GeneratedDataLogger = logger.getChild('GeneratedData')
 GeneratedDataLogger.setLevel(plog.DEBUG)
 import Putil.data.convert_to_input as convert_to_input
 import Putil.data.data_type_adapter as data_type_adapter
+import Putil.data.fit_all_common_data as fit_all_common_data
 
 
 class CommonDataManager(BaseManager):
@@ -391,7 +392,13 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
         return args
     pass
 
+
 class CombineCommonData(CommonDataWithAug):
+    '''
+     @brief combine some common_data
+     @note
+     _generate_from_specified->fit_all_common_data->convert_to_input_method->convert_check->data_type_adapter
+    '''
     def __init__(self, common_data_list):
         '''
          @brief combine some CommonData and provide the method to get the data
@@ -400,18 +407,36 @@ class CombineCommonData(CommonDataWithAug):
         self._size_list = [len(common_data) for common_data in self._common_data_list]
         self._size_ofs = [sum(self._size_list[0: ofs]) for ofs in range(0, len(self._size_list))]
         self._len = sum(self._size_list)
+
+        self._fit_all_common_data = fit_all_common_data.FitAllCommonDataNoOp()
         pass
 
-    def __len__(self):
-        return self._len
+    def set_fit_all_common_data(self, fit_all_common_data):
+        self._fit_all_common_data = fit_all_common_data
+        pass
 
-    def __getitem__(self, index):
+    def which_common_data_and_offset_index(self, index):
         ofs = 0
         while(index >= self._size_ofs[ofs]):
             ofs += 1
             pass
         c_ofs = index - self._size_ofs[ofs]
-        return self._common_data_list[ofs + 1][c_ofs]
+        return ofs, c_ofs
+
+    def __len__(self):
+        return self._len
+
+    def generate_from_specified(self, index):
+        ofs, cofs = self.which_common_data_and_offset_index(index)
+        common_data = self._common_data_list[ofs]
+        return common_data._data_type_adapter(
+            *common_data._convert_check(
+                *common_data._convert_to_input_method(
+                    self._fit_all_common_data(
+                        *common_data._generate_from_specified(index), ofs=ofs, cofs=cofs))))
+
+    def __getitem__(self, index):
+        return self.generate_from_specified(index)
     pass
 
 def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_sync_mutex, data, data_queue):
@@ -631,3 +656,4 @@ class DataPutProcess:
         else:
             raise StopIteration()
         pass
+

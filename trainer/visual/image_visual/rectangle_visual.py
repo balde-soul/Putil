@@ -17,15 +17,20 @@ class RectangleVisual:
         '''
          @brief 
          @note
-         @param[in] image shape [height, width, channel], type: uint8
-         @param[in] ndarray or list with shape [rectangle_amount, 4], type: float
-         @param[in] ndarray or list with shape [rectangle_amount], type: int64
-         @param[in] color_map list or map
+         @param[in] image
+         shape [height, width, channel], type: uint8
+         @param[in] rectangles 
+         ndarray or list with shape [rectangle_amount, 4], type: float, format: [[top_left_x, top_left_y, width, height], ...]
+         @param[in] classes default None
+         ndarray or list with shape [rectangle_amount], type: int64
+         @param[in] color_map
+         list or map
         '''
         if len(image.shape) == 2:
             image = np.stack([image] * 3, -1)
             pass
         rectangles = np.array(rectangles)
+        rectangles[:, 2: 4] = rectangles[:, 0: 2] + rectangles[:, 2: 4]
         if rectangles.dtype != np.int64:
             rectangles = rectangles.astype(np.int64)
             pass

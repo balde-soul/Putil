@@ -1,5 +1,5 @@
-# coding=utf-8
 #In[]:
+# coding=utf-8
 import numpy as np
 import Putil.base.logger as plog
 
@@ -12,6 +12,8 @@ TestCocoLogger = root_logger.getChild('TestCoco')
 TestCocoLogger.setLevel(plog.DEBUG)
 
 import Putil.data.coco as COCO
+from importlib import reload
+reload(COCO)
 import Putil.data.aug as pAug
 import Putil.data.aug as pAug
 from Putil.data.coco import COCOCommonAugBase
@@ -22,8 +24,9 @@ from Putil.data.convert_to_input import ConvertToInputNoOp as convert_to_input
 seed = 64
 image_height = 512
 image_width = 512
-
-dataset_test = COCO.COCOData('/data2/Public_Data/COCO/unzip_data/2017', COCO.COCOData.Stage.STAGE_TEST, './result', detection=True, 
+root_dir = '/data2/Public_Data/COCO/unzip_data/2017'
+#In[]
+dataset_test = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TEST, './result', detection=True, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -33,8 +36,8 @@ dataset_test.set_data_type_adapter(data_type_adapter())
 dataset_test.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('test data amount: {0}'.format(len(dataset_test)))
 t = dataset_test[0]
-
-dataset_evaluate = COCO.COCOData('/data2/Public_Data/COCO/unzip_data/2017', COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True, 
+#In[]
+dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -43,9 +46,9 @@ class_amount = 80
 dataset_evaluate.set_data_type_adapter(data_type_adapter())
 dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
-
+#In[]
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData('/data2/Public_Data/COCO/unzip_data/2017', COCO.COCOData.Stage.STAGE_TRAIN, './result', detection=True, use_rate=0.1, 
+dataset_train = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TRAIN, './result', detection=True, use_rate=0.1, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -56,13 +59,16 @@ dataset_train.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('train data amount: {0}'.format(len(dataset_train)))
 t = dataset_train[0]
 #In[]:
+dataset = dataset_evaluate
 import matplotlib.pyplot as plt
 import cv2
-ret = dataset_train[100]
+ret = dataset_evaluate[100]
 print(len(ret))
 image = ret[0]
 boxes = ret[1]
-classes = ret[2]
+base_information = ret[2]
+print('base_information{}'.format(base_information))
+classes = ret[-1]
 plt.imshow(ret[0])
 plt.show()
 for box in boxes:
