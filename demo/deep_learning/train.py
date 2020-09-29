@@ -1,4 +1,6 @@
 # coding=utf-8
+import json
+import os
 
 
 if __name__ == '__main__':
@@ -39,6 +41,12 @@ if __name__ == '__main__':
         help='do not use data aug while set')
     ppa.parser.add_argument('--fake_aug', action='store', type=int, default=0, \
         help='do the sub aug with NoOp for fake_aug time, check the generate_dataset')
+    ppa.parser.add_argument('--data_name', action='store', type=str, default='' \
+        help='the name of the data, used in the data_factory, see the util.data_factory')
+    ppa.parser.add_argument('--encode_name', action='store', type=str, default='', \
+        help='the name of the encode in the encode_factory, see the util.encode_factory')
+    ppa.parser.add_argument('--decode_name', action='store', type=str, default='', \
+        help='the name of the decode in the decode_factory, see the util.decode_factory')
     # train setting
     ppa.parser.add_argument('--epochs', type=int, default=10, metavar='N', \
         help='number of epochs to train (default: 10)')
@@ -65,9 +73,14 @@ if __name__ == '__main__':
             'if the weight is specify, the backbone weight would be useless')
     ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
         help='specify the backbone name')
+    ppa.parser.add_argument('--loss_name', type=str, default='', action='store', \
+        help='the name of the loss in the loss_factory, see the util.loss_factory')
+    ppa.parser.add_argument('--indicator_name', type=str, default='', action='store', \
+        help='the name of the indicator in the indicator_factory, see the util.indicator_factory')
+    ppa.parser.add_argument('--statistic_indicator_name', type=str, default='', action='store', \
+        help='the name of the statistic_indicator in the statistic_indicator_factory, see the util.statistic_indicator_factory')
     ppa.parser.add_argument('--name', type=str, action='store', default='', \
         help='the ${backbone_name}${name} would be the name of the fold to save the result')
-
     # image param
     ppa.parser.add_argument('--input_height', type=int, action='store', default=${the default height}, \
         help='the height of the input')
@@ -110,6 +123,8 @@ if __name__ == '__main__':
         bsf = psfb.BaseSaveFold(
             use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
         bsf.mkdir('./result')
+        with open(os.path.join(bsf.FullPath, 'param.json'), 'w') as fp:
+            fp.write(json.dumps(args.__dict__, indent=4))
         writer = SummaryWriter(bsf.FullPath)
     
     if args.only_test:
