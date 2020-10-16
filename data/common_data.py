@@ -1,4 +1,5 @@
 # coding=utf-8
+from enum import Enum
 import random
 import Putil.PutilEnvSet as penv
 import inspect
@@ -467,12 +468,19 @@ def generator(count, stop_generation, epoch_done_cond, epoch_done_flag, flag_syn
             GeneratorLogger.fatal(traceback.format_tb(e.__traceback__))
             raise e
         flag_sync_mutex.acquire()
+        GeneratorLogger.debug('got flag_sync_mutex') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         data_queue.put(get_data)
+        GeneratorLogger.debug('put data') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         epoch_done_flag.value = data.generate_epoch_done()
+        GeneratorLogger.debug('epoch_done_flag: {}'.format(epoch_done_cond)) if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         flag_sync_mutex.release()
+        GeneratorLogger.debug('released flag_sync_mutex') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         count += 1
+        GeneratorLogger.debug('count up') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None 
         epoch_done_cond.release()
+        GeneratorLogger.debug('released epoch_done_cond') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         pass
+    GeneratorLogger.debug('generator stop') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
     plog.api_function_log(GeneratorLogger, 'data put process end')
     pass
 
@@ -562,10 +570,12 @@ class DataPutProcess:
 
     def has_next(self):
         self._flag_sync_mutex.acquire()
+        DataPutProcessLogger.debug('got flag_sync_mutex') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         # print(self._data_queue.empty())
         # print(self._epoch_done_flag.value)
         flag = (self._data_queue.empty() is False or self._epoch_done_flag.value is False)
         self._flag_sync_mutex.release()
+        DataPutProcessLogger.debug('got flag_sync_mutex') if DataPutProcess._running_mode is DataPutProcess.RunningMode.Debug else None
         return flag
 
     def paused_and_has_next(self):
@@ -656,4 +666,15 @@ class DataPutProcess:
         else:
             raise StopIteration()
         pass
+    
+    class RunningMode(Enum):
+        Debug=0
+        Release=1
+    
+    _running_mode = RunningMode.Release
 
+    @staticmethod
+    def set_running_mode(running_mode):
+        assert running_mode.name in DataPutProcess.RunningMode.__members__.keys()
+        DataPutProcess._running_mode = running_mode
+        pass

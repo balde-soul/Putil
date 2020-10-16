@@ -17,12 +17,19 @@
             "request": "launch",
             "program": "test/torch/indicator/vision/object_detection/test_giou.py",
             "console": "integratedTerminal"
-        }
+        },
         {
             "name": "test_diou",
             "type": "python",
             "request": "launch",
             "program": "test/torch/indicator/vision/object_detection/test_diou.py",
+            "console": "integratedTerminal"
+        }
+        {
+            "name": "test_common_data_multiprocess",
+            "type": "python",
+            "request": "launch",
+            "program": "test/data/test_common_data_multiprocess.py",
             "console": "integratedTerminal"
         }
     ]

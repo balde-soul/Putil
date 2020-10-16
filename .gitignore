@@ -117,3 +117,5 @@ venv.bak/
 .vscode/settings.json
 
 image_without_ann.json
+
+_log*.log

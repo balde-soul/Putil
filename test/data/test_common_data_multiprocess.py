@@ -5,9 +5,10 @@ import numpy as np
 import os
 import Putil.base.logger as plog
 
-plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+plog.PutilLogConfig.config_file_handler(filename='./test/data/_log_test_common_data_multiprocess.log', mode='w')
+plog.PutilLogConfig.config_log_level(stream=plog.INFO, file=plog.DEBUG)
 plog.PutilLogConfig.config_format(plog.FormatRecommend)
-plog.PutilLogConfig.config_handler(plog.stream_method)
+plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
 logger = plog.PutilLogConfig('TesCommonData').logger()
 logger.setLevel(plog.DEBUG)
 MainLogger = logger.getChild('Main')
@@ -17,6 +18,7 @@ import Putil.test.data.test_common_data_unit as tbase
 import Putil.data.common_data as pcd
 import multiprocessing
 
+pcd.DataPutProcess.set_running_mode(pcd.DataPutProcess.RunningMode.Debug)
 
 if __name__ == '__main__':
     manager_common_data = pcd.CommonDataManager()
