@@ -1,4 +1,9 @@
 # coding=utf-8
+from pycocotools.cocoeval import COCOeval
+import matplotlib.pyplot as plt
+import skimage.io as io
+import pylab
+from pandas.plotting import table
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -25,6 +30,8 @@ logger = plog.PutilLogConfig('coco').logger()
 logger.setLevel(plog.DEBUG)
 COCODataLogger = logger.getChild('COCOData')
 COCODataLogger.setLevel(plog.DEBUG)
+COCOBaseLogger = logger.getChild('COCOBase')
+COCOBaseLogger.setLevel(plog.DEBUG)
 
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
 from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
@@ -83,6 +90,31 @@ class COCOBase():
         pass
 
     @staticmethod
+    def detection_statistic_img_amount(ann_file, save_to, cat_name=None):
+        coco = COCO(ann_file)
+        if cat_name is not None:
+            cat_ids = [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
+                else [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_names]]]
+            pass
+        else:
+            cat_ids = coco.getCatIds()
+            pass
+        result = list()
+        for cat_id in cat_ids:
+            img_id = coco.getImgIds(catIds=[cat_id])
+            result.append({'category': COCOBase._detection_cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), 'cat_id': cat_id})
+            pass
+        result_df = pd.DataFrame(result)
+        plt.rcParams['savefig.dpi'] = 300
+        fig = plt.figure(figsize=(5, 15))
+        ax = fig.add_subplot(111, frame_on=False) # no visible frame
+        ax.xaxis.set_visible(False)  # hide the x axis
+        ax.yaxis.set_visible(False)  # hide the y axis
+        table(ax, result_df, loc='center')
+        plt.savefig(os.path.join(save_to, 'category_img_amount.png'))
+        pass
+
+    @staticmethod
     def detection_statistic_obj_size_follow_img(img_id, ann_file):
         pass
 
@@ -96,7 +128,8 @@ class COCOBase():
         stuff,
         panoptic,
         dense_pose,
-        captions
+        captions,
+        cat_ids,
     ):
         self._information_save_to_path = information_save_to_path
         #BaseSaveFold()
@@ -125,6 +158,9 @@ class COCOBase():
         self._detection_result = None
         self._detection_result_file_name = 'detection_result.csv'
         self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
+
+        self._cat_ids = cat_ids
+        COCOBaseLogger.info('specified cat_ids: {}'.format(self._cat_ids)) if self._cat_ids is not None else None
         pass
 
     def represent_value_to_category_id(self, represent_value):
@@ -170,7 +206,14 @@ class COCOBase():
             pass
         pass
 
-    def evaluate_detection(self):
+    def evaluate_detection(self, image_ids=None, cat_ids=None):
+        '''
+         @brief evaluate the performance
+         @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
+         then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
+         @param[in] image_ids the images would be considered in the evaluate
+         @param[in] cat_ids the categories would be considered in the evaluate
+        '''
         saved_files = os.listdir(self._information_save_to_path)
         target_files = list()
         for saved_file in saved_files:
@@ -192,18 +235,13 @@ class COCOBase():
         detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(detection_result))]
 
         with open(os.path.join(self._information_save_to_path, 'formated_detection_result.json'), 'w') as fp:
-            import json
             json.dump(detection_result_formated, fp)
         
         detection_result_coco = self._instances_coco.loadRes(os.path.join(self._information_save_to_path, 'formated_detection_result.json'))
         #result_image_ids = detection_result_coco.getImgIds()
-        result_image_ids = list(set(detection_result['image_id']))
-        from pycocotools.cocoeval import COCOeval
-        import matplotlib.pyplot as plt
-        import skimage.io as io
-        import pylab
         cocoEval = COCOeval(self._instances_coco, detection_result_coco, 'bbox')
-        cocoEval.params.imgIds  = result_image_ids
+        cocoEval.params.imgIds  = image_ids if image_ids is not None else self._instances_coco.getImgIds()
+        cocoEval.params.catIds = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
         cocoEval.evaluate()
         cocoEval.accumulate()
         cocoEval.summarize()
@@ -264,6 +302,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         panoptic=False,
         dense_pose=False,
         captions=False,
+        cat_ids=None,
         use_rate=1.0,
         image_width=128,
         image_height=128):
@@ -290,7 +329,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
          data used rate
         '''
         COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
-            key_points, stuff, panoptic, dense_pose, captions)
+            key_points, stuff, panoptic, dense_pose, captions, cat_ids)
         pcd.CommonDataWithAug.__init__(self, use_rate=use_rate)
 
         belong_instances = [self._detection, self._stuff, self._panoptic]
@@ -319,8 +358,15 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         # we know use the detectio only
         #self._data_field = COCOData.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
         #     self._captions_img_ids, self._image_test_img_ids])
+        # TODO:record
         self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
         self._fix_field()
+        if self._stage in [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]:
+            self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None else self._instances_img_ids 
+            self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._cat_ids is None else {cat_id: index for index, cat_id in enumerate(self._cat_ids)}
+            if self._information_save_to_path is not None:
+                with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
+                    json.dump(self._detection_cat_id_to_represent, fp, indent=4)
         
         # check the ann
         if self._stage in with_label:
@@ -383,7 +429,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
          [0] image [height, width, channel] np.float32
          [1] bboxes list float [[top_x, top_y, width, height], ....(boxes_amount)]
          [2] base_information list|[list|[int|image_height, int|image_width, int|image_id], ...]
-         [-1] classes list int [class_index, ....] 0 for the background
+         [-1] classes list int [class_index, ....] 0 for the background class may not equal with the category_id
         '''
         if self._stage == COCOData.Stage.STAGE_TEST:
             return self.__generate_test_from_origin_index(index)
@@ -419,8 +465,12 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
             bboxes = list()
             classes = list()
             for ann in anns:
+                if self._cat_ids is None:
+                    pass
+                elif ann['category_id'] not in self._cat_ids:
+                    continue
                 box = ann['bbox']
-                classes.append(self._instances_category_ids.index(ann['category_id']))
+                classes.append(self._detection_cat_id_to_represent[ann['category_id']])
                 #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
                 bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
                 pass
@@ -528,8 +578,9 @@ class COCODataWithTorch(COCOData, Dataset):
         use_rate=1.0,
         image_width=128,
         image_height=128):
-        COCOData.__init__(self, coco_root_dir, stage, information_save_to_path, \
-            detection, key_points, stuff, panoptic, dense_pose, captions, use_rate, image_height, image_width)
+        COCOData.__init__(self, coco_root_dir=coco_root_dir, stage=stage, information_save_to_path=information_save_to_path, \
+            detection=detection, key_points=key_points, stuff=stuff, panoptic=panoptic, dense_pose=dense_pose, captions=captions, \
+                use_rate=use_rate, image_height=image_height, image_width=image_width)
         Dataset.__init__(self)
         pass
 
@@ -573,25 +624,3 @@ class COCOCommonAugBase:
 
 
 #pcd.CommonDataManager.register('COCO', COCO)
-
-class COCOStatistic(COCOBase):
-    def __init__(
-        self,
-        coco_root_dir,
-        stage,
-        information_save_to_path,
-        detection,
-        key_points,
-        stuff,
-        panoptic,
-        dense_pose,
-        captions
-        ):
-        COCOBase.__init__(
-            self, coco_root_dir, stage, information_save_to_path, 
-            detection, key_points, stuff, panoptic, dense_pose, captions)
-        pass
-
-    def size_dist_follow_category(self):
-        pass
-    pass

@@ -5,7 +5,7 @@ import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
 plog.PutilLogConfig.config_format(plog.FormatRecommend)
-plog.PutilLogConfig.config_log_level(stream=plog.DEBUG)
+plog.PutilLogConfig.config_log_level(stream=plog.INFO)
 root_logger = plog.PutilLogConfig('test_coco').logger()
 root_logger.setLevel(plog.DEBUG)
 TestCocoLogger = root_logger.getChild('TestCoco')
@@ -39,17 +39,21 @@ dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 
 #In[]:
-print(dataset_evaluate[0])
-def get_detection_result(*args):
-    image = args[0]
-    bboxes = args[1]
-    base_informations = args[2]
-    category_ids = args[-1]
-    return image, base_informations[-1], category_ids, bboxes, [1.0 for bbox in bboxes]
-    pass
-use_amount = 300
+use_amount = 10
+image_ids = list()
+image_bbox = dict()
 for i in range(0, use_amount):
-    dataset_evaluate.add_detection_result(*get_detection_result(*dataset_evaluate[i]), save=True if i == use_amount - 1 else False)
+    data = dataset_evaluate[i]
+    image = data[0]
+    base_informations = data[2]
+    bboxes = (np.array(data[1]) * np.array([[base_informations[1] / image.shape[1], base_informations[0] / image.shape[0]] * 2])).tolist()
+    classes = data[-1]
+    category_ids = [dataset_evaluate._detection_represent_to_cat_id[_class] for _class in classes]
+    image_ids.append(base_informations[-1])
+    image_bbox[base_informations[-1]] = data[1]
+    dataset_evaluate.add_detection_result(image=image, image_id=base_informations[-1], \
+        category_ids=category_ids, bboxes=bboxes, scores=[1.0 for bbox in bboxes], \
+             save=True if i == use_amount - 1 else False)
     pass
 #for i in range(10, len(dataset_evaluate)):
 #    dataset_evaluate.add_detection_result(*get_detection_result(*dataset_evaluate[i]), save=True if i == len(dataset_evaluate) else False)
@@ -57,4 +61,4 @@ for i in range(0, use_amount):
 #In[]
 #print(dataset_evaluate._detection_result)
 #len(dataset_evaluate)
-dataset_evaluate.evaluate_detection()
+dataset_evaluate.evaluate_detection(image_ids=image_ids)
