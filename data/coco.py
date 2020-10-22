@@ -1,4 +1,11 @@
 # coding=utf-8
+from collections import OrderedDict
+import matplotlib.pyplot as plt
+import pandas as pd
+from collections import Iterable
+import re
+import pandas as pd
+from abc import ABCMeta, abstractmethod
 import random
 import json
 from skimage import io
@@ -11,7 +18,7 @@ import os
 import json
 import numpy as np
 import Putil.base.logger as plog
-import Putil.data.common_data as pcd
+from Putil.base.project_base import BaseSaveFold
 from pycocotools.coco import COCO
 
 logger = plog.PutilLogConfig('coco').logger()
@@ -22,9 +29,189 @@ COCODataLogger.setLevel(plog.DEBUG)
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
 from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
 from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box 
+import Putil.data.common_data as pcd
 
 
-class COCOData(pcd.CommonDataWithAug):
+class COCOBase():
+    # represent->cat_id->cat_name->represent
+    _detection_represent_to_cat_id = OrderedDict({0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 13, 12: 14, 13: 15, 14: 16, 15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22, 21: 23, 22: 24, 23: 25, 24: 27, 25: 28, 26: 31, 27: 32, 28: 33, 29: 34, 30: 35, 31: 36, 32: 37, 33: 38, 34: 39, 35: 40, 36: 41, 37: 42, 38: 43, 39: 44, 40: 46, 41: 47, 42: 48, 43: 49, 44: 50, 45: 51, 46: 52, 47: 53, 48: 54, 49: 55, 50: 56, 51: 57, 52: 58, 53: 59, 54: 60, 55: 61, 56: 62, 57: 63, 58: 64, 59: 65, 60: 67, 61: 70, 62: 72, 63: 73, 64: 74, 65: 75, 66: 76, 67: 77, 68: 78, 69: 79, 70: 80, 71: 81, 72: 82, 73: 84, 74: 85, 75: 86, 76: 87, 77: 88, 78: 89, 79: 90})
+    _detection_cat_id_to_represent = OrderedDict()
+    for represent, cat_id in _detection_represent_to_cat_id.items():
+        _detection_cat_id_to_represent[cat_id] = represent
+    #_detection_cat_id_to_represent = {cat_id: represent for represent, cat_id in _detection_represent_to_cat_id.items()}
+    _detection_cat_id_to_cat_name = OrderedDict({1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'})
+    _detection_cat_name_to_represent = OrderedDict()
+    for cat_id, cat_name in _detection_cat_id_to_cat_name.items():
+        _detection_cat_name_to_represent[cat_name] = _detection_cat_id_to_represent[cat_id]
+    # TODO: important problem remain 当使用以下方法生成_detection_cat_name_to_represent时出现_detection_cat_id_to_represent undefined的情况
+    #_detection_cat_name_to_represent = {cat_name: _detection_cat_id_to_represent[cat_id] for cat_id, cat_name in _detection_cat_id_to_cat_name.items()}
+
+    @staticmethod
+    def detection_get_cat_id(cat_name=None, represent_value=None):
+        assert False in [t is None for t in [cat_name, represent_value]]
+        return COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] if cat_name is not None else COCOBase._detection_represent_to_cat_id[represent_value]
+
+    @staticmethod
+    def detection_get_cat_name(cat_id=None, represent_value=None):
+        assert False in [t is None for t in [cat_id, represent_value]]
+        return COCOBase._detection_cat_id_to_cat_name[cat_id] if cat_id is not None else COCOBase._detection_cat_id_to_cat_name[COCOBase._detection_represent_to_cat_id[represent_value]]
+
+    @staticmethod
+    def detection_statistic_obj_size_follow_cat(cat_names, ann_file, save_to):
+        cat_ids = [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
+            else [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_names]]]
+        coco = COCO(ann_file)
+        #row_amount = np.floor(np.sqrt(len(cat_ids)))
+        #col_amount = row_amount
+        plt.rcParams['savefig.dpi'] = 300
+        #plt.figure(figsize=(row_amount, col_amount))
+        #fig = plt.figure()
+        #fig.suptitle('y: counts, x: bbox area/1000')
+        for index, cat_id in enumerate(cat_ids):
+            #plt.subplot(row_amount, col_amount, index + 1)
+            ann_ids = coco.getAnnIds(catIds=[cat_id])
+            anns = coco.loadAnns(ann_ids)
+            anns_df = pd.DataFrame(anns)
+            bbox_area = anns_df['bbox'].apply(lambda x: x[2] * x[3])
+            (bbox_area/100).plot.hist(grid=True, bins=500, rwidth=0.9, color='#607c8e')
+            plt.title(COCOBase._detection_cat_id_to_cat_name[cat_id])
+            plt.ylabel('Counts')
+            plt.xlabel('bbox area/100')
+            plt.savefig(os.path.join(save_to, 'box_area_histogram_{}.png'.format(COCOBase._detection_cat_id_to_cat_name[cat_id])))
+            #hist, xedges, yedges = np.histogram2d(anns_df['bbox'].apply(lambda x: x[2]), anns_df['bbox'].apply(lambda x: x[3]), bins=1000)
+            pass
+        pass
+
+    @staticmethod
+    def detection_statistic_obj_size_follow_img(img_id, ann_file):
+        pass
+
+    def __init__(
+        self,
+        coco_root_dir,
+        stage,
+        information_save_to_path,
+        detection,
+        key_points,
+        stuff,
+        panoptic,
+        dense_pose,
+        captions
+    ):
+        self._information_save_to_path = information_save_to_path
+        #BaseSaveFold()
+        self._coco_root_dir = coco_root_dir
+        self._stage = stage
+        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
+            ('val2017' if self._stage == COCOData.Stage.STAGE_EVAL else 'test2017')
+        self._img_root_dir = os.path.join(self._coco_root_dir, self._img_root_name)
+        self._detection = detection
+        self._key_points = key_points
+        self._stuff = stuff
+        self._panoptic = panoptic
+        self._dense_pose = dense_pose
+        self._captions = captions
+        assert True in [self._detection, self._key_points, self._stuff, self._panoptic, self._dense_pose, self._captions]
+        
+        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
+        self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
+        self._person_keypoints_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
+        self._person_keypoints_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
+        self._captions_train = os.path.join(self._coco_root_dir, 'annotations/captions_train2017.json')
+        self._captions_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
+        self._image_info_test = os.path.join(self._coco_root_dir, 'annotations/image_info_test2017.json')
+
+        # result
+        self._detection_result = None
+        self._detection_result_file_name = 'detection_result.csv'
+        self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
+        pass
+
+    def represent_value_to_category_id(self, represent_value):
+        pass
+
+    def add_detection_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False):
+        '''
+         @brief save the detection result base on one image
+         @note
+         @param[in] image ndarray the image
+         @param[in] image_id int the id of the image 
+         @param[in] category_ids list|[int|category_id, ...] the category of the bboxes
+         @param[in] bboxes list|[list|[float|top_left_x, float|top_left_y, float|width, float|height], ...]
+         @param[in] scores list|[float|score, ...]
+         @param[in] save 
+         bool 
+         save the result to the file or not, if True the _detection_result would be saved to _detection_result file,
+         _detection_result would be set as None, _detection_result_file would be changed
+        '''
+        sync_status = [list(image), image_id, list(category_ids), list(bboxes), list(scores)]
+        if None in sync_status:
+            assert(len(set(sync_status)) == 1), COCODataLogger.fatal('all element should be None while None in sync_status: {}'.format(sync_status))
+            pass
+        else:
+            used_wh = image.shape[0: 2][::-1]
+            self._detection_result = pd.DataFrame() if self._detection_result is None else self._detection_result
+            result_temp = list()
+            for category_id, bbox, score in zip(category_ids, bboxes, scores):
+                result_temp.append({'image_id': image_id, 'category_id': category_id, 'bbox': bbox, 'score': score})
+            self._detection_result = self._detection_result.append(result_temp, ignore_index=True)
+            pass
+        if save:
+            if self._detection_result is not None:
+                # : save the _detection_result
+                self._detection_result.set_index(['image_id'], inplace=True)
+                self._detection_result.to_csv(self._detection_result_file)
+                pass
+            self._detection_result = None
+            self._detection_result_file_name = \
+            '{}-{}.csv'.format(self._detection_result_file_name.split('.')[0], \
+                1 if len(self._detection_result_file_name.split('.')[0].split('-')) == 1 else int(self._detection_result_file_name.split('.')[0].split('-')[-1]) + 1)
+            self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
+            pass
+        pass
+
+    def evaluate_detection(self):
+        saved_files = os.listdir(self._information_save_to_path)
+        target_files = list()
+        for saved_file in saved_files:
+            target_files.append(saved_file) \
+                if self._detection_result_file_name.split('.')[0].split('-')[0] == saved_file.split('.')[0].split('-')[0] \
+                    else None
+            pass
+        detection_result = None
+        for target_file in target_files:
+            detection_result_temp = pd.read_csv(os.path.join(self._information_save_to_path, target_file), \
+                converters={'bbox': lambda x: [float(t.strip('[').strip(']')) for t in x.split(',')]})
+            if detection_result is not None:
+                detection_result = detection_result.append(detection_result_temp)
+            else:
+                detection_result = detection_result_temp
+                pass
+            pass
+        index_name = {index: name for index, name in enumerate(list(detection_result.columns))}
+        detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(detection_result))]
+
+        with open(os.path.join(self._information_save_to_path, 'formated_detection_result.json'), 'w') as fp:
+            import json
+            json.dump(detection_result_formated, fp)
+        
+        detection_result_coco = self._instances_coco.loadRes(os.path.join(self._information_save_to_path, 'formated_detection_result.json'))
+        #result_image_ids = detection_result_coco.getImgIds()
+        result_image_ids = list(set(detection_result['image_id']))
+        from pycocotools.cocoeval import COCOeval
+        import matplotlib.pyplot as plt
+        import skimage.io as io
+        import pylab
+        cocoEval = COCOeval(self._instances_coco, detection_result_coco, 'bbox')
+        cocoEval.params.imgIds  = result_image_ids
+        cocoEval.evaluate()
+        cocoEval.accumulate()
+        cocoEval.summarize()
+        pass
+    pass
+
+
+class COCOData(pcd.CommonDataWithAug, COCOBase):
     @staticmethod
     def set_seed(seed):
         pcd.CommonDataWithAug.set_seed(seed)
@@ -65,6 +252,7 @@ class COCOData(pcd.CommonDataWithAug):
         STAGE_TRAIN = 0
         STAGE_EVAL = 1
         STAGE_TEST = 2
+
     def __init__(
         self, 
         coco_root_dir, 
@@ -101,27 +289,9 @@ class COCOData(pcd.CommonDataWithAug):
          @param[in] use_rate
          data used rate
         '''
+        COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
+            key_points, stuff, panoptic, dense_pose, captions)
         pcd.CommonDataWithAug.__init__(self, use_rate=use_rate)
-        self._coco_root_dir = coco_root_dir
-        self._stage = stage
-        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
-            ('val2017' if self._stage == COCOData.Stage.STAGE_EVAL else 'test2017')
-        self._img_root_dir = os.path.join(self._coco_root_dir, self._img_root_name)
-        self._detection = detection
-        self._key_points = key_points
-        self._stuff = stuff
-        self._panoptic = panoptic
-        self._dense_pose = dense_pose
-        self._captions = captions
-        assert True in [self._detection, self._key_points, self._stuff, self._panoptic, self._dense_pose, self._captions]
-        
-        self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
-        self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
-        self._person_keypoints_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
-        self._person_keypoints_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
-        self._captions_train = os.path.join(self._coco_root_dir, 'annotations/captions_train2017.json')
-        self._captions_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
-        self._image_info_test = os.path.join(self._coco_root_dir, 'annotations/image_info_test2017.json')
 
         belong_instances = [self._detection, self._stuff, self._panoptic]
         belong_person_keypoints = [self._key_points]
@@ -166,10 +336,6 @@ class COCOData(pcd.CommonDataWithAug):
                 str_ = json.dumps(image_without_ann, indent=4)
                 fp.write(str_)
                 pass
-
-        if self._instances_coco is not None:
-            self._instances_category_ids = self._instances_coco.getCatIds()
-            pass
 
         self._image_width = image_width
         self._image_height = image_height
@@ -216,7 +382,8 @@ class COCOData(pcd.CommonDataWithAug):
          @ret 
          [0] image [height, width, channel] np.float32
          [1] bboxes list float [[top_x, top_y, width, height], ....(boxes_amount)]
-         [2] classes list int [class_index, ....] 0 for the background
+         [2] base_information list|[list|[int|image_height, int|image_width, int|image_id], ...]
+         [-1] classes list int [class_index, ....] 0 for the background
         '''
         if self._stage == COCOData.Stage.STAGE_TEST:
             return self.__generate_test_from_origin_index(index)
@@ -338,6 +505,35 @@ class COCOData(pcd.CommonDataWithAug):
 pcd.CommonDataManager.register('COCOData', COCOData)
 
 
+class SubCOCOData(COCOData):
+    def __init__(self):
+        pass
+
+
+from torch.utils.data import Dataset
+
+
+class COCODataWithTorch(COCOData, Dataset):
+    def __init__(
+        self, 
+        coco_root_dir, 
+        stage,
+        information_save_to_path=None,
+        detection=False,
+        key_points=False,
+        stuff=False,
+        panoptic=False,
+        dense_pose=False,
+        captions=False,
+        use_rate=1.0,
+        image_width=128,
+        image_height=128):
+        COCOData.__init__(self, coco_root_dir, stage, information_save_to_path, \
+            detection, key_points, stuff, panoptic, dense_pose, captions, use_rate, image_height, image_width)
+        Dataset.__init__(self)
+        pass
+
+
 class COCOCommonAugBase:
     instance_image_index = 0
     image_index = instance_image_index
@@ -377,3 +573,25 @@ class COCOCommonAugBase:
 
 
 #pcd.CommonDataManager.register('COCO', COCO)
+
+class COCOStatistic(COCOBase):
+    def __init__(
+        self,
+        coco_root_dir,
+        stage,
+        information_save_to_path,
+        detection,
+        key_points,
+        stuff,
+        panoptic,
+        dense_pose,
+        captions
+        ):
+        COCOBase.__init__(
+            self, coco_root_dir, stage, information_save_to_path, 
+            detection, key_points, stuff, panoptic, dense_pose, captions)
+        pass
+
+    def size_dist_follow_category(self):
+        pass
+    pass

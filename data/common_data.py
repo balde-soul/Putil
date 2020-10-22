@@ -104,7 +104,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
 
-class CommonData(Dataset, metaclass=ABCMeta):
+class CommonData(metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
     '''
