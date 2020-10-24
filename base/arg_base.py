@@ -12,10 +12,10 @@ class ProjectArg(metaclass=ABCMeta):
         self._level = kwargs.get('log_level', None)
         self._debug = kwargs.get('debug_mode', None)
         self._config = kwargs.get('config', None)
-        self._parser.add_argument('--save_dir', action='store', dest='SaveDir', default=self._save_dir, help='this param specified the dir to save the result, the default is {0}'.format(self._save_dir)) if self._save_dir is not None else None
-        self._parser.add_argument('--log_level', action='store', dest='Level', default=self._level, help='this param specified the log level, the default is {0}'.format(self._level)) if self._level is not None else None
-        self._parser.add_argument('--debug_mode', action='store_true', dest='DebugMode', default=self._debug, help='this param set the program mode if the program contain a debug method, the default is {0}'.format(self._debug)) if self._debug is True else None
-        self._parser.add_argument('--config', action='store', dest='Config', default=self._config, help='this param set the config file path for the program if needed, the default is {0}'.format(self._config)) if self._config is not None else None
+        self._parser.add_argument('--save_dir', action='store', dest='save_dir', default=self._save_dir, help='this param specified the dir to save the result, the default is {0}'.format(self._save_dir)) if self._save_dir is not None else None
+        self._parser.add_argument('--log_level', action='store', dest='log_level', default=self._level, help='this param specified the log level, the default is {0}'.format(self._level)) if self._level is not None else None
+        self._parser.add_argument('--debug_mode', action='store_true', dest='debug_mode', default=self._debug, help='this param set the program mode if the program contain a debug method, the default is {0}'.format(self._debug)) if self._debug is True else None
+        self._parser.add_argument('--config', action='store', dest='config', default=self._config, help='this param set the config file path for the program if needed, the default is {0}'.format(self._config)) if self._config is not None else None
         pass
     
     @property
