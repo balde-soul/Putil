@@ -53,7 +53,7 @@ for i in range(0, use_amount):
     image_bbox[base_informations[-1]] = data[1]
     dataset_evaluate.add_detection_result(image=image, image_id=base_informations[-1], \
         category_ids=category_ids, bboxes=bboxes, scores=[1.0 for bbox in bboxes], \
-             save=True if i == use_amount - 1 else False)
+             save=True if i == use_amount - 1 else False, prefix='test')
     pass
 #for i in range(10, len(dataset_evaluate)):
 #    dataset_evaluate.add_detection_result(*get_detection_result(*dataset_evaluate[i]), save=True if i == len(dataset_evaluate) else False)
@@ -61,4 +61,4 @@ for i in range(0, use_amount):
 #In[]
 #print(dataset_evaluate._detection_result)
 #len(dataset_evaluate)
-dataset_evaluate.evaluate_detection(image_ids=image_ids)
+dataset_evaluate.evaluate_detection(image_ids=image_ids, prefix='test')

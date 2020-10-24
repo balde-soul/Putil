@@ -157,6 +157,7 @@ class CommonData(metaclass=ABCMeta):
     @staticmethod
     def set_seed(seed):
         np.random.seed(seed)
+        random.seed(seed)
         pass
 
     def data_field(self):

@@ -70,7 +70,6 @@ class COCOBase():
         coco = COCO(ann_file)
         #row_amount = np.floor(np.sqrt(len(cat_ids)))
         #col_amount = row_amount
-        plt.rcParams['savefig.dpi'] = 300
         #plt.figure(figsize=(row_amount, col_amount))
         #fig = plt.figure()
         #fig.suptitle('y: counts, x: bbox area/1000')
@@ -80,17 +79,20 @@ class COCOBase():
             anns = coco.loadAnns(ann_ids)
             anns_df = pd.DataFrame(anns)
             bbox_area = anns_df['bbox'].apply(lambda x: x[2] * x[3])
+            plt.rcParams['savefig.dpi'] = 300
             (bbox_area/100).plot.hist(grid=True, bins=500, rwidth=0.9, color='#607c8e')
             plt.title(COCOBase._detection_cat_id_to_cat_name[cat_id])
             plt.ylabel('Counts')
             plt.xlabel('bbox area/100')
             plt.savefig(os.path.join(save_to, 'box_area_histogram_{}.png'.format(COCOBase._detection_cat_id_to_cat_name[cat_id])))
+            plt.close()
+            #plt.show()
             #hist, xedges, yedges = np.histogram2d(anns_df['bbox'].apply(lambda x: x[2]), anns_df['bbox'].apply(lambda x: x[3]), bins=1000)
             pass
         pass
 
     @staticmethod
-    def detection_statistic_img_amount(ann_file, save_to, cat_name=None):
+    def detection_statistic_img_amount_obj_amount(ann_file, save_to, cat_name=None):
         coco = COCO(ann_file)
         if cat_name is not None:
             cat_ids = [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
@@ -102,7 +104,9 @@ class COCOBase():
         result = list()
         for cat_id in cat_ids:
             img_id = coco.getImgIds(catIds=[cat_id])
-            result.append({'category': COCOBase._detection_cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), 'cat_id': cat_id})
+            ann_id = coco.getAnnIds(catIds=[cat_id])
+            result.append({'category': COCOBase._detection_cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), \
+                'cat_id': cat_id, 'obj_amount': len(ann_id)})
             pass
         result_df = pd.DataFrame(result)
         plt.rcParams['savefig.dpi'] = 300
@@ -156,8 +160,7 @@ class COCOBase():
 
         # result
         self._detection_result = None
-        self._detection_result_file_name = 'detection_result.csv'
-        self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
+        self._detection_result_file_name = 'detection_result'
 
         self._cat_ids = cat_ids
         COCOBaseLogger.info('specified cat_ids: {}'.format(self._cat_ids)) if self._cat_ids is not None else None
@@ -166,7 +169,11 @@ class COCOBase():
     def represent_value_to_category_id(self, represent_value):
         pass
 
-    def add_detection_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False):
+    @staticmethod
+    def generate_result_file_name(prefix, common_name):
+        return '{}{}.csv'.format('{}_'.format(prefix) if prefix is not None else '', common_name)
+
+    def add_detection_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False, prefix=None):
         '''
          @brief save the detection result base on one image
          @note
@@ -179,6 +186,7 @@ class COCOBase():
          bool 
          save the result to the file or not, if True the _detection_result would be saved to _detection_result file,
          _detection_result would be set as None, _detection_result_file would be changed
+         @param[in] prefix str the prefix of the file name to save the result
         '''
         sync_status = [list(image), image_id, list(category_ids), list(bboxes), list(scores)]
         if None in sync_status:
@@ -196,17 +204,19 @@ class COCOBase():
             if self._detection_result is not None:
                 # : save the _detection_result
                 self._detection_result.set_index(['image_id'], inplace=True)
-                self._detection_result.to_csv(self._detection_result_file)
+                detection_result_file_path = os.path.join(self._information_save_to_path, \
+                    COCOBase.generate_result_file_name(prefix, self._detection_result_file_name))
+                self._detection_result.to_csv(detection_result_file_path)
                 pass
             self._detection_result = None
-            self._detection_result_file_name = \
-            '{}-{}.csv'.format(self._detection_result_file_name.split('.')[0], \
-                1 if len(self._detection_result_file_name.split('.')[0].split('-')) == 1 else int(self._detection_result_file_name.split('.')[0].split('-')[-1]) + 1)
-            self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
+            #self._detection_result_file_name = \
+            #'{}_{}-{}.csv'.format(prefix, self._detection_result_file_name.split('.')[0], \
+            #    1 if len(self._detection_result_file_name.split('.')[0].split('-')) == 1 else int(self._detection_result_file_name.split('.')[0].split('-')[-1]) + 1)
+            #self._detection_result_file = os.path.join(self._information_save_to_path, self._detection_result_file_name)
             pass
         pass
 
-    def evaluate_detection(self, image_ids=None, cat_ids=None):
+    def evaluate_detection(self, image_ids=None, cat_ids=None, prefix=None):
         '''
          @brief evaluate the performance
          @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
@@ -214,13 +224,9 @@ class COCOBase():
          @param[in] image_ids the images would be considered in the evaluate
          @param[in] cat_ids the categories would be considered in the evaluate
         '''
-        saved_files = os.listdir(self._information_save_to_path)
-        target_files = list()
-        for saved_file in saved_files:
-            target_files.append(saved_file) \
-                if self._detection_result_file_name.split('.')[0].split('-')[0] == saved_file.split('.')[0].split('-')[0] \
-                    else None
-            pass
+        assert type(prefix).__name__ == 'list' or prefix is None or type(prefix).__name__ == 'str'
+        target_files = [COCOBase.generate_result_file_name(prefix, self._detection_result_file_name) for _prefix in prefix] if type(prefix).__name__ == 'list' \
+            else [COCOBase.generate_result_file_name(prefix, self._detection_result_file_name)]
         detection_result = None
         for target_file in target_files:
             detection_result_temp = pd.read_csv(os.path.join(self._information_save_to_path, target_file), \
@@ -360,13 +366,13 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         #     self._captions_img_ids, self._image_test_img_ids])
         # TODO:record
         self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
-        self._fix_field()
         if self._stage in [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]:
             self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None else self._instances_img_ids 
             self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._cat_ids is None else {cat_id: index for index, cat_id in enumerate(self._cat_ids)}
             if self._information_save_to_path is not None:
                 with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
                     json.dump(self._detection_cat_id_to_represent, fp, indent=4)
+        self._fix_field()
         
         # check the ann
         if self._stage in with_label:
@@ -575,12 +581,13 @@ class COCODataWithTorch(COCOData, Dataset):
         panoptic=False,
         dense_pose=False,
         captions=False,
+        cat_ids=None,
         use_rate=1.0,
         image_width=128,
         image_height=128):
         COCOData.__init__(self, coco_root_dir=coco_root_dir, stage=stage, information_save_to_path=information_save_to_path, \
             detection=detection, key_points=key_points, stuff=stuff, panoptic=panoptic, dense_pose=dense_pose, captions=captions, \
-                use_rate=use_rate, image_height=image_height, image_width=image_width)
+                cat_ids=cat_ids, use_rate=use_rate, image_height=image_height, image_width=image_width)
         Dataset.__init__(self)
         pass
 

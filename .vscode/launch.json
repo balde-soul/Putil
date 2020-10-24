@@ -40,7 +40,15 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "test_coco_statistic_img_amount",
+            "name": "test_coco_statistic_object_size_follow_cat",
+            "type": "python",
+            "request": "launch",
+            "program": "test/data/test_coco_statistic.py",
+            "console": "integratedTerminal",
+            "args": ["--test_obj_size_follow_cat"]
+        },
+        {
+            "name": "test_coco_statistic_img_amount_obj_amount",
             "type": "python",
             "request": "launch",
             "program": "test/data/test_coco_statistic.py",
