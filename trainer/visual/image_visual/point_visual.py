@@ -1,5 +1,6 @@
 # coding=utf-8
 #In[]:
+import copy
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
@@ -36,6 +37,7 @@ class PointVisual:
         return ret.astype(np.uint8)
 
     def visual_index(self, image, point_index, color=None):
+        image = copy.deepcopy(image)
         if color is None:
             color = [0, 255, 0]
             pass
