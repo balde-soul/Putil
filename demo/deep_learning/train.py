@@ -24,18 +24,20 @@ def train_evaluate_common(stage, epoch, data_loader, data_sampler):
         model.train() if stage == Stage.Train else model.eval()
         data_sampler.set_epoch(epoch) if stage == Stage.Train else None
 
+        # TODO: the list to collect the variable
         TrainLogger.debug('start to {} epoch'.format(prefix))
-        for batch_idx, (img, gt_box, gt_class, gt_obj, base_information, radiance_factor) in enumerate(data_loader):
+        for batch_idx, () in enumerate(data_loader):
             step = epoch * len(data_loader) + batch_idx + 1
 
             TrainLogger.debug('batch {}'.format(prefix))
-            img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
+            # TODO: change data to gpu
             # time
             batch_start = time.time()
             # do the training TODO:
             optimizer.zero_grad()
-            pre_box, pre_class, pre_obj = model(torch.transpose(torch.transpose(img, 3, 2), 2, 1))
-            ret = loss_func(pre_box, pre_class, pre_obj, gt_box, gt_class, gt_obj, radiance_factor)
+            # TODO: 
+            model_out = model()
+            loss_out = loss_func(pre_box, pre_class, pre_obj, gt_box, gt_class, gt_obj, radiance_factor)
             loss = ret[0];class_loss = ret[1];wh_loss = ret[2];offset_loss = ret[3];iou_loss = ret[4]
             if iou_loss.item() < -1.0 or iou_loss.item() > 1.0:
                 TrainLogger.warning('giou wrong')

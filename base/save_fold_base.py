@@ -24,7 +24,7 @@ class BaseSaveFold:
         else:
             pass
         self._date = time.strftime('%Y_%m_%d_%H_%M_%S', time.localtime())
-        self._name = '{0}{1}{2}'.format(self._base_name, '-{0}_{1}'.format(self._repo.active_branch.name, self._repo.commit().hexsha[0: 6]) if self._use_git_info is True else '', '-{0}'.format(self._date) if self._use_date is True else '')
+        self._name = '{0}{2}{1}'.format(self._base_name, '-{0}_{1}'.format(self._repo.active_branch.name, self._repo.commit().hexsha[0: 6]) if self._use_git_info is True else '', '-{0}'.format(self._date) if self._use_date is True else '')
 
         self._root_dir = None
         self._full_path = None
