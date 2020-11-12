@@ -1,4 +1,5 @@
 import os 
+from enum import Enum
 
 def generate_model_element(sign):
     '''
@@ -33,7 +34,7 @@ def get_all_model(target_path):
         else:
             continue
     signs = sorted(temp_signs)
-    for sign in signs:
+    for sign in signs[::-1]:
         me = generate_model_element(sign)
         elements.append(me)
     return {'sign': signs, 'element': elements}
@@ -43,3 +44,8 @@ def generate_deploy_name(epoch):
 
 def generate_checkpoint_name(epoch):
     return '{}.pkl'.format(epoch)
+
+class Stage(Enum):
+    Train=0
+    Evaluate=1
+    Test=2

@@ -679,3 +679,38 @@ class DataPutProcess:
         assert running_mode.name in DataPutProcess.RunningMode.__members__.keys()
         DataPutProcess._running_mode = running_mode
         pass
+
+
+class StandardCommonData(CommonDataWithAug):
+    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=None):
+        self._use_rate = use_rate if use_rate is not None else 1.0
+        self._sub_data = sub_data
+        self._remain_strategy = remain_strategy if remain_strategy is not None else 'drop'
+
+        self._data_field = self.__generate_data_field()
+        # apply sub_data and remain_strategy
+        self._data_field = self.__sub_data_filteration(self._sub_data, self._remain_strategy)
+        # apply use_rate
+        self._data_field = self.__use_rate_filteration()
+        pass
+
+    def __use_rate_filteration(self):
+        self._fix_field()
+        return self._data_field
+
+    @abstractmethod
+    def __sub_data_filteration(self, sub_data, remain_strategy):
+        raise NotImplementedError('__sub_data_filteration is not implemented')
+        pass
+
+    @abstractmethod
+    def __generate_data_field(self):
+        '''
+         @brief
+         @note
+        '''
+        raise NotImplementedError('__generate_data_field is not implemented')
+
+    @abstractmethod
+    def add_result(self, result_tuple, save=False):
+        raise NotImplementedError('add_result is not implemented')

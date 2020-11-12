@@ -149,6 +149,9 @@ class COCOBase():
         self._dense_pose = dense_pose
         self._captions = captions
         assert True in [self._detection, self._key_points, self._stuff, self._panoptic, self._dense_pose, self._captions]
+
+        self._cat_ids = cat_ids
+        COCOBaseLogger.info('specified cat_ids: {}'.format(self._cat_ids)) if self._cat_ids is not None else None
         
         self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
@@ -161,9 +164,9 @@ class COCOBase():
         # result
         self._detection_result = None
         self._detection_result_file_name = 'detection_result'
-
-        self._cat_ids = cat_ids
-        COCOBaseLogger.info('specified cat_ids: {}'.format(self._cat_ids)) if self._cat_ids is not None else None
+        # detection indicator result
+        self._detection_indicator_result = None
+        self._detection_indicator_result_file_name = 'detection_indicator_result'
         pass
 
     def represent_value_to_category_id(self, represent_value):
@@ -252,6 +255,15 @@ class COCOBase():
         cocoEval.accumulate()
         cocoEval.summarize()
         pass
+
+    def get_detection_indicator(self, scores, ious, pre_file, image_ids=None, cat_ids=None):
+        '''
+         @brief
+         @note calculate the map
+        '''
+        target_image_ids = image_ids if image_ids is not None else self._data_field
+        target_cat_ids = cat_ids if cat_ids is not None else self.
+        pass
     pass
 
 
@@ -311,7 +323,8 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         cat_ids=None,
         use_rate=1.0,
         image_width=128,
-        image_height=128):
+        image_height=128,
+        remain_strategy=None):
         '''
          @brief focus on coco2017
          @note 
@@ -334,6 +347,9 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
          @param[in] use_rate
          data used rate
         '''
+        self._image_width = image_width
+        self._image_height = image_height
+        self._remain_strategy = remain_strategy if remain_strategy is not None else 'drop'
         COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
             key_points, stuff, panoptic, dense_pose, captions, cat_ids)
         pcd.CommonDataWithAug.__init__(self, use_rate=use_rate)
@@ -388,9 +404,6 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
                 str_ = json.dumps(image_without_ann, indent=4)
                 fp.write(str_)
                 pass
-
-        self._image_width = image_width
-        self._image_height = image_height
         pass
 
     def _restart_process(self, restart_param):

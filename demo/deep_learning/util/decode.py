@@ -4,3 +4,13 @@
  可视化，以及其他的计算
 '''
 # coding=utf-8
+from Putil.demo.deep_learning.base.decode import Decode
+
+
+class DefaultDecode(Decode):
+    def __init__(self):
+        Decode.__init__(self, args)
+
+    def __call__(self, *input):
+        raise NotImplementedError('DefaultDecode is not implemented')
+    pass

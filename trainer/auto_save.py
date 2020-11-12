@@ -22,6 +22,17 @@ class auto_save(metaclass=ABCMeta):
     @abstractmethod
     def state_dict(self):
         pass
+
+    @abstractmethod
+    def save_or_not(self, indicator):
+        '''
+         @brief check the indicator and decide to save or not
+         @note
+         @ret
+         True: save operation is supposed
+         False: save operation is not supposed
+        '''
+        pass
     pass
 
 

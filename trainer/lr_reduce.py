@@ -1,6 +1,6 @@
 # coding=utf-8
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 import Putil.base.logger as plog
 from colorama import Fore
 from Putil.trainer.lr_reduce_args import generate_args
@@ -10,10 +10,26 @@ lr_reduce_logger.setLevel(plog.DEBUG)
 LrReduceLogger = lr_reduce_logger.getChild('LrReduce')
 LrReduceLogger.setLevel(plog.DEBUG)
 
+class lr_reduce(metaclass=ABCMeta):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def reduce_or_not(self, indicator):
+        pass
+
+    @abstractmethod
+    def state_dict(self):
+        pass
+
+    @abstractmethod
+    def load_state_dict(self):
+        pass
+
 # while the indicator does not improve for patience epoch, this while return the reduce learn rate
 # if feed None, would return the newest learn rate
 # once the reduce worked, the reducer would coll down for lr_cool_down epoch, which not
-class LrReduce:
+class LrReduce(lr_reduce):
     @staticmethod 
     def generate_args(parser):
         generate_args(parser)
@@ -62,6 +78,7 @@ class LrReduce:
 
     def __init__(self, init_lr, lr_factor, lr_epsilon, lr_patience, lr_cool_down, lr_min, mode='max'):
         LrReduceLogger.info(Fore.GREEN + '-->LrReduce.__init__' + Fore.RESET)
+        lr_reduce.__init__(self)
         self._lr_base = init_lr
         self._lr_now = init_lr
         self._lr_factor = lr_factor

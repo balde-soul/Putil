@@ -1,5 +1,10 @@
-'''
- @note
- 此文件提供一个统计性的指标计算方法，在evaluate之后，判断是否提升，如果提升则需要计算统计性指标
-'''
 # coding=utf-8
+from Putil.demo.deep_learning.base.statistic_indicator import StatisticIndicator
+
+
+class DefaultStatisticIndicator(StatisticIndicator):
+    def __init__(self, args):
+        StatisticIndicator.__init__(self, args)
+
+    def forward(self, *input):
+        raise NotImplementedError('DefaultStatisticIndicator is not implemented')
