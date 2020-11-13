@@ -5,6 +5,6 @@ not completed
 '''
 
 
-class Data(CommonDataWithAug):
+class Dataset(CommonDataWithAug):
     def __init__(self):
         pass

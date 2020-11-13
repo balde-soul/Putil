@@ -4,11 +4,11 @@ import Putil.base.logger as plog
 logger = plog.PutilLogConfig('data_factory').logger()
 logger.setLevel(plog.DEBUG)
 
-import Putil.demo.deep_learning.base.datas as standard
-import util.data as project
+import Putil.demo.deep_learning.base.dataset as standard
+import util.dataset as project
 
 
-def data_factory(args):
+def dataset_factory(args):
     '''
      @brief
      @note

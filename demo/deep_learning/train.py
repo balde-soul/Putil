@@ -15,6 +15,7 @@ class nothing():
 
 def train_evaluate_common(stage, epoch, data_loader):
     prefix = 'train' if stage == Stage.Train else 'evaluate'
+    indicator.set_epoch(epoch) if stage == Stage.Train else evaluate_indicator.set_epoch(epoch)
     with torch.no_grad() if stage == Stage.Evaluate else nothing() as t:
         model.train() if stage == Stage.Train else model.eval()
         data_loader.data_sampler.set_epoch(epoch) if stage == Stage.Train else None
@@ -44,8 +45,8 @@ def train_evaluate_common(stage, epoch, data_loader):
             #    TrainLogger.warning('giou wrong')
             #if np.isnan(_loss.item()) or np.isinf(_loss.item()) is True:
             #    TrainLogger.warning('loss in train inf occured!')
-            # TODO: run the indicator function to get the indicators
-            indicator_func(output, input)
+            # : run the indicator function to get the indicators
+            indicator(datas, output)
             # : run the backward
             _loss.backward() if stage == Stage.Train else None
             # : do the optimize
@@ -65,23 +66,23 @@ def train_evaluate_common(stage, epoch, data_loader):
             # TODO: the regular log would calculate the mean of the loss item and the indicator, we should append a new item to the collection
             #    loss.append(0.);class_loss.append(0.);wh_loss.append(0.);offset_loss.append(0.);iou_loss.append(0.);obj_acc.append(0.);otp_acc.append(0.);global_acc.append(0.);iou.append(0.)
             # TODO: do the regular summary
-            if step % args.interval_run_evaluate == 0:
+            if step % args.summary_interval == 0:
             #    gt_obj_ft = gt_obj.sum(1).gt(0.)
             #    # reduce the target_indicator
             #    rloss = all_reduce(_loss, 'loss');rclass_loss = all_reduce(_class_loss, 'class_loss');rwh_loss = all_reduce(_wh_loss, 'wh_loss');roffset_loss = all_reduce(_offset_loss, 'offset_loss');riou_loss = all_reduce(_iou_loss, 'iou_loss');mobj_acc = all_reduce(_obj_acc, 'obj_acc');motp_acc = all_reduce(_otp_acc, 'otp_acc');mglobal_acc = all_reduce(_global_acc, 'global_acc')
-            #    if hvd.rank() == 0:
-            #        # :decode
-            #        regular_output = decode(pre_class, pre_box, args.downsample_rate, args.class_threshold)
-            #        gt_output = decode(radiance_factor, gt_box, args.downsample_rate, args.class_threshold)
-            #        # extract the target data
-            #        boxes = regular_output[0];classes = regular_output[1];indexes = regular_output[3];gt_boxes = gt_output[0];gt_classes = gt_output[1];gt_indexes = gt_output[3];img_numpy = img.detach().cpu().numpy()
-            #        pv = PointVisual();rv = RectangleVisual(2)
-            #        result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
-            #        result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
-            #        # add target indicator to sumary
-            #        writer.add_scalar('{}/loss/loss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
-            #        pass
-            #    pass
+                if hvd.rank() == 0:
+                    # :decode
+                    pre_output = decode(datas, output)
+                    gt_output = decode(datas)
+                    # extract the target data
+                    # TODO: do the summary use pre_output and gt_output
+                    #pv = PointVisual();rv = RectangleVisual(2)
+                    #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
+                    #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
+                    # add target indicator to sumary
+                    writer.add_scalar('{}/loss/loss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
+                    pass
+                pass
             TrainLogger.debug('batch {} end'.format(prefix))
             pass
         # TODO: do the summary of this epoch
@@ -201,6 +202,7 @@ if __name__ == '__main__':
         help='drop the last uncompleted evaluate data while set')
     ppa.parser.add_argument('--drop_last_test', action='store_true', default=False, \
         help='drop the last uncompleted test data while set')
+    ## decode setting TODO:
     # train setting
     ppa.parser.add_argument('--gpus', type=int, nargs='+', default=None, \
         help='specify the gpu, this would influence the gpu set in the code')
@@ -216,7 +218,7 @@ if __name__ == '__main__':
         help='how many batches to wait before logging training status(default: 10)')
     ppa.parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
         help='how many batchees to wait before save the summary(default: 100)')
-    ppa.parser.add_argument('--interval_run_evaluate', type=int, default=1, metavar='N', \
+    ppa.parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
         help='how many epoch to wait before evaluate the model(default: 1), '\
             'test the mode while the model is savd, would not run evaluate while -1')
     ppa.parser.add_argument('--compute_efficiency', action='store_true', default=False, \
@@ -309,6 +311,7 @@ if __name__ == '__main__':
     # TODO: Putil import
     #  TODO: the Dataset
     #from import as Dataset
+    from Putil.demo.deep_learning.base.data_factory import data_factory as Dataset
     from Putil.demo.deep_learning.base.data_loader_factory import data_loader_factory as DataLoader
     from Putil.demo.deep_learning.base.data_sampler_factory import data_sampler_factory as DataSampler
     from Putil.demo.deep_learning.base.util import Stage as Stage
@@ -317,6 +320,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base.indicator_factory import indicator_factory as Indicator
     from Putil.demo.deep_learning.base.statistic_indicator_factory import statistic_indicator_factory as StatisticIndicator
     from Putil.demo.deep_learning.base.optimization_factory import optimization_factory as Optimization
+    from Putil.demo.deep_learning.base.decode_factory import decode_factory as Decode
     # TODO: set the deterministic 随机确定性可复现
     # make the result dir
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
@@ -386,6 +390,7 @@ if __name__ == '__main__':
     dataset_test = Dataset(args, Stage.Test) if args.test_off is not True else None
     test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
     test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
+    decode = Decode(args)
     if args.cuda:
         # TODO: to_cuda
         model.cuda()
@@ -420,7 +425,7 @@ if __name__ == '__main__':
             train_ret = train(epoch)
             global_step = (epoch + 1) * len(train_loader)
             # : run the val
-            if ((epoch + 1) % args.interval_run_evaluate == 0) or (args.debug):
+            if ((epoch + 1) % args.evaluate_interval == 0) or (args.debug):
                 if args.evaluate_off is False:
                     evaluate_ret = evaluate(epoch) 
                     if evaluate_ret[0] is True:
