@@ -36,7 +36,7 @@ def train_evaluate_common(stage, epoch, data_loader):
             # : run the model get the output TODO:
             output = model($model_input)
             # : run the loss function get the ret
-            losses = loss_func(*(output + datas))
+            losses = loss(datas, output)
             # TODO: get the loss item
             #_loss = ret[0]
             #_class_loss = ret[1];_wh_loss = ret[2];_offset_loss = ret[3];_iou_loss = ret[4]

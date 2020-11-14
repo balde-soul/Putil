@@ -17,37 +17,3 @@ class Indicator(Module):
         Module.__init__(self)
         self._indicator_name = args.indicator_name
         self._indicator_source = args.indicator_source
-        self._save_dir = args.save_dir
-        self._indicators = dict()
-        self._interval_indicators = dict()
-        self._epoch_indicator_mean = dict()
-        self._epoch = 0
-        pass
-
-    @abstractmethod
-    def forward(self, *input):
-        '''
-         @brief
-         @note 每个step的模型输出与数据传入该函数
-        '''
-        pass
-
-    @abstractmethod
-    def combine_indicator(self):
-        '''
-         @brief
-         @note train阶段的evalute时段整个epoch结束之后调用该函数，输出一个指标对象，该对象支持<比较函数>
-        '''
-        pass
-
-    def set_epoch(self, epoch):
-        '''
-         @brief
-         @note 调用此函数，更新状态，每个epoch开始都需要调用
-        '''
-        self._epoch = epoch
-        self._indicators = dict()
-        pass
-
-    def get_indicators(self, epoch):
-        pass
