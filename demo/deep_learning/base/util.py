@@ -47,5 +47,6 @@ def generate_checkpoint_name(epoch):
 
 class Stage(Enum):
     Train=0
-    Evaluate=1
-    Test=2
+    TrainEvaluate=1
+    Evaluate=2
+    Test=3

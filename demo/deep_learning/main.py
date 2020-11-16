@@ -5,6 +5,24 @@ from enum import Enum
 import torch
 torch.utils.data.distributed.DistrivutedSampler
 
+def evaluate_stage(args):
+    return args.off_train and not args.off_evaluate
+
+def test_stage(args):
+    return not args.off_test
+
+def train_stage(args):
+    return not args.off_train
+
+
+class ResultCollector:
+    def __init__(self):
+        pass
+
+    def add_one_batch(self, *input, **kwargs):
+        pass
+    pass
+
 
 class nothing():
     def __enter__(self):
@@ -15,38 +33,38 @@ class nothing():
 
 def train_evaluate_common(stage, epoch, data_loader):
     prefix = 'train' if stage == Stage.Train else 'evaluate'
-    indicator.set_epoch(epoch) if stage == Stage.Train else evaluate_indicator.set_epoch(epoch)
+    dataset = data_loader.dataset
     with torch.no_grad() if stage == Stage.Evaluate else nothing() as t:
         model.train() if stage == Stage.Train else model.eval()
         data_loader.data_sampler.set_epoch(epoch) if stage == Stage.Train else None
 
         # TODO: indicator start with zero
-        loss = [0.];class_loss = [0.];wh_loss = [0.];offset_loss = [0.];iou_loss = [0.];obj_acc = [0.];otp_acc = [0.];global_acc = [0.];iou = [0.]
+        #loss = [0.];class_loss = [0.];wh_loss = [0.];offset_loss = [0.];iou_loss = [0.];obj_acc = [0.];otp_acc = [0.];global_acc = [0.];iou = [0.]
 
-        TrainLogger.debug('start to {} epoch'.format(prefix))
+        MainLogger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
             step = epoch * len(data_loader) + batch_idx + 1
-            TrainLogger.debug('batch {}'.format(prefix))
+            MainLogger.debug('batch {}'.format(prefix))
             # TODO: data to cuda
             #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
             # time
             batch_start = time.time()
             # do the training
-            optimizer.zero_grad()
+            optimizer.zero_grad() if stage == Stage.Train or stage == Stage.TrainEvaluate
             # : run the model get the output TODO:
             output = model($model_input)
             # : run the loss function get the ret
-            losses = loss(datas, output)
+            losses = loss(datas, output) if stage == Stage.Train or stage == Stage.TrainEvaluate
             # TODO: get the loss item
             #_loss = ret[0]
             #_class_loss = ret[1];_wh_loss = ret[2];_offset_loss = ret[3];_iou_loss = ret[4]
             # TODO: do some simple check
             #if _iou_loss.item() < -1.0 or _iou_loss.item() > 1.0:
-            #    TrainLogger.warning('giou wrong')
+            #    MainLogger.warning('giou wrong')
             #if np.isnan(_loss.item()) or np.isinf(_loss.item()) is True:
-            #    TrainLogger.warning('loss in train inf occured!')
+            #    MainLogger.warning('loss in train inf occured!')
             # : run the indicator function to get the indicators
-            indicator(datas, output)
+            indicator(datas, output) if stage == Stage.Train or stage == Stage.TrainEvaluate
             # : run the backward
             _loss.backward() if stage == Stage.Train else None
             # : do the optimize
@@ -56,38 +74,46 @@ def train_evaluate_common(stage, epoch, data_loader):
             # TODO: loss item and the indicator accumulation
             #obj_acc[-1] += _obj_acc.item();otp_acc[-1] += _otp_acc.item();global_acc[-1] += _global_acc.item();iou[-1] += _iou.item();loss[-1] += _loss.item();class_loss[-1] += _class_loss.item();wh_loss[-1] += _wh_loss.item();offset_loss[-1] += _offset_loss.item();iou_loss[-1] += _iou_loss.item()
             # TODO: do the regular log
-            if step % args.log_interval == 0:
-            #    obj_acc[-1] = obj_acc[-1] / args.log_interval;otp_acc[-1] = otp_acc[-1] / args.log_interval;global_acc[-1] = global_acc[-1] / args.log_interval;iou[-1] = iou[-1] / args.log_interval;loss[-1] = loss[-1] / args.log_interval;class_loss[-1] = class_loss[-1] / args.log_interval;wh_loss[-1] = wh_loss[-1] / args.log_interval;offset_loss[-1] = offset_loss[-1] / args.log_interval;iou_loss[-1] = iou_loss[-1] / args.log_interval
-            #    TrainLogger.info('{} Epoch{}: [{}/{}]| loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f} | batch time: {:.3f}s '.format( \
-            #        prefix, epoch, step, len(data_loader), 
-            #        loss[-1], class_loss[-1], wh_loss[-1], offset_loss[-1], iou_loss[-1], obj_acc[-1], otp_acc[-1], global_acc[-1], iou[-1], 
-            #        batch_time))
-            #    # set the target indicator to zero
-            # TODO: the regular log would calculate the mean of the loss item and the indicator, we should append a new item to the collection
-            #    loss.append(0.);class_loss.append(0.);wh_loss.append(0.);offset_loss.append(0.);iou_loss.append(0.);obj_acc.append(0.);otp_acc.append(0.);global_acc.append(0.);iou.append(0.)
-            # TODO: do the regular summary
-            if step % args.summary_interval == 0:
-            #    gt_obj_ft = gt_obj.sum(1).gt(0.)
-            #    # reduce the target_indicator
-            #    rloss = all_reduce(_loss, 'loss');rclass_loss = all_reduce(_class_loss, 'class_loss');rwh_loss = all_reduce(_wh_loss, 'wh_loss');roffset_loss = all_reduce(_offset_loss, 'offset_loss');riou_loss = all_reduce(_iou_loss, 'iou_loss');mobj_acc = all_reduce(_obj_acc, 'obj_acc');motp_acc = all_reduce(_otp_acc, 'otp_acc');mglobal_acc = all_reduce(_global_acc, 'global_acc')
-                if hvd.rank() == 0:
-                    # :decode
-                    pre_output = decode(datas, output)
-                    gt_output = decode(datas)
-                    # extract the target data
-                    # TODO: do the summary use pre_output and gt_output
-                    #pv = PointVisual();rv = RectangleVisual(2)
-                    #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
-                    #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
-                    # add target indicator to sumary
-                    writer.add_scalar('{}/loss/loss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
+            if stage == Stage.Train or stage == stage.TrainEvaluate:
+                if step % args.log_interval == 0:
+                #    obj_acc[-1] = obj_acc[-1] / args.log_interval;otp_acc[-1] = otp_acc[-1] / args.log_interval;global_acc[-1] = global_acc[-1] / args.log_interval;iou[-1] = iou[-1] / args.log_interval;loss[-1] = loss[-1] / args.log_interval;class_loss[-1] = class_loss[-1] / args.log_interval;wh_loss[-1] = wh_loss[-1] / args.log_interval;offset_loss[-1] = offset_loss[-1] / args.log_interval;iou_loss[-1] = iou_loss[-1] / args.log_interval
+                #    MainLogger.info('{} Epoch{}: [{}/{}]| loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f} | batch time: {:.3f}s '.format( \
+                #        prefix, epoch, step, len(data_loader), 
+                #        loss[-1], class_loss[-1], wh_loss[-1], offset_loss[-1], iou_loss[-1], obj_acc[-1], otp_acc[-1], global_acc[-1], iou[-1], 
+                #        batch_time))
+                #    # set the target indicator to zero
+                # TODO: the regular log would calculate the mean of the loss item and the indicator, we should append a new item to the collection
+                #    loss.append(0.);class_loss.append(0.);wh_loss.append(0.);offset_loss.append(0.);iou_loss.append(0.);obj_acc.append(0.);otp_acc.append(0.);global_acc.append(0.);iou.append(0.)
+                # TODO: do the regular summary
+                if step % args.summary_interval == 0:
+                #    gt_obj_ft = gt_obj.sum(1).gt(0.)
+                #    # reduce the target_indicator
+                #    rloss = all_reduce(_loss, 'loss');rclass_loss = all_reduce(_class_loss, 'class_loss');rwh_loss = all_reduce(_wh_loss, 'wh_loss');roffset_loss = all_reduce(_offset_loss, 'offset_loss');riou_loss = all_reduce(_iou_loss, 'iou_loss');mobj_acc = all_reduce(_obj_acc, 'obj_acc');motp_acc = all_reduce(_otp_acc, 'otp_acc');mglobal_acc = all_reduce(_global_acc, 'global_acc')
+                    if hvd.rank() == 0:
+                        # :decode
+                        pre_output = decode(datas, output)
+                        gt_output = decode(datas)
+                        # extract the target data
+                        # TODO: do the summary use pre_output and gt_output
+                        #pv = PointVisual();rv = RectangleVisual(2)
+                        #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
+                        #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
+                        # add target indicator to sumary
+                        writer.add_scalar('{}/loss/loss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
+                        pass
                     pass
                 pass
-            TrainLogger.debug('batch {} end'.format(prefix))
+            elif stage == Stage.Evaluate:
+                pre_output = decode(datas, output)
+                # TODO:process the evaluate result
+                pass
+            else:
+                raise NotImplementedError('stage: {} is not implemented'.format(stage))
+            MainLogger.debug('batch {} end'.format(prefix))
             pass
         # TODO: do the summary of this epoch
         #eloss = np.mean(loss[0:-1]);eclass_loss = np.mean(class_loss[0:-1]);ewh_loss = np.mean(wh_loss[0:-1]);eoffset_loss = np.mean(offset_loss[0:-1]);eiou_loss = np.mean(iou_loss[0:-1]);eobj_acc = np.mean(obj_acc[0:-1]);eotp_acc = np.mean(otp_acc[0:-1]);eglobal_acc = np.mean(global_acc[0:-1]);eiou = np.mean(iou[0:-1])
-        #TrainLogger.info('{} epoch {} done: loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f}'.format( \
+        #MainLogger.info('{} epoch {} done: loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f}'.format( \
         #    prefix, epoch,
         #    eloss, eclass_loss, ewh_loss, eoffset_loss, eiou_loss, eobj_acc, eotp_acc, eglobal_acc, eiou))
         ##writer.add_scalar('{}/loss/rloss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
@@ -103,27 +129,28 @@ def train(epoch):
 
 
 def evaluate(epoch):
-    ret = train_evaluate_common(Stage.Evaluate, epoch, evaluate_loader)
-    # TODO: do all reduce of indicator
-    indicator = ret['eloss']
-    #indicator = hvd.allreduce(indicator)
-    if auto_save.save_or_not(indicator) or args.only_test or args.debug:
-        # :save the model in rank0
-        if hvd.rank() == 0:
-            TrainLogger.info('run checkpoint')
-            checkpoint()
-            # :deploy use on sample as the example input
-            TrainLogger.info('run deploy')
-            deploy(torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda())
-        # :run the test, if saved
-        TrainLogger.info('run test')
-        test() if args.test_off is False else TrainLogger.info('test_off, do not run test')
-    # :stop or not
-    stop = auto_stop.stop_or_not(indicator) if args.debug == False else (False if epoch == 0 else True)
-    # :lr_reduce
-    lr = lr_reduce.reduce_or_not(indicator)
-    # TODO:
-    return stop, lr
+    ret = train_evaluate_common(Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, epoch, evaluate_loader)
+    if evaluate_stage(args):
+        # TODO: do all reduce of indicator
+        indicator = ret['eloss']
+        #indicator = hvd.allreduce(indicator)
+        if auto_save.save_or_not(indicator) or args.only_test or args.debug:
+            # :save the model in rank0
+            if hvd.rank() == 0:
+                MainLogger.info('run checkpoint')
+                checkpoint()
+                # :deploy use on sample as the example input
+                MainLogger.info('run deploy')
+                deploy(torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda())
+            # :run the test, if saved
+            MainLogger.info('run test')
+            test() if args.test_off is False else MainLogger.info('test_off, do not run test')
+        # :stop or not
+        stop = auto_stop.stop_or_not(indicator) if args.debug == False else (False if epoch == 0 else True)
+        # :lr_reduce
+        lr = lr_reduce.reduce_or_not(indicator)
+        # TODO:
+        return stop, lr
 
 
 if __name__ == '__main__':
@@ -153,14 +180,6 @@ if __name__ == '__main__':
     parser.add_argument('--frame_debug', action='store_true', default=False, \
         help='run all the process in two epoch with tiny data')
     # data setting
-    ppa.parser.add_argument('--off_train', action='store_true', default=False, \
-        help='do not run train if set')
-    ppa.parser.add_argument('--off_evaluate', action='store_true', default=False, \
-        help='do not run evaluate if set')
-    ppa.parser.add_argument('--off_test', action='store_true', default=False, \
-        help='do not run test if set')
-    ppa.parser.add_argument('--only_test', action='store_true', default=False, \
-        help='only run test or not')
     parser.add_argument('--n_worker_per_dataset', action='store', type=int, default=1, \
         help='the number of worker for every dataset')
     parser.add_argument('--data_using_rate_train', action='store', type=float, default=1.0, \
@@ -204,6 +223,16 @@ if __name__ == '__main__':
         help='drop the last uncompleted test data while set')
     ## decode setting TODO:
     # train setting
+    ### ~off_train and ~off_evaluate: run train stage with evaluate
+    ### ~off_train and off_evaluate: run train stage without evaluate
+    ### off_train and ~off_evaluate: run evaluate stage
+    ### ~off_test: run test stage
+    ppa.parser.add_argument('--off_train', action='store_true', default=False, \
+        help='do not run train if set')
+    ppa.parser.add_argument('--off_evaluate', action='store_true', default=False, \
+        help='do not run evaluate if set')
+    ppa.parser.add_argument('--off_test', action='store_true', default=False, \
+        help='do not run test if set')
     ppa.parser.add_argument('--gpus', type=int, nargs='+', default=None, \
         help='specify the gpu, this would influence the gpu set in the code')
     ppa.parser.add_argument('--epochs', type=int, default=10, metavar='N', \
@@ -299,9 +328,9 @@ if __name__ == '__main__':
     plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
     root_logger = plog.PutilLogConfig('train').logger()
     root_logger.setLevel(log_level)
-    TrainLogger = root_logger.getChild('Trainer')
-    TrainLogger.setLevel(log_level)
-    pab.args_log(args, TrainLogger)
+    MainLogger = root_logger.getChild('Trainer')
+    MainLogger.setLevel(log_level)
+    pab.args_log(args, MainLogger)
     # TODO: third party import
     #  TODO: the SummaryWriter
     #from import as SummaryWriter
@@ -347,7 +376,7 @@ if __name__ == '__main__':
         if args.gpus is not None:
             device_map[hvd.rank()] = dict() if device_map.get(hvd.rank()) is None else device_map[hvd.rank()]
             device_map[hvd.rank()][hvd.local_rank()] = args.gpus[hvd.rank()]
-        TrainLogger.info("rank: {}; local_rank: {}; gpu: {}".format( \
+        MainLogger.info("rank: {}; local_rank: {}; gpu: {}".format( \
             hvd.rank(), hvd.local_rank(), device_map[hvd.local_rank()][hvd.rank()]))
         torch.cuda.set_device(device_map[hvd.local_rank()][hvd.rank()])
         torch.cuda.manual_seed(args.seed)
@@ -407,14 +436,25 @@ if __name__ == '__main__':
             fp.write(json.dumps(args.__dict__, indent=4))
         writer = SummaryWriter(bsf.FullPath)
     
-    if args.only_test:
-        assert args.weight != '', 'should specify the pre-trained weight while run only_test, please specify the args.weight'
+    if test_stage(args):
+        MainLogger.info('run test')
+        assert args.weight != '', 'specify the trained weight in test stage'
+        MainLogger.info('load trained model: {}'.format(args.weight))
         state_dict = torch.load(args.weight)
         model.load_state_dict(state_dict)
         test()
-    else:
+        return
+    elif evaluate_stage(args):
+        MainLogger.info('run evaluate')
+        assert args.weight != '', 'specify the trained weight in evaluate stage'
+        MainLogger.info('load trained model: {}'.format(args.weight))
+        state_dict = torch.load(args.weight)
+        model.load_state_dict(state_dict)
+        evaluate()
+        return
+    elif train_stage(args):
         if args.weight != '':
-            TrainLogger.info('load pre-trained model: {}'.format(args.weight))
+            MainLogger.info('load pre-trained model: {}'.format(args.weight))
             state_dict = torch.load(args.weight)
             model.load_state_dict(state_dict)
             optimizer.load_state_dict(state_dict)
@@ -432,9 +472,10 @@ if __name__ == '__main__':
                         break
                     pass
                 else:
-                    TrainLogger.info('evaluate_off, do not run the evaluate')
+                    MainLogger.info('evaluate_off, do not run the evaluate')
                     pass
                 pass
             pass
+        return
         pass
     pass
