@@ -4,8 +4,8 @@ import queue
 import numpy as np
 from enum import Enum
 
-from torch.utils.data import dataset, dataloader
-from torch.utils.data.dataloader import _BaseDataLoaderIter
+from Putil.data.torch_151_data import dataset, dataloader
+from Putil.data.torch_151_data.dataloader import _BaseDataLoaderIter
 
 import threading
 import itertools
@@ -17,7 +17,7 @@ import torch.multiprocessing as multiprocessing
 from torch._utils import ExceptionWrapper
 from torch._six import queue, string_classes
 
-from torch.utils.data.dataloader import IterableDataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, _DatasetKind, _utils
+from Putil.data.torch_151_data.dataloader import IterableDataset, Sampler, SequentialSampler, RandomSampler, BatchSampler, _DatasetKind, _utils
 
 import Putil.base.logger as plog
 
@@ -40,7 +40,6 @@ class DataLoader(object):
     #    if self._signle_process_data_loader_iter is not None:
     #        del self._signle_process_data_loader_iter 
     #    pass
-
     __initialized = False
 
     def __init__(self, dataset, batch_size=1, shuffle=False, sampler=None,

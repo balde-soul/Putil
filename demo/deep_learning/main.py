@@ -1,147 +1,37 @@
 # coding=utf-8
+import sys
 import json
 import os
 from enum import Enum
 import torch
-torch.utils.data.distributed.DistrivutedSampler
-
-def evaluate_stage(args):
-    return args.off_train and not args.off_evaluate
-
-def test_stage(args):
-    return not args.off_test
-
-def train_stage(args):
-    return not args.off_train
-
-
-class ResultCollector:
-    def __init__(self):
-        pass
-
-    def add_one_batch(self, *input, **kwargs):
-        pass
-    pass
-
-
-class nothing():
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-def train_evaluate_common(stage, epoch, data_loader):
-    prefix = 'train' if stage == Stage.Train else 'evaluate'
-    dataset = data_loader.dataset
-    with torch.no_grad() if stage == Stage.Evaluate else nothing() as t:
-        model.train() if stage == Stage.Train else model.eval()
-        data_loader.data_sampler.set_epoch(epoch) if stage == Stage.Train else None
-
-        # TODO: indicator start with zero
-        #loss = [0.];class_loss = [0.];wh_loss = [0.];offset_loss = [0.];iou_loss = [0.];obj_acc = [0.];otp_acc = [0.];global_acc = [0.];iou = [0.]
-
-        MainLogger.debug('start to {} epoch'.format(prefix))
-        for batch_idx, datas in enumerate(data_loader):
-            step = epoch * len(data_loader) + batch_idx + 1
-            MainLogger.debug('batch {}'.format(prefix))
-            # TODO: data to cuda
-            #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
-            # time
-            batch_start = time.time()
-            # do the training
-            optimizer.zero_grad() if stage == Stage.Train or stage == Stage.TrainEvaluate
-            # : run the model get the output TODO:
-            output = model($model_input)
-            # : run the loss function get the ret
-            losses = loss(datas, output) if stage == Stage.Train or stage == Stage.TrainEvaluate
-            # TODO: get the loss item
-            #_loss = ret[0]
-            #_class_loss = ret[1];_wh_loss = ret[2];_offset_loss = ret[3];_iou_loss = ret[4]
-            # TODO: do some simple check
-            #if _iou_loss.item() < -1.0 or _iou_loss.item() > 1.0:
-            #    MainLogger.warning('giou wrong')
-            #if np.isnan(_loss.item()) or np.isinf(_loss.item()) is True:
-            #    MainLogger.warning('loss in train inf occured!')
-            # : run the indicator function to get the indicators
-            indicator(datas, output) if stage == Stage.Train or stage == Stage.TrainEvaluate
-            # : run the backward
-            _loss.backward() if stage == Stage.Train else None
-            # : do the optimize
-            optimizer.step() if stage == Stage.Train else None
-            # time
-            batch_time = time.time() - batch_start
-            # TODO: loss item and the indicator accumulation
-            #obj_acc[-1] += _obj_acc.item();otp_acc[-1] += _otp_acc.item();global_acc[-1] += _global_acc.item();iou[-1] += _iou.item();loss[-1] += _loss.item();class_loss[-1] += _class_loss.item();wh_loss[-1] += _wh_loss.item();offset_loss[-1] += _offset_loss.item();iou_loss[-1] += _iou_loss.item()
-            # TODO: do the regular log
-            if stage == Stage.Train or stage == stage.TrainEvaluate:
-                if step % args.log_interval == 0:
-                #    obj_acc[-1] = obj_acc[-1] / args.log_interval;otp_acc[-1] = otp_acc[-1] / args.log_interval;global_acc[-1] = global_acc[-1] / args.log_interval;iou[-1] = iou[-1] / args.log_interval;loss[-1] = loss[-1] / args.log_interval;class_loss[-1] = class_loss[-1] / args.log_interval;wh_loss[-1] = wh_loss[-1] / args.log_interval;offset_loss[-1] = offset_loss[-1] / args.log_interval;iou_loss[-1] = iou_loss[-1] / args.log_interval
-                #    MainLogger.info('{} Epoch{}: [{}/{}]| loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f} | batch time: {:.3f}s '.format( \
-                #        prefix, epoch, step, len(data_loader), 
-                #        loss[-1], class_loss[-1], wh_loss[-1], offset_loss[-1], iou_loss[-1], obj_acc[-1], otp_acc[-1], global_acc[-1], iou[-1], 
-                #        batch_time))
-                #    # set the target indicator to zero
-                # TODO: the regular log would calculate the mean of the loss item and the indicator, we should append a new item to the collection
-                #    loss.append(0.);class_loss.append(0.);wh_loss.append(0.);offset_loss.append(0.);iou_loss.append(0.);obj_acc.append(0.);otp_acc.append(0.);global_acc.append(0.);iou.append(0.)
-                # TODO: do the regular summary
-                if step % args.summary_interval == 0:
-                #    gt_obj_ft = gt_obj.sum(1).gt(0.)
-                #    # reduce the target_indicator
-                #    rloss = all_reduce(_loss, 'loss');rclass_loss = all_reduce(_class_loss, 'class_loss');rwh_loss = all_reduce(_wh_loss, 'wh_loss');roffset_loss = all_reduce(_offset_loss, 'offset_loss');riou_loss = all_reduce(_iou_loss, 'iou_loss');mobj_acc = all_reduce(_obj_acc, 'obj_acc');motp_acc = all_reduce(_otp_acc, 'otp_acc');mglobal_acc = all_reduce(_global_acc, 'global_acc')
-                    if hvd.rank() == 0:
-                        # :decode
-                        pre_output = decode(datas, output)
-                        gt_output = decode(datas)
-                        # extract the target data
-                        # TODO: do the summary use pre_output and gt_output
-                        #pv = PointVisual();rv = RectangleVisual(2)
-                        #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
-                        #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
-                        # add target indicator to sumary
-                        writer.add_scalar('{}/loss/loss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
-                        pass
-                    pass
-                pass
-            elif stage == Stage.Evaluate:
-                pre_output = decode(datas, output)
-                # TODO:process the evaluate result
-                pass
-            else:
-                raise NotImplementedError('stage: {} is not implemented'.format(stage))
-            MainLogger.debug('batch {} end'.format(prefix))
-            pass
-        # TODO: do the summary of this epoch
-        #eloss = np.mean(loss[0:-1]);eclass_loss = np.mean(class_loss[0:-1]);ewh_loss = np.mean(wh_loss[0:-1]);eoffset_loss = np.mean(offset_loss[0:-1]);eiou_loss = np.mean(iou_loss[0:-1]);eobj_acc = np.mean(obj_acc[0:-1]);eotp_acc = np.mean(otp_acc[0:-1]);eglobal_acc = np.mean(global_acc[0:-1]);eiou = np.mean(iou[0:-1])
-        #MainLogger.info('{} epoch {} done: loss(all|class|wh|offset|iou): {:.4f}|{:.4f}|{:.4f}|{:.4f}|{:.4f} | acc(boj|otp|global): {:.4f}|{:.4f}|{:.4f} | iou: {:.4f}'.format( \
-        #    prefix, epoch,
-        #    eloss, eclass_loss, ewh_loss, eoffset_loss, eiou_loss, eobj_acc, eotp_acc, eglobal_acc, eiou))
-        ##writer.add_scalar('{}/loss/rloss'.format(prefix), rloss, global_step=step);writer.add_scalar('{}/loss/class_loss'.format(prefix), rclass_loss, global_step=step);writer.add_scalar('{}/loss/wh_loss'.format(prefix), rwh_loss, global_step=step);writer.add_scalar('{}/loss/offset_loss'.format(prefix), roffset_loss, global_step=step);writer.add_scalar('{}/loss/iou_loss'.format(prefix), riou_loss, global_step=step);writer.add_scalar('{}/acc/obj_acc'.format(prefix), mobj_acc, global_step=step);writer.add_scalar('{}/acc/otp_acc'.format(prefix), motp_acc, global_step=step);writer.add_scalar('{}/acc/global_acc'.format(prefix), mglobal_acc, global_step=step)
-        pass
-    # TODO: ret the needed item which would be used in train evaluate and test
-    #return {'eloss': eloss, 'eclass_loss': eclass_loss, 'ewh_loss': ewh_loss, 'eoffset_loss': eoffset_loss, \
-    #    'eiou_loss': eiou_loss, 'eobj_acc': eobj_acc, 'eotp_acc': eotp_acc, 'eglobal_acc': eglobal_acc, 'eiou': eiou}
-
 
 
 def train(epoch):
-    train_evaluate_common(Stage.Train, epoch, train_loader):
+    train_evaluate_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
+         loss, optimization, indicator, statistic_indicator, train_loader, MainLogger)
+    train_evaluate_common(Stage.Train, epoch, train_loader)
 
 
 def evaluate(epoch):
-    ret = train_evaluate_common(Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, epoch, evaluate_loader)
+    train_evaluate_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
+        epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
+            indicator, statistic_indicator, train_loader, MainLogger)
     if evaluate_stage(args):
         # TODO: do all reduce of indicator
-        indicator = ret['eloss']
+        indicator = all_reduce(ret['eloss'], 'indicator')
         #indicator = hvd.allreduce(indicator)
         if auto_save.save_or_not(indicator) or args.only_test or args.debug:
-            # :save the model in rank0
+            # :save the backbone in rank0
             if hvd.rank() == 0:
                 MainLogger.info('run checkpoint')
                 checkpoint()
                 # :deploy use on sample as the example input
                 MainLogger.info('run deploy')
-                deploy(torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda())
+                checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
+                    auto_stop=auto_stop, optimization=optimization)
+                save(backbone, decode, TemplateModelDecodeCombineT, epoch, args.save_dir)
+                deploy(backbone, decode, TemplateModelDecodeCombineT, \
+                    torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda())
             # :run the test, if saved
             MainLogger.info('run test')
             test() if args.test_off is False else MainLogger.info('test_off, do not run test')
@@ -153,76 +43,151 @@ def evaluate(epoch):
         return stop, lr
 
 
+def test(epoch):
+    pass
+
+
 if __name__ == '__main__':
     import Putil.base.arg_base as pab
     import Putil.base.save_fold_base as psfb
-    # TODO: import the controler
-    #  TODO: the auto save
-    #from Putil.trainer.auto_save_args import generate_args as auto_save_args
-    #  TODO: the auto stop
-    #from Putil.trainer.auto_stop_args import generate_args as auto_stop_args
-    #  TODO: the lr_reduce
-    #from Putil.trainer.lr_reduce_args import generate_args as lr_reduce_arg
-        # the default arg
+    import os
     ppa = pab.ProjectArg(save_dir='./result', log_level='Info', debug_mode=True, config='')
-    ## :auto stop setting
-    auto_stop_args(ppa.parser)
-    ## :auto save setting
-    auto_save_args(ppa.parser)
-    ## :lr reduce setting
-    lr_reduce_args(ppa.parser)
+    #ppa.parser.add_argument('--data_name', action='store', type=str, default='DefaultData', \
+    #    help='the name of the data, used in the data_factory, see the util.data_factory')
+    #ppa.parser.add_argument('--data_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.data; project: from this project')
+    #ppa.parser.add_argument('--encode_name', action='store', type=str, default='DefalutEncode', \
+    #    help='the name of the encode in the encode_factory, see the util.encode_factory')
+    #ppa.parser.add_argument('--encode_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.encode; project: from this project')
+    #ppa.parser.add_argument('--decode_name', action='store', type=str, default='DefaultDecode', \
+    #    help='the name of the decode in the decode_factory, see the util.decode_factory')
+    #ppa.parser.add_argument('--decode_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.decode; project: from this project')
+    #ppa.parser.add_argument('--auto_save_name', type=str, action='store', default='', \
+    #    help='the name of the auto saver')
+    #ppa.parser.add_argument('--auto_save_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.auto_save; project: from this project')
+    #ppa.parser.add_argument('--auto_stop_name', type=str, action='store', default='', \
+    #    help='the name of the auto stoper')
+    #ppa.parser.add_argument('--auto_stop_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.auto_stop; project: from this project')
+    #ppa.parser.add_argument('--lr_reduce_name', type=str, action='store', default='', \
+    #    help='the name of the lr reducer')
+    #ppa.parser.add_argument('--lr_reduce_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.lr_reduce; project: from this project')
+    #ppa.parser.add_argument('--optimization_name', type=str, action='store', default=None, \
+    #    help='the name of the optimization')
+    #ppa.parser.add_argument('--optimization_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.optimization; project: from this project')
+    # setting from the environment
+    #ppa.parser.add_argument('--backbone_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.backbones; project: from this project')
+    #ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
+    #    help='specify the backbone name')
+    #ppa.parser.add_argument('--backbone_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.backbones; project: from this project')
+    #ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
+    #    help='specify the backbone name')
+    #ppa.parser.add_argument('--loss_name', type=str, default='DefaultLoss', action='store', \
+    #    help='the name of the loss in the loss_factory, see the util.loss_factory')
+    #ppa.parser.add_argument('--loss_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.loss; project: from this project')
+    #ppa.parser.add_argument('--indicator_name', type=str, default='DefaultIndicator', action='store', \
+    #    help='the name of the indicator in the indicator_factory, see the util.indicator_factory')
+    #ppa.parser.add_argument('--indicator_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.indicator; project: from this project')
+    #ppa.parser.add_argument('--statistic_indicator_name', type=str, default='', action='store', \
+    #    help='the name of the statistic_indicator in the statistic_indicator_factory, see the util.statistic_indicator_factory')
+    #ppa.parser.add_argument('--statistic_indicator_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.statistic_indicator; project: from this project')
+    from Putil.demo.deep_learning.base import auto_save_factory as AutoSaveFactory
+    from Putil.demo.deep_learning.base import auto_stop_factory as AutoStopFactory
+    from Putil.demo.deep_learning.base import lr_reduce_factory as LrReduceFactory
+    from Putil.demo.deep_learning.base import dataset_factory as DatasetFactory
+    from Putil.demo.deep_learning.base import data_loader_factory as DataLoaderFactory
+    from Putil.demo.deep_learning.base import data_sampler_factory as DataSamplerFactory
+    from Putil.demo.deep_learning.base import encode_factory as EncodeFactory
+    #from Putil.demo.deep_learning.base import backbone_factory as ModelFactory
+    from Putil.demo.deep_learning.base import backbone_factory as BackboneFactory
+    from Putil.demo.deep_learning.base import backend_factory as BackendFactory
+    from Putil.demo.deep_learning.base import decode_factory as DecodeFactory
+    from Putil.demo.deep_learning.base import loss_factory as LossFactory
+    from Putil.demo.deep_learning.base import indicator_factory as IndicatorFactory
+    from Putil.demo.deep_learning.base import statistic_indicator_factory as StatisticIndicatorFactory
+    from Putil.demo.deep_learning.base import optimization_factory as OptimizationFactory
+    from Putil.demo.deep_learning.base import aug_factory as AugFactory
+    from Putil.demo.deep_learning.base import data_type_adapter_factory as DataTypeAdapterFactory
+    from Putil.demo.deep_learning.base import fit_data_to_input_factory as FitDataToInputFactory
+    from Putil.demo.deep_learning.base import fit_decode_to_result_factory as FitDecodeToResultFactory
+    auto_save_source = os.environ.get('auto_save_source', 'standard')
+    auto_stop_source = os.environ.get('auto_stop_source', 'standard')
+    lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
+    dataset_source = os.environ.get('dataset_source', 'standard')
+    data_loader_source = os.environ.get('data_loader_source', 'standard')
+    data_sampler_source = os.environ.get('data_sampler_source', 'standard')
+    encode_source = os.environ.get('encode_source', 'standard')
+    #backbone_source = os.environ.get('backbone_source', 'standard')
+    backbone_source = os.environ.get('backbone_source', 'standard')
+    backend_source = os.environ.get('backend_source', 'standard')
+    decode_source = os.environ.get('decode_source', 'standard')
+    loss_source = os.environ.get('loss_source', 'standard')
+    indicator_source = os.environ.get('indicator_source', 'standard')
+    statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
+    optimization_source = os.environ.get('optimization_source', 'standard')
+    aug_sources = os.environ.get('aug_sources', '').split('-')
+    data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
+    fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
+    fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
+    auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
+    auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
+    lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
+    dataset_name = os.environ.get('dataset_name', 'DefaultDataset')
+    data_loader_name = os.environ.get('data_loader_name', 'DefaultDataLoader')
+    data_sampler_name = os.environ.get('data_sampler_name', 'DefaultDataSampler')
+    encode_name = os.environ.get('encode_name', 'DefaultEncode')
+    #backbone_name = os.environ.get('backbone_name', 'DefaultModel')
+    backbone_name = os.environ.get('backbone_name', 'DefaultBackbone')
+    backend_name = os.environ.get('backend_name', 'DefaultBackend')
+    decode_name = os.environ.get('decode_name', 'DefaultDecode')
+    loss_name = os.environ.get('loss_name', 'DefaultLoss')
+    indicator_name = os.environ.get('indicator_name', 'DefaultIndicator')
+    statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
+    optimization_name = os.environ.get('optimization_name', 'DefaultOptimization')
+    aug_names = os.environ.get('aug_names', '').split('-')
+    data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
+    fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
+    fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
+    AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_source, auto_save_name)
+    AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
+    LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
+    DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_source, data_loader_name)
+    DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_source, data_sampler_name)
+    EncodeFactory.encode_arg_factory(ppa.parser, encode_source, encode_name)
+    #ModelFactory.backbone_arg_factory(ppa.parser, backbone_source, backbone_name)
+    BackboneFactory.backbone_arg_factory(ppa.parser, backbone_source, backbone_name)
+    BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
+    LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
+    IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
+    StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
+    OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_source, optimization_name)
+    [AugFactory.aug_arg_factory(ppa.parser, aug_source, aug_name) for aug_source, aug_name in zip(aug_sources, aug_names)]
+    DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
+    FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
+    FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
     # : the base information set
-    parser.add_argument('--framework', action='store', type=str, default='torch', \
+    ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
         help='specify the framework used')
     # debug
-    parser.add_argument('--remote_debug', action='store_true', default=False, \
+    ppa.parser.add_argument('--remote_debug', action='store_true', default=False, \
         help='setup with remote debug(blocked while not attached) or not')
-    parser.add_argument('--frame_debug', action='store_true', default=False, \
+    ppa.parser.add_argument('--frame_debug', action='store_true', default=False, \
         help='run all the process in two epoch with tiny data')
     # data setting
-    parser.add_argument('--n_worker_per_dataset', action='store', type=int, default=1, \
-        help='the number of worker for every dataset')
-    parser.add_argument('--data_using_rate_train', action='store', type=float, default=1.0, \
-        help='rate of data used in train')
-    ppa.parser.add_argument('--sub_data', type=int, nargs='+', default=None, \
-        help='list with int, specified the sub dataset which would be used in train evaluate, '
-        'default None(whole dataset)')
-    parser.add_argument('--data_using_rate_evaluate', action='store', type=float, default=1.0, \
-        help='rate of data used in evaluate')
-    parser.add_argument('--data_using_rate_test', action='store', type=float, default=1.0, \
-        help='rate of data used in test')
-    ppa.parser.add_argument('--naug', action='store_true', \
-        help='do not use data aug while set')
-    ppa.parser.add_argument('--fake_aug', action='store', type=int, default=0, \
-        help='do the sub aug with NoOp for fake_aug time, check the generate_dataset')
-    ppa.parser.add_argument('--data_name', action='store', type=str, default='DefaultData' \
-        help='the name of the data, used in the data_factory, see the util.data_factory')
-    ppa.parser.add_argument('--encode_name', action='store', type=str, default='DefalutEncode', \
-        help='the name of the encode in the encode_factory, see the util.encode_factory')
-    ppa.parser.add_argument('--encode_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.encode; project: from this project')
-    ppa.parser.add_argument('--decode_name', action='store', type=str, default='DefaultDecode', \
-        help='the name of the decode in the decode_factory, see the util.decode_factory')
-    ppa.parser.add_argument('--decode_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.decode; project: from this project')
-    ppa.parser.add_argument('--input_height', type=int, action='store', default=256, \
-        help='the height of the input')
-    ppa.parser.add_argument('--input_width', action='store', type=int, default=256, \
-        help='the width of the input')
-    ppa.parser.add_argument('--shuffle_train', action='store_true', default=False, \
-        help='shuffle the train data every epoch')
-    ppa.parser.add_argument('--shuffle_evaluate', action='store_true', default=False, \
-        help='shuffle the evaluate data every epoch')
-    ppa.parser.add_argument('--shuffle_test', action='store_true', default=False, \
-        help='shuffle the test data every epoch')
-    ppa.parser.add_argument('--drop_last_train', action='store_true', default=False, \
-        help='drop the last uncompleted train data while set')
-    ppa.parser.add_argument('--drop_last_evaluate', action='store_true', default=False, \
-        help='drop the last uncompleted evaluate data while set')
-    ppa.parser.add_argument('--drop_last_test', action='store_true', default=False, \
-        help='drop the last uncompleted test data while set')
-    ## decode setting TODO:
-    # train setting
+    DatasetFactory.dataset_arg_factory(ppa.parser, dataset_source, dataset_name)
+    ## decode setting
+    DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
+    # train evaluate test setting
     ### ~off_train and ~off_evaluate: run train stage with evaluate
     ### ~off_train and off_evaluate: run train stage without evaluate
     ### off_train and ~off_evaluate: run evaluate stage
@@ -248,63 +213,61 @@ if __name__ == '__main__':
     ppa.parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
         help='how many batchees to wait before save the summary(default: 100)')
     ppa.parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
-        help='how many epoch to wait before evaluate the model(default: 1), '\
-            'test the mode while the model is savd, would not run evaluate while -1')
+        help='how many epoch to wait before evaluate the backbone(default: 1), '\
+            'test the mode while the backbone is savd, would not run evaluate while -1')
     ppa.parser.add_argument('--compute_efficiency', action='store_true', default=False, \
         help='evaluate the efficiency in the test or not')
     ppa.parser.add_argument('--data_rate_in_compute_efficiency', type=int, default=200, metavar='N', \
         help='how many sample used in test to evaluate the efficiency(default: 200)')
-    ppa.parser.add_argument('--auto_save_name', type=str, action='store', default='', \
-        help='the name of the auto saver')
-    ppa.parser.add_argument('--auto_save_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.auto_save; project: from this project')
-    ppa.parser.add_argument('--auto_stop_name', type=str, action='store', default='', \
-        help='the name of the auto stoper')
-    ppa.parser.add_argument('--auto_stop_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.auto_stop; project: from this project')
-    ppa.parser.add_argument('--lr_reduce_name', type=str, action='store', default='', \
-        help='the name of the lr reducer')
-    ppa.parser.add_argument('--lr_reduce_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.lr_reduce; project: from this project')
-    ppa.parser.add_argument('--optimization_name', type=str, action='store', default=None, \
-        help='the name of the optimization')
     ppa.parser.add_argument('--weight_decay', type=float, action='store', default=1e-4, \
         help='the weight decay, default is 1e-4')
-    # model setting
-    ppa.parser.add_argument('--weight', type=str, default='', action='store', \
-        help='specify the pre-trained model path(default\'\')')
-    ppa.parser.add_argument('--model_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.models; project: from this project')
-    ppa.parser.add_argument('--model_name', type=str, default='', action='store', \
-        help='specify the model name')
-    ppa.parser.add_argument('--backbone_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.backbones; project: from this project')
-    ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
-        help='specify the backbone name')
-    ppa.parser.add_argument('--backbone_arch', type=str, default='', action='store', \
-        help='specify the arch of the backbone, such 19 for backbone_name with vgg')
-    ppa.parser.add_argument('--backbone_downsample_rate', type=int, default=None, action='store', \
-        help='specify the downsample rate for the backbone')
-    ppa.parser.add_argument('--backbone_pretrained', default=False, action='store_true', \
-        help='load the pretrained backbone weight or not')
-    ppa.parser.add_argument('--backbone_weight_path', type=str, default='', action='store', \
-        help='specify the pre-trained model for the backbone, use while in finetune mode, '\
-            'if the weight is specify, the backbone weight would be useless')
-    ppa.parser.add_argument('--loss_name', type=str, default='DefaultLoss', action='store', \
-        help='the name of the loss in the loss_factory, see the util.loss_factory')
-    ppa.parser.add_argument('--loss_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.loss; project: from this project')
-    ppa.parser.add_argument('--indicator_name', type=str, default='DefaultIndicator', action='store', \
-        help='the name of the indicator in the indicator_factory, see the util.indicator_factory')
-    ppa.parser.add_argument('--indicator_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.indicator; project: from this project')
-    ppa.parser.add_argument('--statistic_indicator_name', type=str, default='', action='store', \
-        help='the name of the statistic_indicator in the statistic_indicator_factory, see the util.statistic_indicator_factory')
-    ppa.parser.add_argument('--statistic_indicator_source', type=str, default='standard', action='store', \
-        help='standard: from the Putil.demo.base.deep_learning.statistic_indicator; project: from this project')
+    # backbone setting
+    ppa.parser.add_argument('--weight_path', type=str, default='', action='store', \
+        help='the path where the trained backbone saved')
+    ppa.parser.add_argument('--weight_epoch', type=int, default=None, action='store', \
+        help='the epoch when saved backbone which had been trained')
     ppa.parser.add_argument('--name', type=str, action='store', default='', \
         help='the ${backbone_name}${name} would be the name of the fold to save the result')
     args = ppa.parser.parse_args()
+    args.auto_save_name = auto_save_name
+    args.auto_save_source = auto_save_source
+    args.lr_reduce_source = lr_reduce_source
+    args.auto_stop_source = auto_stop_source
+    args.dataset_source = dataset_source
+    args.data_loader_source = data_loader_source
+    args.data_sampler_source = data_sampler_source
+    args.encode_source = encode_source
+    #args.backbone_source = backbone_source
+    args.backbone_source = backbone_source
+    args.backend_source = backend_source
+    args.decode_source = decode_source
+    args.loss_source = loss_source
+    args.indicator_source = indicator_source
+    args.statistic_indicator_source = statistic_indicator_source
+    args.optimization_source = optimization_source
+    args.aug_sources = aug_sources
+    args.data_type_adapter_source = data_type_adapter_source
+    args.fit_data_to_input_source = fit_data_to_input_source
+    args.fit_decode_to_result_source = fit_decode_to_result_source
+    args.auto_save_name = auto_save_name
+    args.auto_stop_name = auto_stop_name
+    args.lr_reduce_name = lr_reduce_name
+    args.dataset_name = dataset_name
+    args.data_loader_name = data_loader_name
+    args.data_sampler_name = data_sampler_name
+    args.encode_name = encode_name
+    #args.backbone_name = backbone_name
+    args.backbone_name = backbone_name
+    args.backend_name = backend_name
+    args.decode_name = decode_name
+    args.loss_name = loss_name
+    args.indicator_name = indicator_name
+    args.statistic_indicator_name = statistic_indicator_name
+    args.optimization_name = optimization_name
+    args.aug_names = aug_names
+    args.data_type_adapter_name = data_type_adapter_name
+    args.fit_data_to_input_name = fit_data_to_input_name
+    args.fit_decode_to_result_name = fit_decode_to_result_name
     # the method for remote debug
     if args.remote_debug:
         import ptvsd
@@ -316,6 +279,7 @@ if __name__ == '__main__':
             ptvsd.wait_for_attach()
 
     import Putil.base.logger as plog
+    reload(plog)
     if hvd.rank() == 0:
         bsf = psfb.BaseSaveFold(
             use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
@@ -331,30 +295,50 @@ if __name__ == '__main__':
     MainLogger = root_logger.getChild('Trainer')
     MainLogger.setLevel(log_level)
     pab.args_log(args, MainLogger)
-    # TODO: third party import
     #  TODO: the SummaryWriter
     #from import as SummaryWriter
-    from Putil.demo.deep_learning.base.auto_save_factory import auto_save_factory as AutoSave
-    from Putil.demo.deep_learning.base.auto_stop_factory import auto_stop_factory as AutoStop
-    from Putil.demo.deep_learning.base.lr_reduce_factory import lr_reduce_factory as LrReduce
-    # TODO: Putil import
-    #  TODO: the Dataset
-    #from import as Dataset
-    from Putil.demo.deep_learning.base.data_factory import data_factory as Dataset
-    from Putil.demo.deep_learning.base.data_loader_factory import data_loader_factory as DataLoader
-    from Putil.demo.deep_learning.base.data_sampler_factory import data_sampler_factory as DataSampler
-    from Putil.demo.deep_learning.base.util import Stage as Stage
-    from Putil.demo.deep_learning.base.model_factory import model_factory as Model
-    from Putil.demo.deep_learning.base.loss_factory import loss_factory as Loss
-    from Putil.demo.deep_learning.base.indicator_factory import indicator_factory as Indicator
-    from Putil.demo.deep_learning.base.statistic_indicator_factory import statistic_indicator_factory as StatisticIndicator
-    from Putil.demo.deep_learning.base.optimization_factory import optimization_factory as Optimization
-    from Putil.demo.deep_learning.base.decode_factory import decode_factory as Decode
+    reload(AutoSaveFactory); AutoSave = AutoSaveFactory.auto_save_factory
+    reload(AutoStopFactory); AutoStop = AutoStopFactory.auto_stop_factory
+    reload(LrReduceFactory); LrReduce = LrReduceFactory.lr_reduce_factory
+    reload(DatasetFactory); Dataset = DatasetFactory.dataset_factory
+    reload(DataLoaderFactory); DataLoader = DataLoaderFactory.data_loader_factory
+    reload(DataSamplerFactory); DataSampler = DataSamplerFactory.data_sampler_factory
+    reload(ModelFactory); Model = ModelFactory.backbone_factory
+    reload(LossFactory); Loss = LossFactory.loss_factory
+    reload(IndicatorFactory); Indicator = IndicatorFactory.indicator_factory
+    reload(StatisticIndicatorFactory); StatisticIndicator = StatisticIndicatorFactory.statistic_indicatory_factory
+    reload(OptimizationFactory); Optimization = OptimizationFactory.optimization_factory
+    reload(EncodeFactory); Encode = EncodeFactory.encode_factory
+    reload(DecodeFactory); Decode = DecodeFactory.decode_factory
+    # TODO: third party import
     # TODO: set the deterministic 随机确定性可复现
     # make the result dir
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
+    from Putil.demo.deep_learning.base.util import Stage as Stage
+    from .util.train_evaluate_common import train_evaluate_common
+    from Putil.demo.deep_learning.base.util import train_stage
+    from Putil.demo.deep_learning.base.util import evaluate_stage
+    from Putil.demo.deep_learning.base.util import test_stage
+    from Putil.demo.deep_learning.base.base_operation_factory import load_saved_factory, \
+        load_checkpointed_factory, checkpoint_factory, save_factory, deploy_factory
+    from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
     # TODO: set the args item
     ArgsSave(args, os.path.join(args.save_dir, 'args')) # after ArgsSave is called, the args should not be change
+
+    class TemplateModelDecodeCombineT(TemplateModelDecodeCombine):
+        def __init__(self, backbone, backend, decode):
+            pass
+
+        def forward(self, x):
+            raise NotImplementedError('this is not implemented')
+            pass
+        pass
+
+    checkpoint = checkpoint_factory(args)
+    save = save_factory(args)
+    deploy = deploy_factory(args)
+    load_saved = load_saved_factory(args)
+    load_checkpointed = load_checkpointed_factory(args)
 
     if hvd.rank() == 0:
         writer = SummaryWriter(args.save_dir)
@@ -388,41 +372,69 @@ if __name__ == '__main__':
     if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
             mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
         kwargs['multiprocessing_context'] = 'forkserver'
-    # : build the net
-    model = Model(args)
+    # : build the backbone
+    backbone = BackboneFactory.backbone_factory(args)()
+    # : build backend
+    backend = BackendFactory.backend_factory(args)()
+    # : build decode
+    decode = DecodeFactory.decode_factory(args)()
     # : build the loss
-    loss = Loss(args)
+    loss = LossFactory.loss_factory(args)()
     # : build the indicator
-    train_indicator = Indicator(args)
-    evaluate_indicator = Indicator(args)
+    train_indicator = IndicatorFactory.indicator_factory(args)()
+    evaluate_indicator = IndicatorFactory.indicator_factory(args)()
     # : build the statistic indicator
-    statistic_indicator = StatisticIndicator(args)
+    statistic_indicator = StatisticIndicator(args)()
     # TODO: build the optimization
+    optimization = OptimizationFactory.optimization_factory(args)(backbone.parameters())
     # Horovod: broadcast parameters & optimizer state.
-    hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+    hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
     #  : the auto save
-    auto_save = AutoSave(args)
+    auto_save = AutoSave(args)()
     #  : the auto stop
-    auto_stop = AutoStop(args)
+    auto_stop = AutoStop(args)()
     #  : the lr reduce
-    lr_reduce = LrReduce(args)
+    lr_reduce = LrReduce(args)()
+    encode = EncodeFactory.encode_factory(args)()
     # : build the train dataset
-    dataset_train = Dataset(args, Stage.Train) if args.train_off is not True else None
-    train_sampler = DataSampler(args)(dataset_train, rank_amount=hvd.size(), rank=hvd.rank())  if dataset_train is not None else None
-    train_loader = DataLoader(args)(dataset_train, batch_size=args.batch_size, sampler=train_sampler) if dataset_train is not None else None
+    fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)
+    fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)
+    dataset_train = None; train_sampler = None; evaluate_loader = None
+    if args.train_off is not True:
+        MainLogger.info('start to generate the train dataset data_sampler data_loader')
+        dataset_train = Dataset(args, Stage.Train)
+        root_node = pAug.AugNode(pAug.AugFuncNoOp())
+        # for the fack data field, maybe cause the nan or inf
+        for i in range(0, args.fake_aug):
+            root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+        if args.naug is False:
+            Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+            [root_node.add_child(pAug.AugNode(aug)) for aug in AugFactory.aug_factory(args)()]
+        root_node.freeze_node()
+        dataset_train.set_aug_node_root(root_node)
+        dataset_train.set_convert_to_input_method(encode)
+        dataset_train.set_data_type_adapter(DataTypeAdapterFactory.data_type_adapter_factory(args)())
+        train_sampler = DataSampler(args)(dataset_train, rank_amount=hvd.size(), rank=hvd.rank())  if dataset_train is not None else None
+        train_loader = DataLoader(args)(dataset_train, batch_size=args.batch_size, sampler=train_sampler) if dataset_train is not None else None
+        MainLogger.info('generate adataset train successful: {} sample'.format(len(dataset_train)))
     # : build the evaluate dataset
-    dataset_evaluate = Dataset(args, Stage.Evaluate) if args.evaluate_off is not True else None
-    evaluate_sampler = DataSampler(args)(dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_evaluate is not None else None
-    evaluate_loader = DataLoader(args)(dataset=dataset_evaluate, data_sampler=evaluate_sampler) if dataset_evaluate is not None else None
+    dataset_evaluate = None; evaluate_sampler = None; evaluate_loader = None
+    if args.evaluate_off is not True:
+        MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
+        dataset_evaluate = Dataset(args, Stage.Evaluate)
+        evaluate_sampler = DataSampler(args)(dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_evaluate is not None else None
+        evaluate_loader = DataLoader(args)(dataset=dataset_evaluate, data_sampler=evaluate_sampler) if dataset_evaluate is not None else None
     # : build the test dataset
-    dataset_test = Dataset(args, Stage.Test) if args.test_off is not True else None
-    test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
-    test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
-    decode = Decode(args)
+    dataset_test = None; test_sampler = None; test_loader = None
+    if args.test_off is not True:
+        MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
+        dataset_test = Dataset(args, Stage.Test) if args.test_off is not True else None
+        test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
+        test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
     if args.cuda:
-        # TODO: to_cuda
-        model.cuda()
+        backbone.cuda()
+        decode.cuda()
         loss.cuda()
         indicator.cuda()
         statistic_indicator.cuda()
@@ -438,29 +450,20 @@ if __name__ == '__main__':
     
     if test_stage(args):
         MainLogger.info('run test')
-        assert args.weight != '', 'specify the trained weight in test stage'
-        MainLogger.info('load trained model: {}'.format(args.weight))
-        state_dict = torch.load(args.weight)
-        model.load_state_dict(state_dict)
+        assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
+        MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+        backbone = load_saved(args.weight_epoch, args.weight_path)
         test()
-        return
     elif evaluate_stage(args):
         MainLogger.info('run evaluate')
-        assert args.weight != '', 'specify the trained weight in evaluate stage'
-        MainLogger.info('load trained model: {}'.format(args.weight))
-        state_dict = torch.load(args.weight)
-        model.load_state_dict(state_dict)
-        evaluate()
-        return
+        assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
+        MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+        backbone = load_saved(args.weight_epoch, args.weight_path)
+        evaluate(epoch)
     elif train_stage(args):
         if args.weight != '':
-            MainLogger.info('load pre-trained model: {}'.format(args.weight))
-            state_dict = torch.load(args.weight)
-            model.load_state_dict(state_dict)
-            optimizer.load_state_dict(state_dict)
-            auto_stop.load_state_dict(state_dict)
-            auto_save.load_state_dict(state_dict)
-            lr_reduce.load_state_dict(state_dict)
+            MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+            backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone, optimization, auto_stop, auto_save, lr_reduce)
         for epoch in range(0, args.epochs):
             train_ret = train(epoch)
             global_step = (epoch + 1) * len(train_loader)
@@ -476,6 +479,5 @@ if __name__ == '__main__':
                     pass
                 pass
             pass
-        return
         pass
     pass

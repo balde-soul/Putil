@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('model_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.model as standard
-import util.model as project
+from ..util import model as project
 
 
 def model_factory(args):
@@ -25,3 +25,9 @@ def model_factory(args):
     model = '{0}.{1}'.format(args.model_source, args.model_name)
     logger.info('model model: {}, arch: {}'.format(model, args.model_arch))
     return eval('{}(args)'.format(model))
+
+
+def model_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('model_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

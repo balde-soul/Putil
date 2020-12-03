@@ -16,4 +16,10 @@ def DefaultAutoStop(args):
       args.auto_stop_patience
       args.auto_stop_mode
     '''
-    return _DefaultAutoStop.generate_AutoStop_from_args(args)
+    def generate_default_auto_stop():
+        return _DefaultAutoStop.generate_AutoStop_from_args(args)
+    return generate_default_auto_stop
+
+
+def DefaultAutoStopArg(parser):
+    _DefaultAutoStop.generate_args(parser)

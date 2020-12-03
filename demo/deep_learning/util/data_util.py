@@ -7,20 +7,20 @@
 '''
 # coding=utf-8
 
-def generate_evaluate_data(args):
-    pass
+def generate_train_stage_evaluate_data(args):
+    raise NotImplementedError('generate_train_stage_evaluate_data not implemented')
 
 
-def generate_train_data(args):
-    pass
+def generate_train_stage_train_data(args):
+    raise NotImplementedError('generate_train_stage_train_data not implemented')
 
 
 def generate_test_data(args):
-    pass
+    raise NotImplementedError('generate_test_data not implemented')
 
 
-def generate_data(args, train, evaluate, test):
+def generate_evaluate_data(args, train, evaluate, test):
     '''
      @ret the Dataset
     '''
-    pass
+    raise NotImplementedError('generate_evaluate_data not implemented')

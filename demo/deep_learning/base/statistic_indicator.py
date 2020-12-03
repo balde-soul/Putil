@@ -5,9 +5,10 @@
 # coding=utf-8
 from abc import abstractmethod
 from torch.nn import Module
+import copy
 
 
-class StatisticIndicator(Module):
+class StatisticIndicator:
     '''
      @brief
      @note 接收训练阶段的train或者evaluate每个step的decode输出，再最后一个step输出统计指标
@@ -32,4 +33,22 @@ class StatisticIndicator(Module):
          @note 最后一个step运行完，decode输出传到add_step_output之后就可以调用此函数进行统计，输出一个具有<比较函数>实现的对象
         '''
         pass
+    pass
+
+
+class _DefaultStatisticIndicator(StatisticIndicator):
+    def __init__(self, args):
+        StatisticIndicator.__init__(self, args)
+        pass
+    pass
+
+
+def DefaultStatisticIndicator(args):
+    temp_args = copy.deepcopy(args)
+    def generate_default_statistic_indicator():
+        return _DefaultStatisticIndicator(temp_args)
+    return generate_default_statistic_indicator
+
+
+def DefaultStatisticIndicatorArg(parser):
     pass

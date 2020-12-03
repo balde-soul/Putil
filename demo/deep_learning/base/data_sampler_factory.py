@@ -1,6 +1,11 @@
 # conding=utf-8
+import Putil.base.logger as plog
 
-from Putil.demo.deep_learning.base.data_loader import *
+logger = plog.PutilLogConfig('data_sampler_factory').logger()
+logger.setLevel(plog.DEBUG)
+
+from Putil.demo.deep_learning.base import data_sampler as standard
+from ..util import data_sampler as project
 
 
 def data_sampler_factory(args):
@@ -8,4 +13,11 @@ def data_sampler_factory(args):
         pass
     else:
         raise NotImplementedError('data_loader of framework: {} is not implemented'.format(args.framework))
-    return eval('{}(args)'.format('{}_{}'.format(args.framework, DataSampler)))
+    data_sampler = '{}.{}'.format(args.data_sampler_source, args.data_sampler_name)
+    return eval('{}(args)'.format(data_sampler))
+
+
+def data_sampler_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('data_sampler_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

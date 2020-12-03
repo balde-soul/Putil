@@ -262,7 +262,7 @@ class COCOBase():
          @note calculate the map
         '''
         target_image_ids = image_ids if image_ids is not None else self._data_field
-        target_cat_ids = cat_ids if cat_ids is not None else self.
+        target_cat_ids = cat_ids if cat_ids is not None else self._cat_ids
         pass
     pass
 

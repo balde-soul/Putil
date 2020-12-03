@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('backend_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.backend as standard
-import util.backend as project
+from ..util import backend as project
 
 
 def backend_factory(args):
@@ -25,3 +25,9 @@ def backend_factory(args):
     model = '{0}.{1}'.format(args.backend_source, args.backend_name)
     logger.info('backend model: {}, arch: {}'.format(model, args.backend_arch))
     return eval('{}(args)'.format(model))
+
+
+def backend_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('backend_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

@@ -4,8 +4,8 @@ import Putil.base.logger as plog
 logger = plog.PutilLogConfig('statistic_indicator_factory').logger()
 logger.setLevel(plog.DEBUG)
 
-import Putil.demo.deep_learning.base.statistic_indicators as standard
-import util.statistic_indicator as project
+import Putil.demo.deep_learning.base.statistic_indicator as standard
+from ..util import statistic_indicator as project
 
 
 def statistic_indicator_factory(args):
@@ -25,3 +25,7 @@ def statistic_indicator_factory(args):
     return eval('{}(args)'.format(model))
 
 
+def statistic_indicator_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('statistic_indicator_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

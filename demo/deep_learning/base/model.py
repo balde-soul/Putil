@@ -5,7 +5,20 @@
 from torch.nn import Module
 
 
-class Model(Module):
+class Model:
     def __init__(self, args):
         self._model_name = args.model_name
         self._model_source = args.model_source
+        pass
+    pass
+
+
+class DefaultModel(Model):
+    def __init__(self, args):
+        Model.__init__(self, args)
+        pass
+    pass
+
+
+def DefaultModel(parser):
+    pass

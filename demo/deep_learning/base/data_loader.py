@@ -12,7 +12,7 @@ torch_DataLoader_logger.setLevel(plog.DEBUG)
 from Putil.demo.deep_learning.base.util import Stage as Stage
 
 
-class DataLoader(meteclass=ABCMeta):
+class DataLoader(metaclass=ABCMeta):
     def __init__(self, args):
         pass
 
@@ -29,8 +29,9 @@ class DataLoader(meteclass=ABCMeta):
     pass
 
 
-class torch_DataLoader(DataLoader):
+class DefaultDataLoader(DataLoader):
     def __init__(self, args):
+        DataLoader.__init__(self, args)
         self._args = args
         self._kwargs = dict()
         pass
@@ -60,3 +61,8 @@ class torch_DataLoader(DataLoader):
                 mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
             kwargs['multiprocessing_context'] = 'forkserver'
         return data_loader(dataset, sampler=data_sampler, **self._kwargs)
+    pass
+
+
+def DefaultDataLoaderArg(parser):
+    pass

@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('lr_reduce_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.lr_reduce as standard
-import util.lr_reduce as project
+from ..util import lr_reduce as project
 
 
 def lr_reduce_factory(args):
@@ -25,6 +25,12 @@ def lr_reduce_factory(args):
     model = '{0}.{1}'.format(args.lr_reduce_source, args.lr_reduce_name)
     logger.info('lr_reduce model: {}, arch: {}'.format(model, args.lr_reduce_arch))
     return eval('{}(args)'.format(model))
+
+
+def lr_reduce_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('lr_reduce_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 
 
 
 

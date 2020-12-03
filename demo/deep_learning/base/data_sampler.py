@@ -27,7 +27,7 @@ class DataSampler(metaclass=ABCMeta):
         pass
 
 
-class torch_DataSampler(DataSampler):
+class DefaultDataSampler(DataSampler):
     def __init__(self, args):
         torch_DataSampler_logger.info('use torch DataSampler')
         DataSampler.__init__(self, args)
@@ -36,3 +36,8 @@ class torch_DataSampler(DataSampler):
 
     def __call__(self, dataset, rank_amount, rank):
         return data_sampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
+    pass
+
+
+def DefaultDataSamplerArg(parser):
+    pass

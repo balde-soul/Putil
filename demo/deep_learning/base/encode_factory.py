@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('encode_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.encode as standard
-import util.encode as project
+from ..util import encode as project
 
 
 def encode_factory(args):
@@ -24,3 +24,8 @@ def encode_factory(args):
     model = '{0}.{1}'.format(args.encode_source, args.encode_name)
     return eval('{}(args)'.format(model))
 
+
+def encode_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('encode_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

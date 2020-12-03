@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('decode_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.decode as standard
-import util.decode as project
+from ..util import decode as project
 
 
 def decode_factory(args):
@@ -25,3 +25,7 @@ def decode_factory(args):
     return eval('{}(args)'.format(model))
 
 
+def decode_arg_factory(parser, source, name):
+    arg = '{}.{}Arg'.format(source, name)
+    logger.info('decode_arg: {}'.format(arg))
+    return eval('{}(parser)'.format(arg)) 

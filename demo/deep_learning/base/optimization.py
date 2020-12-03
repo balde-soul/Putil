@@ -32,3 +32,14 @@ class Adam(Optimization):
             raise NotImplementedError('optimization in framework {} is not implemented'.format(self._args.framework))
         pass
     pass
+
+
+class DefaultOptimization(Optimization):
+    def __init__(self, args):
+        Optimization.__init__(self, args)
+        pass
+    pass
+
+
+def DefaultOptimizationArg(parser):
+    pass

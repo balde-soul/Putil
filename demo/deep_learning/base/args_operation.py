@@ -4,7 +4,7 @@ import json
 import argparse
 
 
-def config_save(args, file):
+def args_save(args, file):
     print(args)
     with open(file, 'w') as fp:
         json.dump(args.__dict__, fp, indent=4)

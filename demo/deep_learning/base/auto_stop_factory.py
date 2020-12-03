@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('auto_stop_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.auto_stop as standard
-import util.auto_stop as project
+from ..util import auto_stop as project
 
 
 def auto_stop_factory(args):
@@ -25,4 +25,10 @@ def auto_stop_factory(args):
     model = '{0}.{1}'.format(args.auto_stop_source, args.auto_stop_name)
     logger.info('auto_stop model: {}, arch: {}'.format(model, args.auto_stop_arch))
     return eval('{}(args)'.format(model))
+    
 
+def auto_stop_arg_factory(parser, source, name):
+    auto_stop_arg = '{0}.{1}Arg'.format(source, name)
+    logger.info('auto_stop_arg: {}'.format(auto_stop_arg))
+    #import pdb; pdb.set_trace()
+    return eval('{}(parser)'.format(auto_stop_arg)) 

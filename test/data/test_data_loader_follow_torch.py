@@ -1,6 +1,6 @@
 # coding=utf-8
-from torch.utils.data.dataset import Dataset
-from torch.utils.data.distributed import DistributedSampler
+from Putil.data.torch_151_data.dataset import Dataset
+from Putil.data.torch_151_data.distributed import DistributedSampler
 import Putil.base.logger as plog
 import numpy as np
 plog.PutilLogConfig.config_format(plog.FormatRecommend)

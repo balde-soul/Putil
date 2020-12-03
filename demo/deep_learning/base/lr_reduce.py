@@ -20,4 +20,11 @@ def DefaultLrReduce(args):
       args.lr_reduce_lr_min
       args.lr_reduce_mode
     '''
-    return _DefaultLrReduce.generate_LrReduce_from_args(args)
+    def generate_default_lr_reduce():
+        return _DefaultLrReduce.generate_LrReduce_from_args(args)
+    return generate_default_lr_reduce
+
+
+def DefaultLrReduceArg(parser):
+    _DefaultLrReduce.generate_args(parser)
+    pass

@@ -9,6 +9,14 @@ logger.setLevel(plog.DEBUG)
 from Putil.trainer.auto_save import auto_save as AutoSave
 from Putil.trainer.auto_save import AutoSave as _DefaultAutoSave
 
+
+class DefaultAutoSave:
+    def __init__(self):
+        pass
+    
+    def __call__(self, args):
+        pass
+
 def DefaultAutoSave(args):
     '''
      @param[in] args
@@ -20,4 +28,10 @@ def DefaultAutoSave(args):
       args.auto_save_limit_line
       args.auto_save_history_amount
     '''
-    return _DefaultAutoSave.generate_AutoSave_from_args(args)
+    def generate_default_auto_save():
+        return _DefaultAutoSave.generate_AutoSave_from_args(args)
+    return generate_default_auto_save
+
+
+def DefaultAutoSaveArg(parser):
+    _DefaultAutoSave.generate_args(parser)
