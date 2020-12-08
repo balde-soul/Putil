@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('data_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.dataset as standard
-from ..util import dataset as project
+from util import dataset as project
 
 
 def dataset_factory(args):

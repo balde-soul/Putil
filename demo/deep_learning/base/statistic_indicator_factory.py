@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('statistic_indicator_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.statistic_indicator as standard
-from ..util import statistic_indicator as project
+from util import statistic_indicator as project
 
 
 def statistic_indicator_factory(args):

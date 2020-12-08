@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('model_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.model as standard
-from ..util import model as project
+from util import model as project
 
 
 def model_factory(args):

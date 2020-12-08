@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('data_sampler_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 from Putil.demo.deep_learning.base import data_sampler as standard
-from ..util import data_sampler as project
+from util import data_sampler as project
 
 
 def data_sampler_factory(args):

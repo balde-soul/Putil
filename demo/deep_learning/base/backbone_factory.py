@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('backbone_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.backbone as standard
-from ..util import backbone as project
+from util import backbone as project
 
 
 def backbone_factory(args):

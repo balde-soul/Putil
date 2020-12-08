@@ -3,7 +3,7 @@ import Putil.base.logger as plog
 logger = plog.PutilLogConfig('optimization_factory').logger()
 logger.setLevel(plog.DEBUG)
 from Putil.demo.deep_learning.base import optimization as standard
-from ..util import optimization as project
+from util import optimization as project
 
 
 def optimization_factory(args):

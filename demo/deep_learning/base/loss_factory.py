@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('loss_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.loss as standard
-from ..util import loss as project
+from util import loss as project
 
 
 def loss_factory(args):

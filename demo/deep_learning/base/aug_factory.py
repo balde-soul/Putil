@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('aug_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.aug as standard
-from ..util import aug as project
+from util import aug as project
 
 
 def aug_factory(args):

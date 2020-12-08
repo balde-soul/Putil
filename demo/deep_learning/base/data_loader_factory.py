@@ -1,7 +1,7 @@
 # conding=utf-8
 import Putil.base.logger as plog
 from Putil.demo.deep_learning.base import data_loader as standard
-from ..util import data_loader as project
+from util import data_loader as project
 
 logger = plog.PutilLogConfig('data_loader_factory').logger()
 logger.setLevel(plog.DEBUG)

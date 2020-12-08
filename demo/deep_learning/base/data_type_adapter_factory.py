@@ -5,7 +5,7 @@ logger = plog.PutilLogConfig('data_type_adapter_factory').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.data_type_adapter as standard
-from ..util import data_type_adapter as project
+from util import data_type_adapter as project
 
 
 def data_type_adapter_factory(args):
