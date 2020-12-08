@@ -77,9 +77,12 @@ def test(epoch):
     pass
 
 
-def run_evaluate():
+def run_evaluate(model, data_loader):
     for index, datas in evaluate_loader:
-        fit
+        data_input = fit_data_to_input(datas)
+        output = model(data_input, args)
+        result = fit_decode_to_result(output)
+        data_loader.dataset.save
         pass
     pass
 
