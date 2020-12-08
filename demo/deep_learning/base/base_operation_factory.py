@@ -1,6 +1,7 @@
 # coding=utf-8
 import copy
 import Putil.demo.deep_learning.base.base_operation as standard
+import util.base_operation as project
 
 
 def checkpoint_factory(args):
@@ -27,6 +28,9 @@ def get_models_factory(args):
 
 
 def load_saved_factory(args):
+    temp_args = copy.deepcopy(args)
+    def generate_load_saveed_func():
+        return eval('{}.{}_load_saved'.format(temp_args))
     return eval('{}_load_saved'.format(args.framework))
 
 

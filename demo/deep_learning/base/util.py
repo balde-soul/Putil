@@ -113,8 +113,8 @@ def torch_checkpoint(epoch, full_path, *kargs, **kwargs):
     pass
 
 
-def torch_load_saved(epoch, full_path):
-    model = torch.load(os.path.join(full_path, torch_generate_save_name(epoch)))
+def torch_load_saved(epoch, full_path, *args, **kwargs):
+    model = torch.load(os.path.join(full_path, torch_generate_save_name(epoch)), **kwargs)
     return model
 
 

@@ -77,6 +77,17 @@ def test(epoch):
     pass
 
 
+def run_evaluate():
+    for index, datas in evaluate_loader:
+        fit
+        pass
+    pass
+
+
+def run_test():
+    pass
+
+
 if __name__ == '__main__':
     import Putil.base.arg_base as pab
     import Putil.base.save_fold_base as psfb
@@ -304,6 +315,7 @@ if __name__ == '__main__':
     args.fit_data_to_input_name = fit_data_to_input_name
     args.fit_decode_to_result_name = fit_decode_to_result_name
     args.model_name = model_name
+    from Putil.demo.deep_learning.base import util; train_stage = util.train_stage; evaluate_stage = util.evaluate_stage; test_stage = util.test_stage
     import Putil.base.logger as plog
     reload(plog)
     import Putil.demo.deep_learning.base.horovod as Horovod
@@ -318,7 +330,7 @@ if __name__ == '__main__':
             print('waiting for remote attach')
             ptvsd.wait_for_attach()
 
-    if hvd.rank() == 0:
+    if hvd.rank() == 0 and train_stage(args):
         bsf = psfb.BaseSaveFold(
             use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
         bsf.mkdir(args.save_dir)
@@ -326,7 +338,8 @@ if __name__ == '__main__':
     log_level = plog.LogReflect(args.Level).Level
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
-    plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, 'log'), mode='a')
+    plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
+        'log' if train_stage(args) else 'evaluate.log' if evaluate_stage(args) else 'test.log'), mode='a')
     plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
     root_logger = plog.PutilLogConfig('train').logger()
     root_logger.setLevel(log_level)
@@ -351,23 +364,21 @@ if __name__ == '__main__':
     reload(FitDataToInputFactory); FitDataDataToInput = FitDataToInputFactory.fit_data_to_input_factory
     reload(FitDecodeToResultFactory); FitDecodeToResult = FitDecodeToResultFactory.fit_decode_to_result_factory
     reload(ModelFactory); Model = ModelFactory.model_factory
+    reload(util); train_stage = util.train_stage; evaluate_stage = util.evaluate_stage; test_stage = util.test_stage
     # TODO: third party import
     # TODO: set the deterministic 随机确定性可复现
     # make the result dir
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
     from Putil.demo.deep_learning.base.util import Stage as Stage
     from .util.train_evaluate_common import train_evaluate_common
-    from Putil.demo.deep_learning.base.util import train_stage
-    from Putil.demo.deep_learning.base.util import evaluate_stage
-    from Putil.demo.deep_learning.base.util import test_stage
     from Putil.demo.deep_learning.base.base_operation_factory import load_saved_factory, \
         load_checkpointed_factory, checkpoint_factory, save_factory, deploy_factory
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
     # TODO: set the args item
     ArgsSave(args, os.path.join(args.save_dir, 'args')) # after ArgsSave is called, the args should not be change
-    checkpoint = checkpoint_factory(args)()
-    save = save_factory(args)()
-    deploy = deploy_factory(args)()
+    checkpoint = checkpoint_factory(args)() if train_stage(args) else None
+    save = save_factory(args)() if train_stage(args) else None
+    deploy = deploy_factory(args)() if train_stage else None
     load_saved = load_saved_factory(args)()
     load_checkpointed = load_checkpointed_factory(args)()
 
@@ -403,37 +414,38 @@ if __name__ == '__main__':
     if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
             mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
         kwargs['multiprocessing_context'] = 'forkserver'
-    # : build the backbone
-    backbone = BackboneFactory.backbone_factory(args)()
-    # : build backend
-    backend = BackendFactory.backend_factory(args)()
-    # : build decode
-    decode = DecodeFactory.decode_factory(args)()
-    # : build the loss
-    loss = LossFactory.loss_factory(args)()
-    # : build the indicator
-    train_indicator = IndicatorFactory.indicator_factory(args)()
-    evaluate_indicator = IndicatorFactory.indicator_factory(args)()
-    # : build the statistic indicator
-    statistic_indicator = StatisticIndicator(args)()
-    # TODO: build the optimization
-    optimization = OptimizationFactory.optimization_factory(args)(backbone.parameters())
-    # Horovod: broadcast parameters & optimizer state.
-    hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
-    hvd.broadcast_optimizer_state(optimizer, root_rank=0)
-    # Horovod: (optional) compression algorithm.
-    compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
-    # Horovod: wrap optimizer with DistributedOptimizer.
-    optimizer = hvd.DistributedOptimizer(optimizer, \
-        named_parameters=model.named_parameters(), \
-            compression=compression, \
-                op=hvd.Adasum if args.use_adasum else hvd.Average)
-    #  : the auto save
-    auto_save = AutoSave(args)()
-    #  : the auto stop
-    auto_stop = AutoStop(args)()
-    #  : the lr reduce
-    lr_reduce = LrReduce(args)()
+    if train_stage(args):
+        # : build the backbone
+        backbone = BackboneFactory.backbone_factory(args)()
+        # : build backend
+        backend = BackendFactory.backend_factory(args)()
+        # : build decode
+        decode = DecodeFactory.decode_factory(args)()
+        # : build the loss
+        loss = LossFactory.loss_factory(args)()
+        # : build the indicator
+        train_indicator = IndicatorFactory.indicator_factory(args)()
+        evaluate_indicator = IndicatorFactory.indicator_factory(args)()
+        # : build the statistic indicator
+        statistic_indicator = StatisticIndicator(args)()
+        # TODO: build the optimization
+        optimization = OptimizationFactory.optimization_factory(args)(backbone.parameters())
+        # Horovod: broadcast parameters & optimizer state.
+        hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
+        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+        # Horovod: (optional) compression algorithm.
+        compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+        # Horovod: wrap optimizer with DistributedOptimizer.
+        optimizer = hvd.DistributedOptimizer(optimizer, \
+            named_parameters=model.named_parameters(), \
+                compression=compression, \
+                    op=hvd.Adasum if args.use_adasum else hvd.Average)
+        #  : the auto save
+        auto_save = AutoSave(args)()
+        #  : the auto stop
+        auto_stop = AutoStop(args)()
+        #  : the lr reduce
+        lr_reduce = LrReduce(args)()
     encode = EncodeFactory.encode_factory(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)
@@ -473,6 +485,7 @@ if __name__ == '__main__':
         test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
     if args.cuda:
         backbone.cuda()
+        backend.cuda()
         decode.cuda()
         loss.cuda()
         indicator.cuda()
@@ -490,18 +503,19 @@ if __name__ == '__main__':
         MainLogger.info('run test') 
         assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
         MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-        backbone = load_saved(args.weight_epoch, args.weight_path)
-        test()
+        model = load_saved(args.weight_epoch, args.weight_path)
+        run_test()
     elif evaluate_stage(args):
         MainLogger.info('run evaluate')
         assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
         MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-        backbone = load_saved(args.weight_epoch, args.weight_path)
-        evaluate(epoch)
+        model = load_saved(args.run_evaluate_epoch, args.run_evaluate_full_path, map_location='cuda:{}'.format(args.run_evaluate_gpu))
+        run_evaluate()
     elif train_stage(args):
         if args.weight_path != '' and args.weight_epoch is not None:
             MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-            backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone, optimization, auto_stop, auto_save, lr_reduce)
+            backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone=backbone, backend=backend, \
+                optimization=optimization, auto_stop=auto_stop, auto_save=auto_save, lr_reduce=lr_reduce)
         for epoch in range(0, args.epochs):
             train_ret = train(epoch)
             if train_ret[0] is True:
