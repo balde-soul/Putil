@@ -100,7 +100,7 @@ class _resnet(Backbone, Module):
                 pass
             self._backbone = _resnet(self._backbone_arch, resnet_block[self._backbone_arch], \
                 layers=resnet_layer[self._backbone_arch][0: self._backbone_downsample_rate], \
-                self._backbone_pretrained, True, self._backbone_weight_path, **param)
+                pretrained=self._backbone_pretrained, progress=True, model_dir=self._backbone_weight_path, **param)
             pass
         else:
             raise NotImplementedError('custom resnet is not implemented')

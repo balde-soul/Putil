@@ -19,7 +19,7 @@ def common_dataset_arg(parser):
     parser.add_argument('--sub_data', type=int, nargs='+', default=None, \
         help='list with int, specified the sub dataset which would be used in train evaluate, '
         'default None(whole dataset)')
-    parser.add_argument('--remain_data_as_negative', type=bool, action='store_true', \
+    parser.add_argument('--remain_data_as_negative', action='store_true', \
         help='if set, the data beside $sub_data would be use as negative, otherwise the data beside' \
             '$sub_data would be abandon')
     parser.add_argument('--fake_aug', action='store', type=int, default=0, \
