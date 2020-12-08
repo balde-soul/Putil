@@ -1,4 +1,6 @@
 # coding=utf-8
+import copy
+import Putil.demo.deep_learning.base.base_operation as standard
 
 
 def checkpoint_factory(args):
@@ -6,7 +8,14 @@ def checkpoint_factory(args):
 
 
 def save_factory(args):
-    pass
+    temp_args = copy.deepcopy(args)
+    def generate_save_func():
+        if temp_args.framework == 'torch':
+            return standard.torch_save
+        else:
+            raise NotImplementedError('not implemented')
+        pass
+    return generate_save_func
 
 
 def deploy_factory(args):

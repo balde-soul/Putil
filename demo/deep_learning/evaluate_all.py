@@ -20,18 +20,19 @@ from Putil.demo.deep_learning.base.util import Stage
 
 train_args = args_extract(os.path.join(args.target_path, 'args'))
 
-args.
-dataset = Dataset(args)
-data_sampler = DataSampler(args)(dataset)
-data_loader = DataLoader(args)(dataset, data_sampler, Stage.Evaluate)
+train_args.remain_data_as_negative = True
+
+dataset = Dataset(train_args)
+data_sampler = DataSampler(train_args)(dataset)
+data_loader = DataLoader(train_args)(dataset, data_sampler, Stage.Evaluate)
 
 fit_data_to_input = FitDataToInput(train_args)()
 fit_decode_to_result = FitDecodeToResult(train_args)()
 
-target_models = base_operation_factory.get_models_factory(args)(args.traget_path)
+target_models = base_operation_factory.get_models_factory(train_args)(args.traget_path)
 epochs = target_models['epochs']
-load_saved_func = base_operation_factory.load_saved_factory(args)
-generate_save_name_func = base_operation_factory.generate_save_name_factory(args)
+load_saved_func = base_operation_factory.load_saved_factory(train_args)
+generate_save_name_func = base_operation_factory.generate_save_name_factory(train_args)
 
 for epoch in epochs:
     model = load_saved_func(epoch, args.target_path)
@@ -39,5 +40,7 @@ for epoch in epochs:
         input_data = fit_data_to_input(datas) 
         decode = model(input_data)
         result = fit_decode_to_result(decode)
+        # process the result
         dataset.save_result(result)
+        pass
     pass

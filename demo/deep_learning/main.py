@@ -1,4 +1,5 @@
 # coding=utf-8
+from colorama import Fore
 import sys
 import json
 import os
@@ -6,41 +7,70 @@ from enum import Enum
 import torch
 
 
+def do_save():
+    MainLogger.info('run checkpoint') if args.debug else None
+    checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
+        auto_stop=auto_stop, optimization=optimization)
+    MainLogger.info('run save') if args.debug else None
+    save(TemplateModelDecodeCombineT, epoch, args.save_dir, backbone, backend, decode)
+    MainLogger.info('run deploy') if args.debug else None
+    deploy(TemplateModelDecodeCombineT, \
+        torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda(), \
+            epoch, args.save_dir, backbone, backend, decode)
+
+def do_epoch_end_process():
+    indicator = all_reduce(ret['eloss'], 'train_indicator')
+    save = auto_save.save_or_not(indicator)
+    if save or args.debug:
+        # :save the backbone in rank0
+        do_save() if hvd.rank() == 0 else None
+    # :stop or not
+    MainLogger.info('run ')
+    stop = auto_stop.stop_or_not(indicator)
+    # :lr_reduce
+    _reduce = lr_reduce.reduce_or_not(indicator)
+    # TODO: change the lr
+    optimizer.__dict__['param_group'][0]['lr'] = lr_reduce.reduce(optimization.__dict__['param_groups'][0]['lr']) if _reduce \
+        else optimization.__dict__['param_groups'][0]['lr']
+    if hvd.rank() == 0:
+        writer.add_scalar('lr', lr_reduce.LrNow, global_step=epoch * len(train_loader.dataset))
+    return stop, lr_reduce.LrNow, save
+
+
 def train(epoch):
-    train_evaluate_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
+    ret = train_evaluate_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
          loss, optimization, indicator, statistic_indicator, train_loader, MainLogger)
-    train_evaluate_common(Stage.Train, epoch, train_loader)
+    if args.off_evaluate:
+        if args.debug:
+            if epoch == 0:
+                return False, 
+            elif epoch == 1:
+                do_epoch_end_process()
+                return False,
+            else:
+                raise RuntimeError('all_process_test would only run train two epoch')
+        else:
+            return do_epoch_end_process()
+    else:
+        return False,
 
 
 def evaluate(epoch):
-    train_evaluate_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
+    ret = train_evaluate_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             indicator, statistic_indicator, train_loader, MainLogger)
-    if evaluate_stage(args):
-        # TODO: do all reduce of indicator
-        indicator = all_reduce(ret['eloss'], 'indicator')
-        #indicator = hvd.allreduce(indicator)
-        if auto_save.save_or_not(indicator) or args.only_test or args.debug:
-            # :save the backbone in rank0
-            if hvd.rank() == 0:
-                MainLogger.info('run checkpoint')
-                checkpoint()
-                # :deploy use on sample as the example input
-                MainLogger.info('run deploy')
-                checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
-                    auto_stop=auto_stop, optimization=optimization)
-                save(backbone, decode, TemplateModelDecodeCombineT, epoch, args.save_dir)
-                deploy(backbone, decode, TemplateModelDecodeCombineT, \
-                    torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda())
-            # :run the test, if saved
-            MainLogger.info('run test')
-            test() if args.test_off is False else MainLogger.info('test_off, do not run test')
-        # :stop or not
-        stop = auto_stop.stop_or_not(indicator) if args.debug == False else (False if epoch == 0 else True)
-        # :lr_reduce
-        lr = lr_reduce.reduce_or_not(indicator)
-        # TODO:
-        return stop, lr
+    if train_stage(args):
+        if args.debug:
+            if epoch == 0:
+                # 当在all_process_test时，第二个epoch返回stop为True
+                do_epoch_end_process()
+                return False, None, True
+            else:
+                # 当在all_process_test时，第一个epoch返回stop为True
+                return True, None, False
+        else:
+            return do_epoch_end_process()
+    return False, None, False
 
 
 def test(epoch):
@@ -120,6 +150,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import data_type_adapter_factory as DataTypeAdapterFactory
     from Putil.demo.deep_learning.base import fit_data_to_input_factory as FitDataToInputFactory
     from Putil.demo.deep_learning.base import fit_decode_to_result_factory as FitDecodeToResultFactory
+    from Putil.demo.deep_learning.base import model_factory as ModelFactory
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
@@ -139,6 +170,7 @@ if __name__ == '__main__':
     data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
+    model_source = os.environ.get('model_source', 'standard')
     auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
@@ -158,6 +190,7 @@ if __name__ == '__main__':
     data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
+    model_name = os.environ.get('model_name', 'DefaultModel')
     AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_source, auto_save_name)
     AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
@@ -175,6 +208,11 @@ if __name__ == '__main__':
     DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
     FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
+    ModelFactory.model_arg_factory(ppa.parser, model_source, model_name)
+    # data setting
+    DatasetFactory.dataset_arg_factory(ppa.parser, dataset_source, dataset_name)
+    ## decode setting
+    DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
     # : the base information set
     ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
         help='specify the framework used')
@@ -183,10 +221,6 @@ if __name__ == '__main__':
         help='setup with remote debug(blocked while not attached) or not')
     ppa.parser.add_argument('--frame_debug', action='store_true', default=False, \
         help='run all the process in two epoch with tiny data')
-    # data setting
-    DatasetFactory.dataset_arg_factory(ppa.parser, dataset_source, dataset_name)
-    ## decode setting
-    DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
     # train evaluate test setting
     ### ~off_train and ~off_evaluate: run train stage with evaluate
     ### ~off_train and off_evaluate: run train stage without evaluate
@@ -249,6 +283,7 @@ if __name__ == '__main__':
     args.data_type_adapter_source = data_type_adapter_source
     args.fit_data_to_input_source = fit_data_to_input_source
     args.fit_decode_to_result_source = fit_decode_to_result_source
+    args.model_source = model_source
     args.auto_save_name = auto_save_name
     args.auto_stop_name = auto_stop_name
     args.lr_reduce_name = lr_reduce_name
@@ -268,7 +303,12 @@ if __name__ == '__main__':
     args.data_type_adapter_name = data_type_adapter_name
     args.fit_data_to_input_name = fit_data_to_input_name
     args.fit_decode_to_result_name = fit_decode_to_result_name
+    args.model_name = model_name
+    import Putil.base.logger as plog
+    reload(plog)
+    import Putil.demo.deep_learning.base.horovod as Horovod
     # the method for remote debug
+    hvd = Horovod.horovod(args)
     if args.remote_debug:
         import ptvsd
         host = '127.0.0.1'
@@ -278,8 +318,6 @@ if __name__ == '__main__':
             print('waiting for remote attach')
             ptvsd.wait_for_attach()
 
-    import Putil.base.logger as plog
-    reload(plog)
     if hvd.rank() == 0:
         bsf = psfb.BaseSaveFold(
             use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
@@ -310,6 +348,9 @@ if __name__ == '__main__':
     reload(OptimizationFactory); Optimization = OptimizationFactory.optimization_factory
     reload(EncodeFactory); Encode = EncodeFactory.encode_factory
     reload(DecodeFactory); Decode = DecodeFactory.decode_factory
+    reload(FitDataToInputFactory); FitDataDataToInput = FitDataToInputFactory.fit_data_to_input_factory
+    reload(FitDecodeToResultFactory); FitDecodeToResult = FitDecodeToResultFactory.fit_decode_to_result_factory
+    reload(ModelFactory); Model = ModelFactory.model_factory
     # TODO: third party import
     # TODO: set the deterministic 随机确定性可复现
     # make the result dir
@@ -324,21 +365,11 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
     # TODO: set the args item
     ArgsSave(args, os.path.join(args.save_dir, 'args')) # after ArgsSave is called, the args should not be change
-
-    class TemplateModelDecodeCombineT(TemplateModelDecodeCombine):
-        def __init__(self, backbone, backend, decode):
-            pass
-
-        def forward(self, x):
-            raise NotImplementedError('this is not implemented')
-            pass
-        pass
-
-    checkpoint = checkpoint_factory(args)
-    save = save_factory(args)
-    deploy = deploy_factory(args)
-    load_saved = load_saved_factory(args)
-    load_checkpointed = load_checkpointed_factory(args)
+    checkpoint = checkpoint_factory(args)()
+    save = save_factory(args)()
+    deploy = deploy_factory(args)()
+    load_saved = load_saved_factory(args)()
+    load_checkpointed = load_checkpointed_factory(args)()
 
     if hvd.rank() == 0:
         writer = SummaryWriter(args.save_dir)
@@ -390,6 +421,13 @@ if __name__ == '__main__':
     # Horovod: broadcast parameters & optimizer state.
     hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+    # Horovod: (optional) compression algorithm.
+    compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+    # Horovod: wrap optimizer with DistributedOptimizer.
+    optimizer = hvd.DistributedOptimizer(optimizer, \
+        named_parameters=model.named_parameters(), \
+            compression=compression, \
+                op=hvd.Adasum if args.use_adasum else hvd.Average)
     #  : the auto save
     auto_save = AutoSave(args)()
     #  : the auto stop
@@ -400,6 +438,7 @@ if __name__ == '__main__':
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)
     fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)
+    template_model = Model(args)
     dataset_train = None; train_sampler = None; evaluate_loader = None
     if args.train_off is not True:
         MainLogger.info('start to generate the train dataset data_sampler data_loader')
@@ -447,9 +486,8 @@ if __name__ == '__main__':
         with open(os.path.join(bsf.FullPath, 'param.json'), 'w') as fp:
             fp.write(json.dumps(args.__dict__, indent=4))
         writer = SummaryWriter(bsf.FullPath)
-    
     if test_stage(args):
-        MainLogger.info('run test')
+        MainLogger.info('run test') 
         assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
         MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
         backbone = load_saved(args.weight_epoch, args.weight_path)
@@ -461,22 +499,24 @@ if __name__ == '__main__':
         backbone = load_saved(args.weight_epoch, args.weight_path)
         evaluate(epoch)
     elif train_stage(args):
-        if args.weight != '':
+        if args.weight_path != '' and args.weight_epoch is not None:
             MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
             backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone, optimization, auto_stop, auto_save, lr_reduce)
         for epoch in range(0, args.epochs):
             train_ret = train(epoch)
+            if train_ret[0] is True:
+                break
             global_step = (epoch + 1) * len(train_loader)
             # : run the val
-            if ((epoch + 1) % args.evaluate_interval == 0) or (args.debug):
-                if args.evaluate_off is False:
-                    evaluate_ret = evaluate(epoch) 
-                    if evaluate_ret[0] is True:
-                        break
-                    pass
-                else:
-                    MainLogger.info('evaluate_off, do not run the evaluate')
-                    pass
+            if ((epoch + 1) % args.evaluate_interval == 0) or (args.debug) and args.evaluate_off is False:
+                evaluate_ret = evaluate(epoch) 
+                if evaluate_ret[0] is True:
+                    break
+                if evaluate_ret[2] is True and args.test_off is False:
+                    MainLogger.info('run test')
+                    test() if args.test_off is False else MainLogger.info('test_off, do not run test')
+            else:
+                MainLogger.info('evaluate_off, do not run the evaluate')
                 pass
             pass
         pass

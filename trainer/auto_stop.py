@@ -98,6 +98,7 @@ class AutoStop:
             AutoStopLogger.info(Fore.GREEN + 'not improve for {0}, auto stop the training'.format(self._patience) + Fore.RESET)
             return True
         else:
+            AutoStopLogger.info(Fore.GREEN + 'NOT STOP' + Fore.RESET)
             return False
         pass
 

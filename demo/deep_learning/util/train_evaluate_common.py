@@ -86,12 +86,16 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
             # time
             batch_start = time.time()
             # do the training
+            logger.debug('zero grad') if train_stage(args) else None
             optimizer.zero_grad() if train_stage(args) else None
             # : run the backbone get the output TODO:
+            logger.debug('run backbone')
             output = backbone(backbone_input)
             # : run the backend get the output
+            logger.debug('run backend')
             output = backend(output)
             # : run the loss function get the ret
+            logger.debug('run loss') if train_stage(args) else None
             losses = loss(datas, output) if train_stage(args) else None
             loss_scalar_collection.batch_update(losses) if train_stage(args) else None
             _loss = losses[loss.total_loss_name]
@@ -123,7 +127,7 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
                     ## reduce the target_indicator
                     if hvd.rank() == 0:
                         # :decode
-                        pre_output = decode(datas, output)
+                        pre_output = decode(fit_data_to_input(datas), output)
                         gt_output = decode(datas)
                         # extract the target data
                         # TODO: do the summary use pre_output and gt_output
@@ -149,7 +153,8 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
         loss_epoch_average = loss_scalar_collection.epoch_average()
         scalar_log(indicator_epoch_average.update(loss_epoch_average))
         # : do the summary of this epoch
-        [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in indicator_epoch_average]
-        [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in loss_epoch_average]
+        if hvd.rank() == 0:
+            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in indicator_epoch_average]
+            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in loss_epoch_average]
         pass
     return indicator_epoch_average.update(loss_epoch_average)

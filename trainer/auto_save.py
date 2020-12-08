@@ -158,24 +158,25 @@ class AutoSave(auto_save):
         pass
 
     def save_or_not(self, indicator):
-        AutoSaveLogger.info(Fore.GREEN + '-->SaveOrNot' + Fore.RESET)
+        #AutoSaveLogger.info(Fore.GREEN + '-->SaveOrNot' + Fore.RESET)
         if self._best is None:
             self._best = indicator
             AutoSaveLogger.info(Fore.YELLOW + 'save at first val' + Fore.RESET)
-            AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
+            #AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
             return True
         else:
             if ((self._best - indicator) * self._direction) <= -self._delta:
                 AutoSaveLogger.info(Fore.GREEN + 'improve from {0} to {1}, save weight and collection to collection'.format(self._best, indicator)+ Fore.RESET)
                 self._best_collection.append(self._best)
                 self._best = indicator
-                AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
+                #AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
                 #if self._base_line is not None:
                 #    if self._best > self._base_line:
                 #        if self._best < self._limit_line
                 return True
             else:
-                AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
+                AutoSaveLogger.info(Fore.GREEN + 'NOT SAVE' + Fore.RESET)
+                #AutoSaveLogger.info(Fore.GREEN + 'SaveOrNot-->' + Fore.RESET)
                 return False
             pass
         pass

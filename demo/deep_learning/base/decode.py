@@ -39,6 +39,16 @@ class Decode:
     pass
 
 
+def CenterNetDecode(args):
+    pass
+
+
+def CenterNetDecodeArg(parser):
+    parser.add_argument('--center_net_decode_threshold', type=float, default=0.1, action='store', \
+        )
+    pass
+
+
 class _DefaultDecode(Decode, Module):
     def __init__(self, args):
         Decode.__init__(self, args)
@@ -46,13 +56,11 @@ class _DefaultDecode(Decode, Module):
         pass
     pass
 
-
 def DefaltDecode(args):
     temp_args = copy.deepcopy(args)
     def generate_default_decode():
         return _DefaultDecode(args)
     return generate_default_decode
-
 
 def DefaultDecodeArg(parser):
     pass

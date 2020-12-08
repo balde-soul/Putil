@@ -17,8 +17,8 @@ def torch_generate_model_element(epoch):
      @brief use the element from the result of get_all_model to generate the target model name
      @ret dict represent the information useful in evaluate and test
     '''
-    return {'checkpoint': generate_checkpoint_name(epoch), 'deploy': generate_deploy_name(epoch), \
-        'save': generate_save_name(epoch)}
+    return {'checkpoint': torch_generate_checkpoint_name(epoch), 'deploy': torch_generate_deploy_name(epoch), \
+        'save': torch_generate_save_name(epoch)}
 
 def torch_generate_model_epoch(file_name):
     return file_name.split('.')[0].split('-')[0]
@@ -44,12 +44,12 @@ def torch_get_all_model(target_path):
     files = os.listdir()
     for _file in files:
         if target_model_filter(_file) is True:
-            epochs.append(int(generate_model_epoch(_file)))
+            epochs.append(int(torch_generate_model_epoch(_file)))
         else:
             continue
     epochs = sorted(temp_epochs)
     for epoch in epochs[::-1]:
-        me = generate_model_element(epoch)
+        me = torch_generate_model_element(epoch)
         elements.append(me)
     return {'epochs': epochs, 'elements': elements}
 
@@ -59,14 +59,14 @@ def torch_generate_deploy_name(epoch):
 
 
 def torch_generate_checkpoint_name(epoch):
-    return '{}.pkl'.format(epoch)
+    return '{}-checkpoint.pkl'.format(epoch)
 
 
 def torch_generate_save_name(epoch):
-    return '{}.pth'.format(epoch)
+    return '{}-save.pth'.format(epoch)
 
 
-def torch_deploy(model, decode, template_model_decode_combine, input_example, epoch, full_path):
+def torch_deploy(template_model_decode_combine, input_example, epoch, full_path, *modules, **kwargs):
     # :use JIT to deploy a model
     '''
      @brief deploy model using in other language, such as c++, lua
@@ -78,12 +78,12 @@ def torch_deploy(model, decode, template_model_decode_combine, input_example, ep
      @param[in] epoch
      @param[in] full_path
     '''
-    traced_script_module = torch.jit.trace(template_model_decode_combine(model, decode), input_example)
-    traced_script_module.save(os.path.join(full_path, generate_deploy_name(epoch)))
+    traced_script_module = torch.jit.trace(template_model_decode_combine(*modules, **kwargs), input_example)
+    traced_script_module.save(os.path.join(full_path, torch_generate_deploy_name(epoch)))
     pass
 
 
-def torch_save(model, decode, template_model_decode_combine, epoch, full_path):
+def torch_save(template_model_decode_combine, epoch, full_path, *modules, **kwargs):
     '''
      @brief deploy model using in evaluate stage
      @note use torch.save to save the model, we should combine the model and decode in to one Module
@@ -93,7 +93,8 @@ def torch_save(model, decode, template_model_decode_combine, epoch, full_path):
      @param[in] epoch
      @param[in] full_path
     '''
-    torch.save(template_model_decode_combine(model, decode), os.path.join(full_path, generate_save_name(epoch)))
+    torch.save(template_model_decode_combine(*modules, **kwargs), \
+        os.path.join(full_path, torch_generate_save_name(epoch)))
     pass
 
 
@@ -108,17 +109,17 @@ def torch_checkpoint(epoch, full_path, *kargs, **kwargs):
      @param[in] full_path
     '''
     state_dict = {key: value.state_dict() for key, value in kwargs}
-    torch.save(state_dict, os.path.join(full_path, generate_checkpoint_name(epoch)))
+    torch.save(state_dict, os.path.join(full_path, torch_generate_checkpoint_name(epoch)))
     pass
 
 
 def torch_load_saved(epoch, full_path):
-    model = torch.load(os.path.join(full_path, generate_save_name(epoch)))
+    model = torch.load(os.path.join(full_path, torch_generate_save_name(epoch)))
     return model
 
 
 def torch_load_checkpointed(epoch, full_path, *target_modules):
-    state_dict = torch.load(os.path.join(full_path, generate_checkpoint_name(epoch)))
+    state_dict = torch.load(os.path.join(full_path, torch_generate_checkpoint_name(epoch)))
     [eval('module.load_state_dict(state_dict)') for module in target_modules.items()]
 
 

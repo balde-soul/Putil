@@ -14,6 +14,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
+import torchvision.models.resnet
 
 BN_MOMENTUM = 0.1
 

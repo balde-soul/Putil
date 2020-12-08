@@ -10,6 +10,14 @@ from torchvision.models.utils import load_state_dict_from_url
 from torch.autograd import Variable
 
 
+import Putil.base.logger as plog
+
+vgg_logger = plog.PutilLogConfig('vgg').logger()
+vgg_logger.setLevel(plog.DEBUG)
+VGGLogger = vgg_logger.getChild('VGG')
+VGGLogger.setLevel(plog.DEBUG)
+
+
 def make_layers(cfg, downsample, batch_norm=False):
     resolution_output = []
     layers = []
@@ -63,6 +71,7 @@ class VGG(Module):
         self.features, self._resolution_output, self._final_cfg = make_layers(
             VGG.vgg_arch_url_dic[vgg_arch]['cfg'], downsample)
         if load_pretrained:
+            VGGLogger.info('load pretrained: path: {} url: {}'.format(model_dir, VGG.vgg_arch_url_dic[vgg_arch]['url']))
             state_dict = load_state_dict_from_url(VGG.vgg_arch_url_dic[vgg_arch]['url'], progress=True, model_dir=model_dir)
             self.load_state_dict(state_dict, strict=False)
     
@@ -77,16 +86,3 @@ class VGG(Module):
     def final_cfg(self):
         return self._final_cfg
     pass
-
-
-#model = VGG(VGG.VGGArch.vgg11, 4, './', False)
-#piter = model.named_parameters()
-#while True:
-#    try:
-#        p = piter.__next__()
-#        print(model.named_parameters().__next__()[0])
-#    except Exception as e:
-#        print(e)
-#        break
-#    pass
-#print(model.resolution_output)
