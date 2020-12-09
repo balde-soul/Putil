@@ -1,3 +1,7 @@
+# 需要进行运行的点：
+# first command: train->save,checkpoint,deploy->lr_reduce->not stop->evaluate->test->
+# train->no lr_reduce->not stop->evaluate->save,checkpoint,deploy->lr_reduce->stop->
+# load checkpoint->first command content->load saved->run evaluate->load save->test
 # 获取shell参数
 usage()
 {
@@ -7,13 +11,14 @@ cat << EOF
     OPTIONS:
        -g       specify the gpus, seperate by ,（指定gpus，使用逗号分隔）
        -w       specify the number of worker for every dataset,（指定数据进程数）
+       -b       specify the batch size
        --help   Usage
 EOF
 }
-batch_size=64
+batch_size=2
+gpus=0
 n_worker=1
 device_amount=1
-gpus=0 #
 while getopts "g:b:w:" OPT; do
     case $OPT in
         g) 
@@ -72,7 +77,8 @@ aug_names= \
 data_type_adapter_name= \
 fit_data_to_input_name= \
 fit_decode_to_result_name= \
-horovodrun -np $device_amount -H 127.0.0.1:$device_amount --start-timeout=100 python model/main.py \
+horovodrun -np 2 -H 127.0.0.1:2 --start-timeout=100 python model/main.py \
 --batch_size=$batch_size \
 --n_worker_per_dataset=$n_worker \
 --gpus $gpus \
+--debug

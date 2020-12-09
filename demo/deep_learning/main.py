@@ -77,17 +77,54 @@ def test(epoch):
     pass
 
 
-def run_evaluate(model, data_loader):
-    for index, datas in evaluate_loader:
+def run_test(model, data_loader, fit_data_to_input, fit_decode_to_result):
+    model.eval()
+    with torch.no_grad():
+        for index, datas in data_loader:
         data_input = fit_data_to_input(datas)
         output = model(data_input, args)
         result = fit_decode_to_result(output)
-        data_loader.dataset.save
+        data_loader.dataset.save_result(prefix='test', save=False if index != len(data_loader) else True)
         pass
     pass
 
 
-def run_test():
+def run_test_stage():
+    MainLogger.info('run test') 
+    assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
+    MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+    model = load_saved(args.weight_epoch, args.weight_path)
+    run_test(model, test_loader, fit_data_to_input, fit_decode_to_result)
+    # release the model
+    MainLogger.debug('del the model')
+    del model
+    torch.cuda.empty_cache()
+    pass
+
+
+def run_evaluate(model, data_loader, fit_data_to_input, fit_decode_to_result):
+    model.eval()
+    with torch.no_grad():
+        for index, datas in data_loader:
+            data_input = fit_data_to_input(datas)
+            output = model(data_input, args)
+            result = fit_decode_to_result(output)
+            data_loader.dataset.save_result(prefix='evaluate', save=False if index != len(data_loader) else True)
+            pass
+        pass
+    pass
+
+
+def run_evaluate_stage():
+    MainLogger.info('run evaluate')
+    assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
+    MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+    model = load_saved(args.run_evaluate_epoch, args.run_evaluate_full_path, map_location='cuda:{}'.format(args.run_evaluate_gpu))
+    run_evaluate(model, evaluate_loader, fit_data_to_input, fit_decode_to_result)
+    # release the model
+    MainLogger.debug('del the model')
+    del model
+    torch.cuda.empty_cache()
     pass
 
 
@@ -335,14 +372,17 @@ if __name__ == '__main__':
 
     if hvd.rank() == 0 and train_stage(args):
         bsf = psfb.BaseSaveFold(
-            use_date=True, use_git=True, should_be_new=True, base_name='{}{}'.format(args.backbone_name, args.name))
+            use_date=True if not args.debug else False, \
+                use_git=True if not args.debug else False, \
+                    should_be_new=True if not args.debug else False, \
+                        base_name='{}{}{}'.format(args.backbone_name, args.name, '-debug' if args.debug else ''))
         bsf.mkdir(args.save_dir)
         args.save_dir = bsf.FullPath
     log_level = plog.LogReflect(args.Level).Level
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
     plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
-        'log' if train_stage(args) else 'evaluate.log' if evaluate_stage(args) else 'test.log'), mode='a')
+        'train.log' if train_stage(args) else 'evaluate.log' if evaluate_stage(args) else 'test.log'), mode='a')
     plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
     root_logger = plog.PutilLogConfig('train').logger()
     root_logger.setLevel(log_level)
@@ -502,19 +542,10 @@ if __name__ == '__main__':
         with open(os.path.join(bsf.FullPath, 'param.json'), 'w') as fp:
             fp.write(json.dumps(args.__dict__, indent=4))
         writer = SummaryWriter(bsf.FullPath)
-    if test_stage(args):
-        MainLogger.info('run test') 
-        assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
-        MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-        model = load_saved(args.weight_epoch, args.weight_path)
-        run_test()
-    elif evaluate_stage(args):
-        MainLogger.info('run evaluate')
-        assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
-        MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-        model = load_saved(args.run_evaluate_epoch, args.run_evaluate_full_path, map_location='cuda:{}'.format(args.run_evaluate_gpu))
-        run_evaluate()
-    elif train_stage(args):
+    run_test_stage() if test_stage(args) else None # 如果train_off为True 同时test_off为False，则为test_stage，evaluate_stage与test_stage可以同时存在
+    run_evaluate_stage if evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为evaluate_stage，evaluate_stage与test_stage可以同时存在
+    if train_stage(args):
+        # 如果train_off不为True，就是train_stage，只是train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:
             MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
             backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone=backbone, backend=backend, \
@@ -528,6 +559,16 @@ if __name__ == '__main__':
             if ((epoch + 1) % args.evaluate_interval == 0) or (args.debug) and args.evaluate_off is False:
                 evaluate_ret = evaluate(epoch) 
                 if evaluate_ret[0] is True:
+                    if args.debug:
+                        MainLogger.debug('del the backbone, backend, decode, optimization, lr_reduce, auto_save, auto_stop')
+                        del backbone, backend, decode, optimization, lr_reduce, auto_save, auto_stop
+                        torch.cuda.empty_cache()
+                        args.weight_path = args.save_dir
+                        args.weight_epoch = 1
+                        MainLogger.debug('run the evaluate stage')
+                        run_evaluate_stage() if not args.evaluate_off else None
+                        MainLogger.debug('run the test stage')
+                        run_test_stage() if not args.test_off else None
                     break
                 if evaluate_ret[2] is True and args.test_off is False:
                     MainLogger.info('run test')

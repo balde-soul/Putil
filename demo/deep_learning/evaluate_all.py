@@ -6,6 +6,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--target_path', type=str, default='', action='store', \
     help='the model in the target would be evaluate')
+parser.add_argument('--gpu', type=list, nargs='+', default=[], help='specify the gpus')
 args = parser.parse_args()
 
 from Putil.demo.deep_learning.base import base_operation_factory
@@ -41,6 +42,6 @@ for epoch in epochs:
         decode = model(input_data)
         result = fit_decode_to_result(decode)
         # process the result
-        dataset.save_result(result)
+        dataset.add_result()
         pass
     pass
