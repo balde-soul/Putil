@@ -69,7 +69,9 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
     loss_scalar_collection = ScalarCollection() if train_stage(args) else None
     indicator_scalar_collection = ScalarCollection() if train_stage(args) else None
     def scalar_log(indicators):
-        logger.info('{0} [{1}/{2}]: {3}'.format(prefix, step, len(data_loader), ['{}:{} '.format(k, v) for k, v in indicators.items()]))
+        logger.info('{0} epoch: {4}|{5} [{1}/{2}]: {3}'.format(prefix, \
+            step % len(data_loader), len(data_loader), ['{}:{} '.format(k, v) for k, v in indicators.items()]), \
+                epoch, step)
     with torch.no_grad() if stage == Stage.Evaluate else nothing() as t:
         backbone.train() if stage == Stage.Train else backbone.eval()
         backend.train() if stage == Stage.Train else backend.eval()
