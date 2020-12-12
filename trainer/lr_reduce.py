@@ -402,20 +402,34 @@ class LrReduce(lr_reduce):
 
     def state_dict(self):
         state_dict = {}
-        state_dict['cool_count'] = self._cool_count
-        state_dict['best'] = self._best
-        state_dict['direction'] = self._direction
-        state_dict['lr_epsilon'] = self._lr_epsilon
+        state_dict['lr_base'] = self._lr_base
         state_dict['lr_now'] = self._lr_now
         state_dict['lr_factor'] = self._lr_factor
+        state_dict['lr_epsilon'] = self._lr_epsilon
+        state_dict['lr_patience'] = self._lr_patience
+        state_dict['lr_cool_down'] = self._lr_cool_down
+        state_dict['lr_min'] = self._lr_min
+        state_dict['best'] = self._best
+        state_dict['count'] = self._count
+        state_dict['cool_count'] = self._cool_count
+        state_dict['mode'] = self._mode
+        state_dict['direction'] = self._direction
+        state_dict['reduce'] = self._reduce
         return state_dict
 
     def load_state_dict(self, state_dict):
-        self._cool_count = state_dict['cool_count']
-        self._best = state_dict['best']
-        self._direction = state_dict['direction']
-        self._lr_epsilon = state_dict['lr_epsilon']
+        self._lr_base = state_dict['lr_base']
         self._lr_now = state_dict['lr_now']
         self._lr_factor = state_dict['lr_factor']
+        self._lr_epsilon = state_dict['lr_epsilon']
+        self._lr_patience = state_dict['lr_patience']
+        self._lr_cool_down = state_dict['lr_cool_down']
+        self._lr_min = state_dict['lr_min']
+        self._best = state_dict['best']
+        self._count = state_dict['count']
+        self._cool_count = state_dict['cool_count']
+        self._mode = state_dict['mode']
+        self._direction = state_dict['direction']
+        self._reduce = state_dict['reduce']
         pass
     pass

@@ -1,6 +1,15 @@
 # coding=utf-8
+from colorama import Fore
+import argparse
 import copy
 from Putil.data.common_data import CommonDataWithAug
+import Putil.base.logger as plog
+logger = plog.PutilLogConfig('dataset').logger()
+logger.setLevel(plog.DEBUG)
+COCOLogger = logger.getChild('COCO')
+COCOLogger.setLevel(plog.DEBUG)
+import Putil.data.coco as coco
+from Putil.demo.deep_learning.base.util import Stage
 
 
 def common_dataset_arg(parser):
@@ -53,6 +62,8 @@ def common_dd_dataset_arg(parser):
         help='the height of the input')
     parser.add_argument('--input_width', action='store', type=int, default=256, \
         help='the width of the input')
+    parser.add_argument('--coco_remain_strategy', type=str, default='drop', \
+        help='')
     pass
 
 
@@ -74,6 +85,56 @@ class Dataset(CommonDataWithAug):
     pass
 
 
+def COCODataset(args):
+    temp_args = copy.deepcopy(args)
+    def generate_coco_dataset(stage):
+        return coco.COCOData(coco_root_dir=args.coco_root_dir,
+        stage=stage,
+        information_save_to_path=args.save_dir,
+        detection=args.coco_detection,
+        key_points=args.coco_key_points,
+        stuff=args.coco_stuff,
+        panoptic=args.coco_panoptic,
+        dense_pose=args.coco_dense_pose,
+        captions=args.coco_captions,
+        cat_ids=args.coco_cat_ids,
+        use_rate=args.coco_use_rate if 'coco_use_rate' in dir(args) else args.data_using_rate_train if stage == Stage.Train else args.data_using_rate_evaluate if stage == Stage.Train or stage == Stage.TrainEvaluate else args.data_using_rate_test,
+        image_width=args.coco_image_width if 'coco_image_width' in dir(args) else args.image_width,
+        image_height=args.coco_image_height if 'coco_image_height' in dir(args) else args.image_height,
+        remain_strategy=args.coco_remain_strategy)
+        pass
+    pass
+
+
+def COCOArg(parser):
+    try:
+        common_dd_dataset_arg(parser)
+    except argparse.ArgumentError as e:
+        COCOLogger.warning(Fore.YELLOW + e.message + Fore.RESET)
+        pass
+    parser.add_argument('--coco_root_dir', type=str, default='', action='store', \
+        help='')
+    parser.add_argument('--coco_detection', action='store_true', default=False, \
+        help='generate detection data while set')
+    parser.add_argument('--coco_key_points', action='store_true', default=False, \
+        help='generate key points data while set')
+    parser.add_argument('--coco_stuff', action='store_true', default=False, \
+        help='generate stuff data while set')
+    parser.add_argument('--coco_panoptic', action='store_true', default=False, \
+        help='generate panoptic data while set')
+    parser.add_argument('--coco_dense_pose', action='store_true', default=False, \
+        help='generate dense pose data while set')
+    parser.add_argument('--coco_captions', action='store_true', default=False, \
+        help='generate captions data while set')
+    parser.add_argument('--coco_cat_ids', type=int, default=[], nargs='+', \
+        help='specify the target cat ids')
+    parser.add_argument('--coco_image_width', type=int, default=256, \
+        help='specify the width of the data')
+    parser.add_argument('--coco_image_height', type=int, default=256, \
+        help='specify the height of the data')
+    pass
+
+
 # DefaultDataset
 class _DefaultDataset(Dataset):
     def __init__(self, args):
@@ -90,3 +151,13 @@ def DefaultDataset(args):
 def DefaultDatasetArg(parser):
     common_dataset_arg(parser)
     pass
+
+
+#parser = argparse.ArgumentParser()
+#parser.add_argument('--t', type=int, default=1, action='store')
+#try:
+#    parser.add_argument('--t', type=int, default=1, action='store')
+#except argparse.ArgumentError as e:
+#    print('a')
+#args = parser.parse_args()
+#print(args)

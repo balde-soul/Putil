@@ -1,7 +1,7 @@
 # coding=utf-8
 # this file is call before logger config
 # Putil
-import base.arg_base as pab 
+from Putil.base import arg_base as pab 
 
 
 class SummaryManager:

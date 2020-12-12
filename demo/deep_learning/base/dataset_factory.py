@@ -17,12 +17,13 @@ def dataset_factory(args):
        data_name: the main type of the data
        data_source: from standard or project
     '''
-    if args.framework == 'torch':
-        pass
-    else:
-        raise NotImplementedError('data of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.data_source, args.data_name)
-    return eval('{}(args)'.format(model))
+    def _combine(source, name, target):
+        target = '{} {}.{}'.format(target, source, name)
+        return True
+    dataset = ''
+    [_combine(source, name, target) for source, name in zip(args.dataset_sources, args.dataset_names)]
+    logger.info('augs: {}'.format(target))
+    return [eval('{}.{}(args)'.format(aug_source, aug_name)) for aug_source, aug_name in zip(args.aug_sources, args.aug_names)]
 
 
 def dataset_arg_factory(parser, source, name):

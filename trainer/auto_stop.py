@@ -108,6 +108,7 @@ class AutoStop:
         state_dict['direction'] = self._direction
         state_dict['count'] = self._count
         state_dict['patience'] = self._patience
+        state_dict['mode'] = self._mode
         return state_dict
 
     def load_state_dict(self, state_dict):
@@ -115,5 +116,6 @@ class AutoStop:
         self._direction = state_dict['direction']
         self._count = state_dict['count']
         self._patience = state_dict['patience']
+        self._mode = state_dict['mode']
         pass
     pass

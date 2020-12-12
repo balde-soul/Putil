@@ -58,7 +58,7 @@ def train(epoch):
 def evaluate(epoch):
     ret = train_evaluate_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
-            indicator, statistic_indicator, train_loader, MainLogger)
+            indicator, statistic_indicator, train_loader, MainLogger, (epoch + 1) * len(train_loader))
     if train_stage(args):
         if args.debug:
             if epoch == 0:
@@ -81,12 +81,10 @@ def run_test(model, data_loader, fit_data_to_input, fit_decode_to_result):
     model.eval()
     with torch.no_grad():
         for index, datas in data_loader:
-        data_input = fit_data_to_input(datas)
-        output = model(data_input, args)
-        result = fit_decode_to_result(output)
-        data_loader.dataset.save_result(prefix='test', save=False if index != len(data_loader) else True)
-        pass
-    pass
+            data_input = fit_data_to_input(datas)
+            output = model(data_input, args)
+            result = fit_decode_to_result(output)
+            data_loader.dataset.save_result(prefix='test', save=False if index != len(data_loader) else True)
 
 
 def run_test_stage():
@@ -371,13 +369,16 @@ if __name__ == '__main__':
             ptvsd.wait_for_attach()
 
     if hvd.rank() == 0 and train_stage(args):
-        bsf = psfb.BaseSaveFold(
-            use_date=True if not args.debug else False, \
-                use_git=True if not args.debug else False, \
-                    should_be_new=True if not args.debug else False, \
-                        base_name='{}{}{}'.format(args.backbone_name, args.name, '-debug' if args.debug else ''))
-        bsf.mkdir(args.save_dir)
-        args.save_dir = bsf.FullPath
+        if args.weight_path == '' or args.weight_epoch is not None:
+            bsf = psfb.BaseSaveFold(
+                use_date=True if not args.debug else False, \
+                    use_git=True if not args.debug else False, \
+                        should_be_new=True if not args.debug else False, \
+                            base_name='{}{}{}'.format(args.backbone_name, args.name, '-debug' if args.debug else ''))
+            bsf.mkdir(args.save_dir)
+            args.save_dir = bsf.FullPath
+        else:
+            args.save_dir = args.weight_path
     log_level = plog.LogReflect(args.Level).Level
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
@@ -417,6 +418,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base.base_operation_factory import load_saved_factory, \
         load_checkpointed_factory, checkpoint_factory, save_factory, deploy_factory
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
+    from util.train_evaluate_common import all_reduce
     # TODO: set the args item
     ArgsSave(args, os.path.join(args.save_dir, 'args')) # after ArgsSave is called, the args should not be change
     checkpoint = checkpoint_factory(args)() if train_stage(args) else None
@@ -548,6 +550,7 @@ if __name__ == '__main__':
         # 如果train_off不为True，就是train_stage，只是train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:
             MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+            target_dict = {}
             backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone=backbone, backend=backend, \
                 optimization=optimization, auto_stop=auto_stop, auto_save=auto_save, lr_reduce=lr_reduce)
         for epoch in range(0, args.epochs):

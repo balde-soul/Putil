@@ -139,6 +139,7 @@ class AutoSave(auto_save):
             else:
                 raise ValueError('base_line vs. limit_line : {0} vs. {1} base on : {2}'.format(base_line, limit_line, self._direction_info(improve)))
             pass
+        pass
 
     def register_comparator(self, comparator):
         self._comparator = comparator
@@ -183,15 +184,29 @@ class AutoSave(auto_save):
 
     def state_dict(self):
         state_dict = {}
+        state_dict['keep_save_range'] = self._keep_save_range
+        state_dict['abandon_range'] = self._abandon_range
+        state_dict['mode'] = self._mode
+        state_dict['delta'] = self._delta
+        state_dict['history_amount'] = self._history_amount
         state_dict['best_collection'] = self._best_collection
         state_dict['best'] = self._best
         state_dict['direction'] = self._direction
-        state_dict['delta'] = self._delta
+        state_dict['comparator'] = self._comparator
+        state_dict['base_line'] = self._base_line
+        state_dict['limit_line'] = self._limit_line
         return state_dict
 
     def load_state_dict(self, state_dict):
+        self._keep_save_range = state_dict['keep_save_range']
+        self._abandon_range = state_dict['abandon_range']
+        self._mode = state_dict['mode']
+        self._delta = state_dict['delta']
+        self._history_amount = state_dict['history_amount']
+        self._best_collection = state_dict['best_collection']
         self._best = state_dict['best']
         self._direction = state_dict['direction']
-        self._delta = state_dict['delta']
-        self._best_collection = state_dict['best_collection']
+        self._comparator = state_dict['comparator']
+        self._base_line = state_dict['base_line']
+        self._limit_line = state_dict['limit_line']
         pass

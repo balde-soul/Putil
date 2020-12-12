@@ -120,7 +120,8 @@ def torch_load_saved(epoch, full_path, *args, **kwargs):
 
 def torch_load_checkpointed(epoch, full_path, *target_modules):
     state_dict = torch.load(os.path.join(full_path, torch_generate_checkpoint_name(epoch)))
-    [eval('module.load_state_dict(state_dict)') for module in target_modules.items()]
+    [eval('module.load_state_dict(state_dict[\'{}\'])'.format(module_name)) \
+        for module_name, module in target_modules.items()]
 
 
 def torch_load_deploy(epoch, full_path):

@@ -25,9 +25,6 @@ def aug_factory(args):
     logger.info('augs: {}'.format(target))
     return [eval('{}.{}(args)'.format(aug_source, aug_name)) for aug_source, aug_name in zip(args.aug_sources, args.aug_names)]
 
-def aug_arg_factory(parser, source, name):
+def aug_arg_factory(parser, sources, names):
     #import pdb; pdb.set_trace()
-    if source == '' or name == '':
-        pass
-    else:
-        eval('{}.{}Arg(parser)'.format(parser, source, name)) 
+    [eval('{}.{}Arg(parser)'.format(parser, source, name)) for aug_source, aug_name in zip(sources, names)]

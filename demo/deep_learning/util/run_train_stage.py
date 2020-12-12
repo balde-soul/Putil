@@ -4,6 +4,7 @@ import time
 from Putil.demo.deep_learning.base.util import train_stage
 from Putil.demo.deep_learning.base.util import evaluate_stage
 from Putil.demo.deep_learning.base.util import test_stage
+from Putil.demo.deep_learning.base.util import Stage
 
 
 class nothing():
@@ -52,6 +53,18 @@ class ScalarCollection:
     @property
     def current_indicators(self):
         return self._current_indicator
+
+    @staticmethod
+    def generate_epoch_average_reduce_name(base_name):
+        return 'epoch_mean_{}'.format(base_name)
+
+    @staticmethod
+    def generate_current_reduce_name(base_name):
+        return 'current_{}'.format(base_name)
+
+    @staticmethod
+    def generate_moving_reduce_name(base_name):
+        return 'moving_'.format(base_name)
     pass
 
 
@@ -62,7 +75,8 @@ def all_reduce(value, name):
     return avg_tensor.item()
 
 
-def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, indicator, statistic_indicator, data_loader, logger):
+def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, indicator, statistic_indicator, data_loader, logger, train_controler):
+    assert train_stage(args)
     get_input = GetInput(args)
     prefix = 'train' if stage == Stage.Train else 'evaluate'
     dataset = data_loader.dataset
@@ -80,7 +94,7 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
 
         logger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
-            step = epoch * len(data_loader) + batch_idx
+            step = epoch * len(data_loader) + batch_idx + 1
             logger.debug('batch {}'.format(prefix))
             # TODO: data to cuda
             #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
@@ -99,6 +113,7 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
             # : run the loss function get the ret
             logger.debug('run loss') if train_stage(args) else None
             losses = loss(datas, output) if train_stage(args) else None
+            logger.debug('update loss to loss_scalar_collection')
             loss_scalar_collection.batch_update(losses) if train_stage(args) else None
             _loss = losses[loss.total_loss_name]
             # TODO: do some simple check
@@ -107,6 +122,7 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
             #if np.isnan(_loss.item()) or np.isinf(_loss.item()) is True:
             #    logger.warning('loss in train inf occured!')
             # : run the indicator function to get the indicators
+            logger.debug('run indicator') if train_stage(args) else None
             indicators = indicator((datas, output)) if train_stage(args) else None
             indicator_scalar_collection.batch_update(indicators) if train_stage(args) else None
             # : run the backward
@@ -115,48 +131,42 @@ def train_evaluate_common(args, stage, epoch, fit_data_to_input, backbone, backe
             optimizer.step() if stage == Stage.Train else None
             # time
             batch_time = time.time() - batch_start
-            # TODO: loss item and the indicator accumulation
-            #obj_acc[-1] += _obj_acc.item();otp_acc[-1] += _otp_acc.item();global_acc[-1] += _global_acc.item();iou[-1] += _iou.item();loss[-1] += _loss.item();class_loss[-1] += _class_loss.item();wh_loss[-1] += _wh_loss.item();offset_loss[-1] += _offset_loss.item();iou_loss[-1] += _iou_loss.item()
-            if stage == Stage.Train or stage == stage.TrainEvaluate:
-                # while in Stage.Train or Stage.TrainEvaluate
-                if step % args.log_interval == 0:
-                    scalar_log(indicator_scalar_collection.moving_average.update(loss_scalar_collection.moving_average))
-                    pass
-                else: 
-                    None 
-                if step % args.summary_interval == 0:
-                    #gt_obj_ft = gt_obj.sum(1).gt(0.)
-                    ## reduce the target_indicator
-                    if hvd.rank() == 0:
-                        # :decode
-                        pre_output = decode(fit_data_to_input(datas), output)
-                        gt_output = decode(datas)
-                        # extract the target data
-                        # TODO: do the summary use pre_output and gt_output
-                        #pv = PointVisual();rv = RectangleVisual(2)
-                        #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
-                        #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
-                        # add target indicator to sumary
-                        [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in losses.items()]
-                        [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in indicators.items()]
-                        pass
+            # while in Stage.Train or Stage.TrainEvaluate
+            if step % args.log_interval == 0 or (step % args.summary_interval == 0 and stage == Stage.Train):
+                reduced_indicator_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \
+                    for k, v in loss_scalar_collection.current_indicators()}
+                reduced_loss_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \
+                    for k, v in indicator_scalar_collection.current_indicators.items()}
+            scalar_log(reduced_indicator_current.update(reduced_loss_current)) if step % args.log_interval == 0 else None
+            if step % args.summary_interval == 0:
+                #gt_obj_ft = gt_obj.sum(1).gt(0.)
+                ## reduce the target_indicator
+                if hvd.rank() == 0:
+                    # :decode
+                    pre_output = decode(fit_data_to_input(datas), output)
+                    gt_output = decode(datas)
+                    # extract the target data
+                    # TODO: do the summary use pre_output and gt_output
+                    #pv = PointVisual();rv = RectangleVisual(2)
+                    #result_visual(pv, rv, img_numpy, boxes, classes, indexes, '{}_pre'.format(prefix), 'pre', step)
+                    #result_visual(pv, rv, img_numpy, gt_boxes, gt_classes, gt_indexes, '{}_gt'.format(prefix), 'gt', step)
+                    # add target indicator to sumary
+                    [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in reduced_indicator_current.items()]
+                    [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in reduced_loss_current.items()]
                     pass
                 pass
-            elif stage == Stage.Evaluate:
-                pre_output = decode(datas, output)
-                # TODO:process the evaluate result
-                pass
-            else:
-                raise NotImplementedError('stage: {} is not implemented'.format(stage))
+            pass
             logger.debug('batch {} end'.format(prefix))
             pass
         # : do the log of this epoch
-        indicator_epoch_average = indicator_scalar_collection.epoch_average()
-        loss_epoch_average = loss_scalar_collection.epoch_average()
         scalar_log(indicator_epoch_average.update(loss_epoch_average))
         # : do the summary of this epoch
+        reduced_indicator_epoch_average = {ScalarCollection.generate_epoch_average_reduce_name(k): all_reduce(v, ScalarCollection.generate_epoch_average_reduce_name(k)) \
+            for k, v in indicator_scalar_collection.epoch_average.items()}
+        reduced_loss_epoch_average = {ScalarCollection.generate_epoch_average_reduce_name(k): all_reduce(v, ScalarCollection.generate_epoch_average_reduce_name(k)) \
+            for k, v in loss_scalar_collection.epoch_average.items()}
         if hvd.rank() == 0:
-            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in indicator_epoch_average]
-            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in loss_epoch_average]
+            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in reduced_indicator_epoch_average.items()]
+            [writer.add_scalar('{}/{}'.format(prefix, k), all_reduce(v), global_step=step) for k, v in reduce_loss_epoch_average.items()]
         pass
-    return indicator_epoch_average.update(loss_epoch_average)
+    return reduced_indicator_epoch_average.update(reduced_loss_epoch_average)
