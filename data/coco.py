@@ -176,7 +176,7 @@ class COCOBase():
     def generate_result_file_name(prefix, common_name):
         return '{}{}.csv'.format('{}_'.format(prefix) if prefix is not None else '', common_name)
 
-    def add_detection_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False, prefix=None):
+    def add_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False, prefix=None):
         '''
          @brief save the detection result base on one image
          @note
@@ -255,6 +255,21 @@ class COCOBase():
         cocoEval.accumulate()
         cocoEval.summarize()
         pass
+
+    def evaluate_segmentation(self, image_ids, cat_ids, prefix):
+        raise NotImplementedError('evaluate segmentation is not implemented')
+        pass
+
+
+    def evaluate_keypoint(self, image_ids, cat_ids, prefix):
+        raise NotImplementedError('evaluate keypoint is not implemented')
+        pass
+    
+
+    def evaluate_panoptic(self, image_ids, cat_ids, prefix):
+        raise NotImplementedError('evaluate panoptic is not implemented')
+        pass
+
 
     def get_detection_indicator(self, scores, ious, pre_file, image_ids=None, cat_ids=None):
         '''

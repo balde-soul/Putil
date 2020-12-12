@@ -503,8 +503,5 @@ class HSV(ImageHSV, pAug.AugFunc):
         image[:, :, 0] = np.clip(image[:, :, 0], 0, 179)
 
         image = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_HSV2BGR)
-
-        image = (image / 255).astype(np.float32)
-        
         return image, 
     pass
