@@ -38,7 +38,7 @@ def do_epoch_end_process():
 
 
 def train(epoch):
-    ret = train_evaluate_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
+    ret = train_stage_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
          loss, optimization, indicator, statistic_indicator, train_loader, MainLogger)
     if args.off_evaluate:
         if args.debug:
@@ -56,7 +56,7 @@ def train(epoch):
 
 
 def evaluate(epoch):
-    ret = train_evaluate_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
+    ret = train_stage_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             indicator, statistic_indicator, train_loader, MainLogger, (epoch + 1) * len(train_loader))
     if train_stage(args):
@@ -200,6 +200,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import fit_data_to_input_factory as FitDataToInputFactory
     from Putil.demo.deep_learning.base import fit_decode_to_result_factory as FitDecodeToResultFactory
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
+    from Putil.demo.deep_learning.base import train_recorder_factor as TrainRecorderFactory
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
@@ -220,6 +221,7 @@ if __name__ == '__main__':
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
     model_source = os.environ.get('model_source', 'standard')
+    train_recorder = os.environ.get('train_recorder_source', 'standard')
     auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
@@ -240,6 +242,7 @@ if __name__ == '__main__':
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
     model_name = os.environ.get('model_name', 'DefaultModel')
+    train_recorder_name = os.environ.get('train_recorder_name', 'DefaultTrainRecorder')
     AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_source, auto_save_name)
     AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
@@ -262,6 +265,7 @@ if __name__ == '__main__':
     DatasetFactory.dataset_arg_factory(ppa.parser, dataset_source, dataset_name)
     ## decode setting
     DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
+    TrainRecorderFactory.train_recorder_arg_factory(ppa.parser, train_recorder_source, train_recorder_name)
     # : the base information set
     ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
         help='specify the framework used')
@@ -333,6 +337,7 @@ if __name__ == '__main__':
     args.fit_data_to_input_source = fit_data_to_input_source
     args.fit_decode_to_result_source = fit_decode_to_result_source
     args.model_source = model_source
+    args.train_recorder_source = train_recorder_source
     args.auto_save_name = auto_save_name
     args.auto_stop_name = auto_stop_name
     args.lr_reduce_name = lr_reduce_name
@@ -353,6 +358,7 @@ if __name__ == '__main__':
     args.fit_data_to_input_name = fit_data_to_input_name
     args.fit_decode_to_result_name = fit_decode_to_result_name
     args.model_name = model_name
+    args.train_recorder_name = train_recorder_name
     from Putil.demo.deep_learning.base import util; train_stage = util.train_stage; evaluate_stage = util.evaluate_stage; test_stage = util.test_stage
     import Putil.base.logger as plog
     reload(plog)
@@ -408,13 +414,14 @@ if __name__ == '__main__':
     reload(FitDataToInputFactory); FitDataDataToInput = FitDataToInputFactory.fit_data_to_input_factory
     reload(FitDecodeToResultFactory); FitDecodeToResult = FitDecodeToResultFactory.fit_decode_to_result_factory
     reload(ModelFactory); Model = ModelFactory.model_factory
+    reload(TrainRecorderFactory); TrainRecorder = TrainRecorderFactory.train_recorder_factory
     reload(util); train_stage = util.train_stage; evaluate_stage = util.evaluate_stage; test_stage = util.test_stage
     # TODO: third party import
     # TODO: set the deterministic 随机确定性可复现
     # make the result dir
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
     from Putil.demo.deep_learning.base.util import Stage as Stage
-    from .util.train_evaluate_common import train_evaluate_common
+    from .util.run_train_stage import train_stage_common 
     from Putil.demo.deep_learning.base.base_operation_factory import load_saved_factory, \
         load_checkpointed_factory, checkpoint_factory, save_factory, deploy_factory
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
@@ -491,6 +498,8 @@ if __name__ == '__main__':
         auto_stop = AutoStop(args)()
         #  : the lr reduce
         lr_reduce = LrReduce(args)()
+        pass
+    recorder = RecorderFactory.recorder_factory(args)()
     encode = EncodeFactory.encode_factory(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)
@@ -551,8 +560,10 @@ if __name__ == '__main__':
         if args.weight_path != '' and args.weight_epoch is not None:
             MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
             target_dict = {}
+            target_dict.update({'backbone': backbone})
+            target_dict.update({'': }) if args.
             backbone = load_checkpointed(args.weight_epoch, args.weight_path, backbone=backbone, backend=backend, \
-                optimization=optimization, auto_stop=auto_stop, auto_save=auto_save, lr_reduce=lr_reduce)
+                optimization=optimization, auto_stop=auto_stop, auto_save=auto_save, lr_reduce=lr_reduce, recorder=recorder)
         for epoch in range(0, args.epochs):
             train_ret = train(epoch)
             if train_ret[0] is True:

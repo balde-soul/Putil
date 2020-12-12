@@ -75,7 +75,7 @@ def all_reduce(value, name):
     return avg_tensor.item()
 
 
-def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, indicator, statistic_indicator, data_loader, logger, train_controler):
+def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, indicator, statistic_indicator, data_loader, recorder, logger):
     assert train_stage(args)
     get_input = GetInput(args)
     prefix = 'train' if stage == Stage.Train else 'evaluate'
@@ -94,7 +94,7 @@ def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend,
 
         logger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
-            step = epoch * len(data_loader) + batch_idx + 1
+            recorder.step += 1 if stage == Stage.Train else 0; step = recorder.step
             logger.debug('batch {}'.format(prefix))
             # TODO: data to cuda
             #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
