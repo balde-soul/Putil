@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.lr_reduce as standard
 from util import lr_reduce as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def lr_reduce_factory(args):

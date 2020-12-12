@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.backbone as standard
 from util import backbone as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def backbone_factory(args):

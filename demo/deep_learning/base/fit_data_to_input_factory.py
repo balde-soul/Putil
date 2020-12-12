@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.fit_data_to_input as standard
 from util import fit_data_to_input as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def fit_data_to_input_factory(args):

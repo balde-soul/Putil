@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.indicator as standard
 from util import indicator as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def indicator_factory(args):

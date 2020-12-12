@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.auto_save as standard
 from util import auto_save as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def auto_save_factory(args):

@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.aug as standard
 from util import aug as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def aug_factory(args):

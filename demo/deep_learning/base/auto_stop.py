@@ -10,6 +10,10 @@ from Putil.trainer.auto_stop import auto_stop as AutoStop
 from Putil.trainer.auto_stop import AutoStop as _DefaultAutoStop
 
 
+def common_auto_stop_arg(parser):
+    pass
+
+
 def DefaultAutoStop(args):
     '''
      @param[in] args

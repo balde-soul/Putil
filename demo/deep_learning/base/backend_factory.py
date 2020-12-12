@@ -6,6 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.backend as standard
 from util import backend as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def backend_factory(args):

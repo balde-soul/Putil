@@ -2,10 +2,20 @@
 import copy
 import Putil.demo.deep_learning.base.base_operation as standard
 import util.base_operation as project
+from importlib import reload
+reload(standard)
+reload(project)
 
 
 def checkpoint_factory(args):
-    pass
+    temp_args = copy.deepcopy(args)
+    def generate_checkpoint_func():
+        if temp_args.framework == 'torch':
+            return standard.torch_checkpoint
+        else:
+            raise NotImplementedError('not implemented')
+        pass
+    return generate_checkpoint_func
 
 
 def save_factory(args):
@@ -20,7 +30,14 @@ def save_factory(args):
 
 
 def deploy_factory(args):
-    pass
+    temp_args = copy.deepcopy(args)
+    def generate_deploy_func():
+        if temp_args.framework == 'torch':
+            return standard.torch_deploy
+        else:
+            raise NotImplementedError('not implemented')
+        pass
+    return generate_deploy_func
 
 
 def get_models_factory(args):
@@ -29,13 +46,24 @@ def get_models_factory(args):
 
 def load_saved_factory(args):
     temp_args = copy.deepcopy(args)
-    def generate_load_saveed_func():
-        return eval('{}.{}_load_saved'.format(temp_args))
-    return eval('{}_load_saved'.format(args.framework))
+    def generate_load_saved_func():
+        if temp_args.framework == 'torch':
+            return standard.torch_load_saved
+        else:
+            raise NotImplementedError('not implemented')
+        pass
+    return generate_load_saved_func
 
 
 def load_checkpointed_factory(args):
-    return eval('{}_load_checkpoint_factory'.format(args.framework))
+    temp_args = copy.deepcopy(args)
+    def generate_load_checkpointed_func():
+        if temp_args.framework == 'torch':
+            return standard.torch_load_checkpointed
+        else:
+            raise NotImplementedError('not implemented')
+        pass
+    return generate_load_checkpointed_func
 
 
 def load_deployed(args):
