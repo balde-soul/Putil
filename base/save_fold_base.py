@@ -36,7 +36,8 @@ class BaseSaveFold:
         assert os.path.exists(self._root_dir) is True, print('{0} should be existed'.format(self._root_dir))
         self._full_path = os.path.join(root_dir, self._name)
         self._fold_existed = os.path.exists(self._full_path)
-        assert self._fold_existed is False, print('fold: {0} should be not in the {1}, please check the path'.format(self._name, root_dir)) if self._should_be_new is True else None
+        if self._should_be_new and self._fold_existed:
+            raise RuntimeError('should_be_new is True, but the fold is existed')
         flag = os.mkdir(self._full_path) if self._should_be_new is True else os.mkdir(self._full_path) if self._fold_existed is False else None
         assert flag is None
         pass
