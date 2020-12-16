@@ -1,8 +1,8 @@
 # coding=utf-8
+from importlib import reload
 import copy
 import Putil.demo.deep_learning.base.base_operation as standard
 import util.base_operation as project
-from importlib import reload
 reload(standard)
 reload(project)
 
@@ -69,6 +69,15 @@ def load_checkpointed_factory(args):
 def load_deployed(args):
     return eval('{}_load_deployed'.format(args.framework))
 
-
 def generate_model_element_factory(args):
     return eval('{}_generate_model_element'.format(args.framework))
+
+def empty_tensor_factory(args):
+    temp_args = copy.deepcopy(args)
+    def generate_empty_tensor_factory_func():
+        if temp_args.framework == 'torch':
+            return project.torch_generate_empty_tensor
+        else:
+            raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
+        pass
+    return generate_empty_tensor_factory_func

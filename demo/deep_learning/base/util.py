@@ -17,6 +17,9 @@ MakeSureTheSaveDirLogger.setLevel(plog.DEBUG)
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
 
+# tensor operation
+def torch_generate_empty_tensor():
+    return torch.Tensor([])
 
 class TemplateModelDecodeCombine(Module):
     '''
@@ -30,7 +33,6 @@ class TemplateModelDecodeCombine(Module):
         pass
     pass
 
-
 def torch_generate_model_element(epoch):
     '''
      @brief use the element from the result of get_all_model to generate the target model name
@@ -41,7 +43,6 @@ def torch_generate_model_element(epoch):
 
 def torch_generate_model_epoch(file_name):
     return file_name.split('.')[0].split('-')[0]
-
 
 def torch_target_model_filter(file_name):
     '''
@@ -144,10 +145,13 @@ def torch_load_saved(epoch, full_path, *args, **kwargs):
     return model
 
 
-def torch_load_checkpointed(epoch, full_path, **target_modules):
+def torch_load_checkpointed(epoch, full_path, target_modules, **kwargs):
+    '''
+     @param[in] target_modules the dict with {name: module_obj}, aligning with torch_checkpoint
+    '''
     target_checkpointed = os.path.join(full_path, torch_generate_checkpoint_name(epoch))
     logger.info(Fore.BLUE + 'load checkpointed from {}'.format(target_checkpointed) + Fore.RESET)
-    state_dict = torch.load(target_checkpointed)
+    state_dict = torch.load(target_checkpointed, map_location=kwargs.get('map_location', None))
     for module_name, module in target_modules.items():
         eval('module.load_state_dict(state_dict[\'{}\'])'.format(module_name))
         pass
@@ -213,7 +217,7 @@ def make_sure_the_save_dir(args):
             save_dir_tensor = hvd.broadcast_object(save_dir_tensor, 0, 'save_dir')
             args.save_dir = torch_tensor_to_string(save_dir_tensor, code)
         elif hvd.rank() == 0 and args.weight_path != '' and args.weight_epoch is not None:
-            args.save_dir = args.weight_path
+            args.save_dir = os.path.dirname(args.weight_path)
             code = 'utf-16'
             save_dir_tensor = string_to_torch_tensor(args.save_dir, code)
             save_dir_tensor = hvd.broadcast_object(save_dir_tensor, 0, 'save_dir')
@@ -241,15 +245,14 @@ def make_sure_the_train_time(args):
         elif hvd.rank() == 0 and (args.weight_path != '') and (args.weight_epoch is not None):
             train_time = 0
             while True:
-                if os.path.exists(os.path.join(args.save_dir, generate_train_time_train_log_file_name(train_time))):
+                if os.path.exists(os.path.join(args.save_dir, generate_train_time_dir_name(train_time))):
                     train_time += 1
                 else:
                     break
-            print(Fore.GREEN + 'get the trained train time is {}'.format(train_time) + Fore.GREEN)
+            print(Fore.GREEN + 'get the trained train time is {}'.format(train_time) + Fore.RESET)
             train_time_tensor = torch.IntTensor([train_time])
             train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
             args.train_time = train_time
-            hvd.broadcast_async(train_time, 0, 'train_time')
         elif hvd.rank() != 0:
             print(Fore.GREEN + 'wait for the root rank share the train_time' + Fore.RESET)
             train_time_tensor = torch.IntTensor([-1])
@@ -262,9 +265,11 @@ def make_sure_the_train_time(args):
         pass
     pass
 
-def _tensorboard_event_or_not(file_name):
+def _tensorboard_event_and_the_train_time(file_name):
     _split_by_point = file_name.split('.')
-    return _split_by_point[0] == 'events' and _split_by_point[1] == 'out' and _split_by_point[2] == 'tfevents'
+    is_event = _split_by_point[0] == 'events' and _split_by_point[1] == 'out' and _split_by_point[2] == 'tfevents'
+    train_time = int(file_name.split('-')[-1]) if is_event else None
+    return is_event, train_time
 
 def _get_trained_result(path, train_time):
     '''
@@ -277,7 +282,8 @@ def _get_trained_result(path, train_time):
     # 
     _contents = os.listdir(path)
     for _content in _contents:
-        files.append(os.path.join(path, _contents)) if _tensorboard_event_or_not(_content) else None
+        is_event, _train_time = _tensorboard_event_and_the_train_time(_content)
+        files.append(os.path.join(path, _content)) if is_event and _train_time == train_time else None
         pass
     return dirs, files
 
@@ -285,21 +291,22 @@ def subdir_base_on_train_time(root_dir, train_time):
     '''
      @brief 依据根目录与对应的train_time生成子目录名称
     '''
-    return os.path.join(root_dir, 'train_time-{}'.format(train_time))
+    return os.path.join(root_dir, generate_train_time_dir_name(train_time))
 
 def clean_train_result(path, train_time):
     dirs, files = _get_trained_result(path, train_time)
-    _remove = input(Fore.RED + 'remove the files: {} dir: {} y/n'.format(files, dirs))
+    #sync = hvd.broadcast_object(torch.BoolTensor([True]), 0, 'sync_before_checking_remove_file')
+    _remove = input(Fore.RED + 'remove the files: {} dir: {} (y/n):'.format(files, dirs))
     [os.remove(_file) for _file in files] if _remove in ['y', 'Y'] else None
     [shutil.rmtree(_dir) for _dir in dirs] if _remove in ['Y', 'y'] else None
     pass
 
-def generate_train_time_train_log_file_name(train_time):
-    return 'train-{}.log'.format(train_time)
+def generate_train_time_dir_name(train_time):
+    return 'train_time-{}'.format(train_time)
 
-def scalar_log(logger, prefix, indicators, recorder, epoch_step=None):
-    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, epoch, recorder.step if epoch_step is not None else '', \
-        recorder.step % epoch_step if epoch_step is not None else '', epoch_step if epoch_step is not None else '', \
+def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
+    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, epoch, recorder.step if epoch_step_amount is not None else '', \
+        data_index % epoch_step_amount if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
             ['{}:{} '.format(k, v) for k, v in indicators.items()]))
 
 class nothing():

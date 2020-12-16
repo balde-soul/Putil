@@ -1,4 +1,5 @@
 # coding=utf-8
+import re
 from colorama import Fore
 import sys
 import json
@@ -87,7 +88,7 @@ def run_test_stage():
     MainLogger.info('run test') 
     assert args.weight_path != '' and args.weight_epoch is not None, 'specify the trained weight_path and the epoch in test stage'
     MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
-    model = load_saved(args.weight_epoch, args.weight_path)
+    model = load_saved(args.weight_epoch, args.weight_path, map_location=torch.device(args.gpu))
     run_test(model, test_loader, fit_data_to_input, fit_decode_to_result)
     # release the model
     MainLogger.debug('del the model')
@@ -176,7 +177,7 @@ if __name__ == '__main__':
     #    help='the name of the statistic_indicator in the statistic_indicator_factory, see the util.statistic_indicator_factory')
     #ppa.parser.add_argument('--statistic_indicator_source', type=str, default='standard', action='store', \
     #    help='standard: from the Putil.demo.base.deep_learning.statistic_indicator; project: from this project')
-    #<=====================================这些是需要reload的==============================================
+    #<tag=====================================这些是需要reload的==============================================
     from Putil.demo.deep_learning.base import auto_save_factory as AutoSaveFactory
     from Putil.demo.deep_learning.base import auto_stop_factory as AutoStopFactory
     from Putil.demo.deep_learning.base import lr_reduce_factory as LrReduceFactory
@@ -184,7 +185,6 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import data_loader_factory as DataLoaderFactory
     from Putil.demo.deep_learning.base import data_sampler_factory as DataSamplerFactory
     from Putil.demo.deep_learning.base import encode_factory as EncodeFactory
-    #from Putil.demo.deep_learning.base import backbone_factory as ModelFactory
     from Putil.demo.deep_learning.base import backbone_factory as BackboneFactory
     from Putil.demo.deep_learning.base import backend_factory as BackendFactory
     from Putil.demo.deep_learning.base import decode_factory as DecodeFactory
@@ -199,15 +199,14 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
     from Putil.demo.deep_learning.base import recorder_factory as RecorderFactory
     from Putil.demo.deep_learning.base import util
-    train_stage = util.train_stage
-    evaluate_stage = util.evaluate_stage
-    test_stage = util.test_stage
-    make_sure_the_save_dir = util.make_sure_the_save_dir
-    make_sure_the_train_time = util.make_sure_the_train_time
-    clean_train_result = util.clean_train_result
-    generate_train_time_train_log_file_name = util.generate_train_time_train_log_file_name
-    subdir_base_on_train_time = util.subdir_base_on_train_time
+    [eval('{} = util.{}'.format(element, element)) for element in [ \
+        'train_stage', 'evaluate_stage', 'test_stage', 'make_sure_the_save_dir', 'make_sure_the_save_dir', 'make_sure_the_train_time', \
+            'clean_train_result', 'subdir_base_on_train_time']]
     import Putil.demo.deep_learning.base.horovod as Horovod
+    from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
+    [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
+        'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
+            'generate_model_element_factory', 'empty_tensor_factory']]
     #======================================这些是需要reload的=============================================>
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
@@ -323,14 +322,15 @@ if __name__ == '__main__':
         help='the path where the trained backbone saved')
     ppa.parser.add_argument('--weight_epoch', type=int, default=None, action='store', \
         help='the epoch when saved backbone which had been trained')
-    ppa.parser.add_argument('--load_lr_reduce_off', default=False, action='store_true', \
-        help='would not load the lr_reduce while this is set')
-    ppa.parser.add_argument('--load_auto_save_off', default=False, action='store_true', \
-        help='would not load the auto_save while this is set')
-    ppa.parser.add_argument('--load_auto_stop_off', default=False, action='store_true', \
-        help='would not load the auto_stop while this is set')
     ppa.parser.add_argument('--name', type=str, action='store', default='', \
         help='the ${backbone_name}${name} would be the name of the fold to save the result')
+    retrain_mode_header = 'retrain_mode'
+    ppa.parser.add_argument('--{}_continue'.format(retrain_mode_header), default=False, action='store_true', \
+        help='continue train while this is set and the weight_path, weight_epoch is specified, ' \
+            'the lr_reduce, auto_save, auto_stop would be load')
+    ppa.parser.add_argument('--{}_reset'.format(retrain_mode_header), default=False, action='store_true', \
+        help='reset train while this is set and the weight_path, weight_epoch is specified, ' \
+            'the lr_reduce, auto_save, auto_stop would not be load')
     args = ppa.parser.parse_args()
     args.auto_save_name = auto_save_name
     args.auto_save_source = auto_save_source
@@ -375,12 +375,16 @@ if __name__ == '__main__':
     args.fit_decode_to_result_name = fit_decode_to_result_name
     args.model_name = model_name
     args.recorder_name = recorder_name
-
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in gpus]
+
     import Putil.base.logger as plog
     reload(plog)
+
+    hvd = Horovod.horovod(args)
+    hvd.init()
+    empty_tensor = empty_tensor_factory(args)()
     # the method for remote debug
-    if args.remote_debug:
+    if args.remote_debug and hvd.rank() == 0:
         import ptvsd
         host = '127.0.0.1'
         port = 12345
@@ -388,34 +392,41 @@ if __name__ == '__main__':
         if __name__ == '__main__':
             print('waiting for remote attach')
             ptvsd.wait_for_attach()
-    hvd = Horovod.horovod(args)
-    hvd.init()
+            pass
+        pass
+    if args.remote_debug:
+        hvd.broadcast_object(empty_tensor(), 0, 'sync_waiting_for_the_attach')
     # 生成存储位置，更新args.save_dir, 让server与worker都在同一save_dir
     make_sure_the_save_dir(args)
     # 删除clear_train指定的train_time结果
     if args.clean_train is not None:
         for _train_time in args.clean_train:
-            make_sure_clean_the_train_result = input(Fore.RED + 'clean the train time {} in {} y/n'.format(_train_time, args.save_dir) + Fore.RESET) if hvd.rank() == 0 else False
-            make_sure_clean_the_train_result = hvd.broadcast_object(torch.BoolTensor([make_sure_clean_the_train_result]), 0, 'make_sure_clean_train-{}'.format(_train_time)).item()
-            clean_train_result(_train_time, args.save_dir) if make_sure_clean_the_train_result in ['y', 'Y'] and hvd.rank() == 0 else None
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_before_checking_clean')
+            make_sure_clean_the_train_result = input(Fore.RED + 'clean the train time {} in {} (y/n):'.format(_train_time, args.save_dir) + Fore.RESET) if hvd.rank() == 0 else False
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_checking_clean')
+            clean_train_result(_train_time, args.save_dir) if make_sure_clean_the_train_result and hvd.rank() == 0 else None
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_clean')
             pass
         pass
     # 确定当前的train_time, 需要args.save_dir，生成args.train_time
     make_sure_the_train_time(args)
     args.save_dir = subdir_base_on_train_time(args.save_dir, args.train_time)
-    assert not os.path.exists(args.save_dir)
+    hvd.broadcast_object(empty_tensor(), 0, 'sync_before_make_save_dir')
+    assert not os.path.exists(args.save_dir) if hvd.rank() == 0 else True
     os.mkdir(args.save_dir) if hvd.rank() == 0 else None
+    hvd.broadcast_object(empty_tensor(), 0, 'sync_after_make_save_dir')
     print('rank {} train time {} save to {}'.format(hvd.rank(), args.train_time, args.save_dir))
     log_level = plog.LogReflect(args.Level).Level
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
     plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
-        generate_train_time_train_log_file_name(args.train_time) if train_stage(args) else 'evaluate.log' if evaluate_stage(args) else 'test.log'), mode='a')
+        'train.log' if train_stage(args) else 'evaluate.log' if evaluate_stage(args) else 'test.log'), mode='a')
     plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
     root_logger = plog.PutilLogConfig('train').logger()
     root_logger.setLevel(log_level)
     MainLogger = root_logger.getChild('Trainer')
     MainLogger.setLevel(log_level)
+    #<tag========================================reload 部分=====================================
     reload(AutoSaveFactory); AutoSave = AutoSaveFactory.auto_save_factory
     reload(AutoStopFactory); AutoStop = AutoStopFactory.auto_stop_factory
     reload(LrReduceFactory); LrReduce = LrReduceFactory.lr_reduce_factory
@@ -434,38 +445,33 @@ if __name__ == '__main__':
     reload(ModelFactory); Model = ModelFactory.model_factory
     reload(RecorderFactory); Recorder = RecorderFactory.recorder_factory
     reload(util)
-    train_stage = util.train_stage
-    evaluate_stage = util.evaluate_stage
-    test_stage = util.test_stage
-    make_sure_the_save_dir = util.make_sure_the_save_dir
-    make_sure_the_train_time = util.make_sure_the_train_time
-    clean_train_result = util.clean_train_result
-    generate_train_time_train_log_file_name = util.generate_train_time_train_log_file_name
-    subdir_base_on_train_time = util.subdir_base_on_train_time
+    [eval('{} = util.{}'.format(element, element)) for element in [ \
+        'train_stage', 'evaluate_stage', 'test_stage', 'make_sure_the_save_dir', 'make_sure_the_save_dir', 'make_sure_the_train_time', \
+            'clean_train_result', 'subdir_base_on_train_time']]
     reload(Horovod)
-    # TODO: third party import
-    # TODO: set the deterministic 随机确定性可复现
-    # make the result dir
+    reload(BaseOperationFactory)
+    [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
+        'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
+            'generate_model_element_factory', 'empty_tensor_factory']]
+    #========================================reload 部分=====================================>
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
     from Putil.demo.deep_learning.base.util import Stage as Stage
     from .util.run_train_stage import train_stage_common 
-    from Putil.demo.deep_learning.base.base_operation_factory import load_saved_factory, \
-        load_checkpointed_factory, checkpoint_factory, save_factory, deploy_factory
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
     from util.train_evaluate_common import all_reduce
-    # TODO: set the args item
-    # ========================================the arg would not change after this=============================================
-    pab.args_log(args, MainLogger) if hvd.rank() == 0 else None
-    ArgsSave(args, os.path.join(args.save_dir, 'args-{}'.format(args.train_time))) if hvd.rank() == 0 else None
-    # ========================================the arg would not change after this=============================================
+    # 确定性设置
+    from Putil.base import base_setting
+    base_setting.deterministic_setting(args.seed)
+    # : set the args item
     checkpoint = checkpoint_factory(args)() if train_stage(args) else None
     save = save_factory(args)() if train_stage(args) else None
     deploy = deploy_factory(args)() if train_stage else None
     load_saved = load_saved_factory(args)()
     load_checkpointed = load_checkpointed_factory(args)()
+    empty_tensor = generate_model_element_factory(args)()
 
     if hvd.rank() == 0:
-        writer = SummaryWriter(oa.path.dirname(args.save_dir), filename_suffix='-{}'.format(args.train_time))
+        writer = SummaryWriter(args.save_dir, filename_suffix='-{}'.format(args.train_time))
     # prepare the GPU
     if args.cuda:
         # Horovod: pin GPU to local rank. TODO: rank is the global process index, local_rank is the local process index in a machine
@@ -476,9 +482,11 @@ if __name__ == '__main__':
                 break
             else:
                 continue
+            pass
+        args.gpu = args.gpus[gpu_group][hvd.local_rank()]
         MainLogger.info("rank: {}; local_rank: {}; gpu: {}; gpu_group: {}".format( \
-            hvd.rank(), hvd.local_rank(), device_map[gpu_group][hvd.local_rank()]), gpu_group)
-        torch.cuda.set_device(device_map[gpu_group][hvd.local_rank()])
+            hvd.rank(), hvd.local_rank(), args.gpu, gpu_group)
+        torch.cuda.set_device(args.gpu)
         torch.cuda.manual_seed(args.seed)
     # Horovod: limnit # of CPU threads to be used per worker
     torch.set_num_threads(1)
@@ -488,6 +496,10 @@ if __name__ == '__main__':
     if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
             mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
         kwargs['multiprocessing_context'] = 'forkserver'
+    #<tag========================================the arg would not change after this=========================================
+    pab.args_log(args, MainLogger) if hvd.rank() == 0 else None
+    ArgsSave(args, os.path.join(args.save_dir, 'args')) if hvd.rank() == 0 else None
+    #========================================the arg would not change after this=============================================>
     if train_stage(args):
         # : build the backbone
         backbone = BackboneFactory.backbone_factory(args)()
@@ -506,6 +518,7 @@ if __name__ == '__main__':
         optimization = OptimizationFactory.optimization_factory(args)(backbone.parameters())
         # Horovod: broadcast parameters & optimizer state.
         hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
+        hvd.broadcast_parameters(backend.state_dict(), root_rank=0)
         hvd.broadcast_optimizer_state(optimizer, root_rank=0)
         # Horovod: (optional) compression algorithm.
         compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
@@ -569,22 +582,32 @@ if __name__ == '__main__':
         if args.use_adasum and hvd.nccl_built():
             lr_scaler = hvd.local_size()
     run_test_stage() if test_stage(args) else None # 如果train_off为True 同时test_off为False，则为test_stage，evaluate_stage与test_stage可以同时存在
-    run_evaluate_stage if evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为evaluate_stage，evaluate_stage与test_stage可以同时存在
+    run_evaluate_stage() if evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为evaluate_stage，evaluate_stage与test_stage可以同时存在
     if train_stage(args):
         # 如果train_off不为True，就是train_stage，只是train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:
-            MainLogger.info('load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch))
+            assert np.sum([args.retrain_mode_continue_train, args.retrain_mode_reset_train])
+            MainLogger.info(Fore.YELLOW + 'load trained backbone: path: {} epoch: {}'.format(args.weight_path, args.weight_epoch) + Fore.RESET)
+            retrain_mode_field = dict()
+            {retrain_mode_field.update({k: v}) if re.search(retrain_mode_header, k) is not None else None for k, v in args.__dict__.items()}
+            assert np.sum(list(retrain_mode_field.values())) == 1
+            MainLogger.info(Fore.YELLOW + 'this project contain retrain_mode: {}, set to: {}'.format(retrain_mode_field, ''.join([k if v else '' for k, v in retrain_mode_field.items()])) + Fore.RESET)
             target_dict = {}
             target_dict.update({'backbone': backbone})
             target_dict.update({'backend': backend})
             target_dict.update({'optimizatioin': optimization})
             target_dict.update({'recorder': recorder})
-            target_dict.update({'lr_reduce': lr_reduce}) if not args.load_lr_reduce_off else None
-            target_dict.update({'auto_save': auto_save}) if not args.load_auto_save_off else None
-            target_dict.update({'auto_stop': auto_stop}) if not args.load_auto_stop_off else None
+            if eval('args.{}_continue'.format(retrain_mode_header)):
+                target_dict.update({'lr_reduce': lr_reduce})
+                target_dict.update({'auto_save': auto_save})
+                target_dict.update({'auto_stop': auto_stop})
+            elif eval('args.{}_reset'.format(retrain_mode_header)):
+                pass
+            else:
+                raise NotImplementedError('continue_train_mode {} is not implemented'.format(args.continue_train_mode))
             #target_dict.update({'': }) if args.
-            load_checkpointed(args.weight_epoch, args.weight_path, **target_dict)
-        for epoch in range(recorder.epoch, recorder.epoch + args.epochs):
+            load_checkpointed(args.weight_epoch, args.weight_path, target_dict, map_location=torch.device(args.gpu))
+        for epoch in range(recorder.epoch + 1, recorder.epoch + args.epochs + 1):
             train_ret = train(epoch)
             if train_ret[0] is True:
                 break

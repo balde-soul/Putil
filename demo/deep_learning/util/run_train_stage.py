@@ -79,7 +79,7 @@ def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend,
                 reduced_loss_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \
                     for k, v in indicator_scalar_collection.current_indicators.items()}
                 pass
-            scalar_log(logger, prefix, reduced_indicator_current.update(reduced_loss_current), recorder, len(data_loader)) \
+            scalar_log(logger, prefix, reduced_indicator_current.update(reduced_loss_current), recorder, batch_idx, len(data_loader)) \
                 if recorder.step % args.log_interval == 0 and hvd.rank() == 0 and stage == Stage.Train else None
             if recorder.step % args.summary_interval == 0 and stage == Stage.Train:
                 #gt_obj_ft = gt_obj.sum(1).gt(0.)
@@ -110,7 +110,7 @@ def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend,
             for k, v in loss_scalar_collection.epoch_average.items()}
         # : do the log of this epoch
         if hvd.rank() == 0:
-            scalar_log(logger, prefix, reduced_indicator_epoch_average.update(reduced_loss_epoch_average), recorder, None)
+            scalar_log(logger, prefix, reduced_indicator_epoch_average.update(reduced_loss_epoch_average), recorder, None, None)
             [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step) for k, v in reduced_indicator_epoch_average.items()]
             [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step) for k, v in reduced_loss_epoch_average.items()]
         pass
