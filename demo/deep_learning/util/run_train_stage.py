@@ -13,7 +13,22 @@ ScalarCollection = util.ScalarCollection
 all_reduce = util.all_reduce
 scalar_log = util.scalar_log
 
-def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, indicator, statistic_indicator, data_loader, recorder, logger):
+def train_stage_common(args, 
+stage, 
+epoch, 
+fit_data_to_input, 
+backbone, 
+backend, 
+decode, 
+fit_decode_to_result, 
+loss, 
+optimization, 
+indicator, 
+statistic_indicator, 
+accumulated_opt, 
+data_loader, 
+recorder, 
+logger):
     '''
      @brief Train TrainEvaluate中使用，即在train stage中使用
      @note
@@ -35,16 +50,13 @@ def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend,
 
         logger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
-            recorder.step += 1 if stage == Stage.Train else 0; step = recorder.step
+            recorder.step += 1 if stage == Stage.Train else 0
             logger.debug('batch {}'.format(prefix))
             # TODO: data to cuda
             #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
             backbone_input = fit_data_to_input(datas)
             # time
             batch_start = time.time()
-            # do the training
-            logger.debug('zero grad') if train_stage(args) else None
-            optimizer.zero_grad() if train_stage(args) else None
             # : run the backbone get the output TODO:
             logger.debug('run backbone')
             output = backbone(backbone_input)
@@ -66,14 +78,21 @@ def train_stage_common(args, stage, epoch, fit_data_to_input, backbone, backend,
             logger.debug('run indicator') if train_stage(args) else None
             indicators = indicator((datas, output)) if train_stage(args) else None
             indicator_scalar_collection.batch_update(indicators) if train_stage(args) else None
-            # : run the backward
-            _loss.backward() if stage == Stage.Train else None
-            # : do the optimize
-            optimizer.step() if stage == Stage.Train else None
+            # use the accumulation backward
+            accumulated_opt.append(_loss, optimizer, force_accumulation=args.accumulation_time \
+                if len(data_loader) - batch_idx - 1 > len(data_loader) % args.accumulation_time \
+                    else len(data_loader) % args.accumulation_time) if stage == Stage.Train else None
+            ## : run the backward
+            #_loss.backward() if stage == Stage.Train else None
+            ## : do the optimize
+            #optimizer.step() if stage == Stage.Train else None
+            ## do the training
+            #logger.debug('zero grad') if train_stage(args) else None
+            #optimizer.zero_grad() if train_stage(args) else None
             # time
             batch_time = time.time() - batch_start
             # while in Stage.Train or Stage.TrainEvaluate
-            if (recorder % args.log_interval == 0 or recorder.step % args.summary_interval == 0) and stage == Stage.Train:
+            if (recorder.step % args.log_interval == 0 or recorder.step % args.summary_interval == 0) and stage == Stage.Train:
                 reduced_indicator_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \
                     for k, v in loss_scalar_collection.current_indicators()}
                 reduced_loss_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \

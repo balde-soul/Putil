@@ -40,7 +40,7 @@ def do_epoch_end_process():
 
 def train(epoch):
     ret = train_stage_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
-         loss, optimization, indicator, statistic_indicator, train_loader, recorder, MainLogger)
+         loss, optimization, indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
     if args.evaluate_off:
         if args.debug:
             if epoch == 0:
@@ -58,7 +58,7 @@ def train(epoch):
 def evaluate(epoch):
     ret = train_stage_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
-            indicator, statistic_indicator, train_loader, recorder, MainLogger)
+            indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
     if train_stage(args):
         if args.debug:
             if epoch == 0:
@@ -207,6 +207,7 @@ if __name__ == '__main__':
     [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
         'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
             'generate_model_element_factory', 'empty_tensor_factory']]
+    from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
@@ -215,7 +216,6 @@ if __name__ == '__main__':
     data_loader_source = os.environ.get('data_loader_source', 'standard')
     data_sampler_source = os.environ.get('data_sampler_source', 'standard')
     encode_source = os.environ.get('encode_source', 'standard')
-    #backbone_source = os.environ.get('backbone_source', 'standard')
     backbone_source = os.environ.get('backbone_source', 'standard')
     backend_source = os.environ.get('backend_source', 'standard')
     decode_source = os.environ.get('decode_source', 'standard')
@@ -229,6 +229,7 @@ if __name__ == '__main__':
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
     model_source = os.environ.get('model_source', 'standard')
     recorder_source = os.environ.get('recorder_source', 'standard')
+    accumulated_opt_source = os.environ.get('accumulated_opt', 'standard')
     auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
@@ -250,6 +251,7 @@ if __name__ == '__main__':
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
     model_name = os.environ.get('model_name', 'DefaultModel')
     recorder_name = os.environ.get('recorder_name', 'DefaultRecorder')
+    accumulated_opt_name = os.environ.get('accumulated_opt_name', 'DefaultAccumulatedOpt')
     AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_source, auto_save_name)
     AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
@@ -273,6 +275,7 @@ if __name__ == '__main__':
     ## decode setting
     DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
     RecorderFactory.recorder_arg_factory(ppa.parser, recorder_source, recorder_name)
+    AccumulatedOptFactory.accumulated_opt_arg_factory(ppa.parser, accumulated_opt_source, accumulated_opt_name)
     # : the base information set
     ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
         help='specify the framework used')
@@ -294,29 +297,30 @@ if __name__ == '__main__':
         help='do not run evaluate if set')
     ppa.parser.add_argument('--test_off', action='store_true', default=False, \
         help='do not run test if set')
+    ## train set
+    ppa.parser.add_argument('--weight_decay', type=float, action='store', default=1e-4, \
+        help='the weight decay, default is 1e-4')
     ppa.parser.add_argument('--gpus', type=str, nargs='+', default=None, \
         help='specify the gpu, this would influence the gpu set in the code')
     ppa.parser.add_argument('--epochs', type=int, default=10, metavar='N', \
         help='number of epochs to train (default: 10)')
     ppa.parser.add_argument('--batch_size', type=int, default=64, metavar='N', \
         help='input batch size for training (default: 64)')
+    ppa.parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
+        help='how many batchees to wait before save the summary(default: 100)')
+    ppa.parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
+        help='how many epoch to wait before evaluate the backbone(default: 1), '\
+            'test the mode while the backbone is savd, would not run evaluate while -1')
     ppa.parser.add_argument('--evaluate_batch_size', type=int, default=64, metavar='N', \
         help='input batch size for evaluate (default: 64)')
     ppa.parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', \
         help='input batch size for testing (default: 1000)')
     ppa.parser.add_argument('--log_interval', type=int, default=10, metavar='N', \
         help='how many batches to wait before logging training status(default: 10)')
-    ppa.parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
-        help='how many batchees to wait before save the summary(default: 100)')
-    ppa.parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
-        help='how many epoch to wait before evaluate the backbone(default: 1), '\
-            'test the mode while the backbone is savd, would not run evaluate while -1')
     ppa.parser.add_argument('--compute_efficiency', action='store_true', default=False, \
         help='evaluate the efficiency in the test or not')
     ppa.parser.add_argument('--data_rate_in_compute_efficiency', type=int, default=200, metavar='N', \
         help='how many sample used in test to evaluate the efficiency(default: 200)')
-    ppa.parser.add_argument('--weight_decay', type=float, action='store', default=1e-4, \
-        help='the weight decay, default is 1e-4')
     # continue train setting
     ppa.parser.add_argument('--weight_path', type=str, default='', action='store', \
         help='the path where the trained backbone saved')
@@ -354,6 +358,7 @@ if __name__ == '__main__':
     args.fit_decode_to_result_source = fit_decode_to_result_source
     args.model_source = model_source
     args.recorder_source = recorder_source
+    args.accumulated_opt_source = accumulated_opt_source
     args.auto_save_name = auto_save_name
     args.auto_stop_name = auto_stop_name
     args.lr_reduce_name = lr_reduce_name
@@ -375,6 +380,7 @@ if __name__ == '__main__':
     args.fit_decode_to_result_name = fit_decode_to_result_name
     args.model_name = model_name
     args.recorder_name = recorder_name
+    args.accumulated_opt_name = accumulated_opt_name
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in gpus]
 
     import Putil.base.logger as plog
@@ -453,6 +459,7 @@ if __name__ == '__main__':
     [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
         'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
             'generate_model_element_factory', 'empty_tensor_factory']]
+    reload(AccumulatedOptFactory)
     #========================================reload 部分=====================================>
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
     from Putil.demo.deep_learning.base.util import Stage as Stage
@@ -527,6 +534,7 @@ if __name__ == '__main__':
             named_parameters=model.named_parameters(), \
                 compression=compression, \
                     op=hvd.Adasum if args.use_adasum else hvd.Average)
+        accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
         #  : the auto save
         auto_save = AutoSave(args)()
         #  : the auto stop

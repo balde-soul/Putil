@@ -7,6 +7,9 @@ from torch.nn import Module
 
 
 class Model:
+    '''
+     @brief Model用于save和deploy
+    '''
     def __init__(self, args, *modules, **kwargs):
         self._model_name = args.model_name
         self._model_source = args.model_source
@@ -15,6 +18,10 @@ class Model:
 
 
 class TorchModel(Model, Module):
+    '''
+     @brief Model use in framework troch
+     @note 在torch中，当使用jit.trace进行deploy时，需要forward的输出是torch.Tensor或者item为torch.Tensor的可迭代对象
+    '''
     def __init__(self, args, *modules, **kwargs):
         Model.__init__(self, args)
         Module.__init__(self)
@@ -27,6 +34,9 @@ class TorchModel(Model, Module):
 
 
 class _DefaultModel(Model, Module):
+    '''
+     @brief 默认的Model，针对modules进行迭代然后直接输出
+    '''
     def __init__(self, args, *modules, **kwargs):
         Model.__init__(self, args)
         Module.__init__(self)
