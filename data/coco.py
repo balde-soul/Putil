@@ -612,10 +612,11 @@ class COCODataWithTorch(COCOData, Dataset):
         cat_ids=None,
         use_rate=1.0,
         image_width=128,
-        image_height=128):
+        image_height=128,
+        remain_strategy=None):
         COCOData.__init__(self, coco_root_dir=coco_root_dir, stage=stage, information_save_to_path=information_save_to_path, \
             detection=detection, key_points=key_points, stuff=stuff, panoptic=panoptic, dense_pose=dense_pose, captions=captions, \
-                cat_ids=cat_ids, use_rate=use_rate, image_height=image_height, image_width=image_width)
+                cat_ids=cat_ids, use_rate=use_rate, image_height=image_height, image_width=image_width, remain_strategy=remain_strategy)
         Dataset.__init__(self)
         pass
 
