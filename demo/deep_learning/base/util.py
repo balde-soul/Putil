@@ -234,6 +234,15 @@ def make_sure_the_save_dir(args):
         pass
     pass
 
+def subdir_base_on_train_time(root_dir, train_time, prefix):
+    '''
+     @brief 依据根目录与对应的train_time生成子目录名称
+    '''
+    return os.path.join(root_dir, '{}{}'.format('' if prefix == '' else '{}-'.format(prefix), generate_train_time_dir_name(train_time)))
+
+def generate_train_time_dir_name(train_time):
+    return 'train_time-{}'.format(train_time)
+
 def make_sure_the_train_time(args):
     hvd = horovod.horovod(args)
     if train_stage(args):
@@ -243,12 +252,14 @@ def make_sure_the_train_time(args):
             train_time_tensor = torch.IntTensor([args.train_time])
             train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
         elif hvd.rank() == 0 and (args.weight_path != '') and (args.weight_epoch is not None):
-            train_time = 0
-            while True:
-                if os.path.exists(os.path.join(args.save_dir, generate_train_time_dir_name(train_time))):
-                    train_time += 1
-                else:
-                    break
+            item_list = os.listdir(args.save_dir)
+            max_time = 0
+            for _item in item_list:
+                if os.path.isdir(os.path.join(args.save_dir, _item)):
+                    name_part = _item.split('-')
+                    if name_part[-2] == 'train_time':
+                        max_time = max(max_time, int(name_part[-1]))
+            train_time = max_time + 1
             print(Fore.GREEN + 'get the trained train time is {}'.format(train_time) + Fore.RESET)
             train_time_tensor = torch.IntTensor([train_time])
             train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
@@ -287,12 +298,6 @@ def _get_trained_result(path, train_time):
         pass
     return dirs, files
 
-def subdir_base_on_train_time(root_dir, train_time):
-    '''
-     @brief 依据根目录与对应的train_time生成子目录名称
-    '''
-    return os.path.join(root_dir, generate_train_time_dir_name(train_time))
-
 def clean_train_result(path, train_time):
     dirs, files = _get_trained_result(path, train_time)
     #sync = hvd.broadcast_object(torch.BoolTensor([True]), 0, 'sync_before_checking_remove_file')
@@ -300,9 +305,6 @@ def clean_train_result(path, train_time):
     [os.remove(_file) for _file in files] if _remove in ['y', 'Y'] else None
     [shutil.rmtree(_dir) for _dir in dirs] if _remove in ['Y', 'y'] else None
     pass
-
-def generate_train_time_dir_name(train_time):
-    return 'train_time-{}'.format(train_time)
 
 def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
     logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, epoch, recorder.step if epoch_step_amount is not None else '', \

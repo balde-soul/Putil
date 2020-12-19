@@ -7,8 +7,11 @@
 source ./experiments/common.sh
 $env_command \
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py --help \
+#$log_level_arg \
+#$clean_train_time_arg \
+#$train_name_arg \
+#$remote_debug_arg \
 #--debug \
 #--batch_size=$batch_size \
 #--n_worker_per_dataset=$n_worker \
 #--gpus $gpus_arg \
-#$remote_debug_arg \

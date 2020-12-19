@@ -30,7 +30,7 @@ class GaussianAugment(paug.Augment):
         dc.append(data)
         for mu in self._config['mu']:
             for sigma in self._config['sigma']:
-                np.random.seed((time.time()))
+                #np.random.seed((time.time()))
                 noise = np.random.normal(mu, sigma, data.size)
                 noise = np.reshape(noise, data.shape)
                 dc.append(noise)
@@ -42,7 +42,7 @@ class GaussianAugment(paug.Augment):
     pass
 
 #In[]:
-import numpy as np
-
-a = np.zeros(shape=[1, 1, 10, 1, 10, 1])
-np.squeeze(a).shape
+#import numpy as np
+#
+#a = np.zeros(shape=[1, 1, 10, 1, 10, 1])
+#np.squeeze(a).shape

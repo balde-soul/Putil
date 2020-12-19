@@ -13,6 +13,6 @@ class a:
         self._t = val
         pass
     t = property(get_t, set_t)
-b = a()
-b.t = 9
-pass
+#b = a()
+#b.t = 9
+#pass

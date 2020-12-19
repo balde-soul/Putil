@@ -5,8 +5,11 @@ cat << EOF
 
     environ data:
         remote_debug: 使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
+        log_level: 使用log_level=Info等设定log等级
+        del_train_time: 使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
+        train_name: 使用train_name=*name*，设置训练代表性目的以及影响训练子目录的名称
     OPTIONS:
-        -g      （指定gpus，使用逗号分隔）
+        -g      （指定gpus，使用逗号分隔）ip0:gpu0.gpu1,ip1:gpu0.gpu1 example: 127.0.0.1:0.1.2,127.0.0.2:0,127.0.0.3:0.1
         -w       specify the number of worker for every dataset,（指定数据进程数）
         -b       specify the batch size
         --help   Usage
@@ -90,7 +93,13 @@ for (( i=0;i<${#gpus[@]};i++ )); do
     amount=(${gpus[$i]//./ })
     amount=${#amount[@]}
     echo amount: $amount
-    horovod_H_arg=$(echo $horovod_H_arg,${ips[$i]}:$amount)
+    if [ -z'$horovod_np_arg' ]; then 
+        echo 'empty'
+        horovod_H_arg=$horovod_H_arg
+    else 
+        horovod_H_arg=$horovod_H_arg,
+    fi
+    horovod_H_arg=$(echo $horovod_H_arg${ips[$i]}:$amount)
     horovod_np_arg=$[$horovod_np_arg+$amount]
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
@@ -101,6 +110,33 @@ if [ $remote_debug ] && ([ $remote_debug == 'true' ] || [ $remote_debug == 'True
     remote_debug_arg=--remote_debug
 else
     remote_debug_arg=
+fi
+
+# log_level 相关解析
+if [ $log_level ]; then
+    log_level_arg=--log_level=$log_level
+    echo 'set log_level:' $(echo $log_level) $log_level_arg
+else
+    # Default: log_level
+    log_level_arg=--log_level=Info
+fi
+
+# del_train_time 相关解析
+if [ $del_train_time ]; then
+    clean_train_arg=--clean_train' '${del_train_time//./ }
+    echo 'set del train time:' ${del_train_time//./ } $clean_train_arg
+else
+    # Default: clean_train
+    clean_train_arg=
+fi
+
+# train_name 相关解析
+if [ $train_name ]; then
+    train_name_arg=--train_name=$(echo $train_name)
+    echo 'set train name:' $(echo $train_name) $train_name_arg
+else
+    # Default: train_name
+    train_name_arg=
 fi
 
 declare -A sources
@@ -123,6 +159,8 @@ sources=(
 [data_type_adapter_source]=standard [data_type_adapter_name]=DefaultDataTypeAdapter
 [fit_data_to_input_source]=standard [fit_data_to_input_name]=DefaultFitDataToInput
 [fit_decode_to_result_source]=standard [fit_decode_to_result_name]=DefaultFitDecodeToResult
+[recorder_source]=standard [recorder_name]=DefaultRecorder
+[accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt
 )
 ## 从脚本外获取手动设置的环境变量
 for key in $(echo ${!sources[*]}); do
@@ -140,7 +178,3 @@ for key in $(echo ${!sources[*]}); do
     env_set_command=$(echo $env_set_command $key=${sources[$key]})
 done
 echo env_command: $env_set_command
-
-# 生成分布式gpu指定语句
-dist_gpu_command=
-

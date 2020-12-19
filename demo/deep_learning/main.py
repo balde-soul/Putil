@@ -199,14 +199,22 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
     from Putil.demo.deep_learning.base import recorder_factory as RecorderFactory
     from Putil.demo.deep_learning.base import util
-    [eval('{} = util.{}'.format(element, element)) for element in [ \
-        'train_stage', 'evaluate_stage', 'test_stage', 'make_sure_the_save_dir', 'make_sure_the_save_dir', 'make_sure_the_train_time', \
-            'clean_train_result', 'subdir_base_on_train_time']]
+    train_stage = util.train_stage
+    evaluate_stage = util.evaluate_stage
+    test_stage = util.test_stage
+    make_sure_the_save_dir = util.make_sure_the_save_dir
+    make_sure_the_train_time = util.make_sure_the_train_time
+    clean_train_result = util.clean_train_result
+    subdir_base_on_train_time = util.subdir_base_on_train_time
     import Putil.demo.deep_learning.base.horovod as Horovod
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
-    [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
-        'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
-            'generate_model_element_factory', 'empty_tensor_factory']]
+    load_save_factory = BaseOperationFactory.load_saved_factory
+    load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
+    checkpoint_factory = BaseOperationFactory.checkpoint_factory
+    save_factory = BaseOperationFactory.save_factory
+    deploy_factory = BaseOperationFactory.deploy_factory
+    generate_model_element_factory = BaseOperationFactory.generate_model_element_factory
+    empty_tensor_factory = BaseOperationFactory.empty_tensor_factory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
     auto_save_source = os.environ.get('auto_save_source', 'standard')
@@ -329,6 +337,8 @@ if __name__ == '__main__':
     ppa.parser.add_argument('--name', type=str, action='store', default='', \
         help='the ${backbone_name}${name} would be the name of the fold to save the result')
     retrain_mode_header = 'retrain_mode'
+    ppa.parser.add_argument('--train_name', type=str, action='store', default='', \
+        help='specify the name as the prefix for the continue train fold name')
     ppa.parser.add_argument('--{}_continue'.format(retrain_mode_header), default=False, action='store_true', \
         help='continue train while this is set and the weight_path, weight_epoch is specified, ' \
             'the lr_reduce, auto_save, auto_stop would be load')
@@ -416,7 +426,7 @@ if __name__ == '__main__':
         pass
     # 确定当前的train_time, 需要args.save_dir，生成args.train_time
     make_sure_the_train_time(args)
-    args.save_dir = subdir_base_on_train_time(args.save_dir, args.train_time)
+    args.save_dir = subdir_base_on_train_time(args.save_dir, args.train_time, args.train_name)
     hvd.broadcast_object(empty_tensor(), 0, 'sync_before_make_save_dir')
     assert not os.path.exists(args.save_dir) if hvd.rank() == 0 else True
     os.mkdir(args.save_dir) if hvd.rank() == 0 else None
@@ -451,14 +461,22 @@ if __name__ == '__main__':
     reload(ModelFactory); Model = ModelFactory.model_factory
     reload(RecorderFactory); Recorder = RecorderFactory.recorder_factory
     reload(util)
-    [eval('{} = util.{}'.format(element, element)) for element in [ \
-        'train_stage', 'evaluate_stage', 'test_stage', 'make_sure_the_save_dir', 'make_sure_the_save_dir', 'make_sure_the_train_time', \
-            'clean_train_result', 'subdir_base_on_train_time']]
+    train_stage = util.train_stage
+    evaluate_stage = util.evaluate_stage
+    test_stage = util.test_stage
+    make_sure_the_save_dir = util.make_sure_the_save_dir
+    make_sure_the_train_time = util.make_sure_the_train_time
+    clean_train_result = util.clean_train_result
+    subdir_base_on_train_time = util.subdir_base_on_train_time
     reload(Horovod)
     reload(BaseOperationFactory)
-    [eval('{} = BaseOperationFactory.{}'.format(element, elemen)) for element in [ \
-        'load_save_factory', 'load_checkpointed_factory', 'checkpoint_factory', 'save_factory', 'deploy_factory', \
-            'generate_model_element_factory', 'empty_tensor_factory']]
+    load_save_factory = BaseOperationFactory.load_saved_factory
+    load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
+    checkpoint_factory = BaseOperationFactory.checkpoint_factory
+    save_factory = BaseOperationFactory.save_factory
+    deploy_factory = BaseOperationFactory.deploy_factory
+    generate_model_element_factory = BaseOperationFactory.generate_model_element_factory
+    empty_tensor_factory = BaseOperationFactory.empty_tensor_factory
     reload(AccumulatedOptFactory)
     #========================================reload 部分=====================================>
     from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
@@ -469,6 +487,10 @@ if __name__ == '__main__':
     # 确定性设置
     from Putil.base import base_setting
     base_setting.deterministic_setting(args.seed)
+    def _init_fn(worker_id):
+        np.random.seed(int(args.seed) + worker_id)
+        pass
+    args.dataloader_deterministic_work_init_fn = _init_fn
     # : set the args item
     checkpoint = checkpoint_factory(args)() if train_stage(args) else None
     save = save_factory(args)() if train_stage(args) else None
@@ -492,7 +514,7 @@ if __name__ == '__main__':
             pass
         args.gpu = args.gpus[gpu_group][hvd.local_rank()]
         MainLogger.info("rank: {}; local_rank: {}; gpu: {}; gpu_group: {}".format( \
-            hvd.rank(), hvd.local_rank(), args.gpu, gpu_group)
+            hvd.rank(), hvd.local_rank(), args.gpu, gpu_group))
         torch.cuda.set_device(args.gpu)
         torch.cuda.manual_seed(args.seed)
     # Horovod: limnit # of CPU threads to be used per worker

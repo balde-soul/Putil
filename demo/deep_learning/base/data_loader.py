@@ -34,6 +34,8 @@ class DefaultDataLoader(DataLoader):
         DataLoader.__init__(self, args)
         self._args = args
         self._kwargs = dict()
+        # TODO: make the determinstic pass args.dataloader_deterministic_work_init_fn as the worker_init_fn
+        self._kwargs['worker_init_fn'] = args.dataloader_deterministic_work_init_fn
         pass
 
     def __call__(self, dataset, data_sampler, stage):
