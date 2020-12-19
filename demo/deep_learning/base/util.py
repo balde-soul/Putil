@@ -61,13 +61,13 @@ def torch_get_all_model(target_path):
     '''
     elements = list()
     epochs = list()
-    files = os.listdir()
+    files = os.listdir(target_path)
     for _file in files:
-        if target_model_filter(_file) is True:
+        if torch_target_model_filter(_file) is True:
             epochs.append(int(torch_generate_model_epoch(_file)))
         else:
             continue
-    epochs = sorted(temp_epochs)
+    epochs = sorted(epochs)
     for epoch in epochs[::-1]:
         me = torch_generate_model_element(epoch)
         elements.append(me)
