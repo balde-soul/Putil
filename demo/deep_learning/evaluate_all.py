@@ -6,42 +6,57 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--target_path', type=str, default='', action='store', \
     help='the model in the target would be evaluate')
+parser.add_argument('--target_epochs', type=int, nargs='+', default=None, \
+    help='specify the epoch')
 parser.add_argument('--gpu', type=list, nargs='+', default=[], help='specify the gpus')
+parser.add_argument('--remain_strategy', type=str, default=None, action='store', \
+    help='specify the remain data strategy')
 args = parser.parse_args()
+import Putil.base.logger as plog
 
-from Putil.demo.deep_learning.base import base_operation_factory
+log_level = plog.LogReflect(args.Level).Level
+plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
+plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
+plog.PutilLogConfig.config_format(plog.FormatRecommend)
+logger = plog.PutilLogConfig('evaluate').logger()
+logger.setLevel(log_level)
+
+from Putil.demo.deep_learning.base import BaseOperationFactory
 from Putil.base.arg_operation import args_extract
 from .util.data_util import generate_evaluate_data
-from Putil.demo.deep_learning.base.data_loader_factory import data_loader_factory as DataLoader
-from Putil.demo.deep_learning.base.data_sampler_factory import data_sampler_factory as DataSampler
-from Putil.demo.deep_learning.base.dataset_factory import dataset_factory as Dataset
-from Putil.demo.deep_learning.base.fit_data_to_input import fit_data_to_input_factory as FitDataToInput
-from Putil.demo.deep_learning.base.fit_decode_to_result import fit_decode_to_result_factory as FitDecodeToResult
+from Putil.demo.deep_learning.base import data_loader_factory as DataLoaderFactory
+from Putil.demo.deep_learning.base import data_sampler_factory as DataSamplerFactory
+from Putil.demo.deep_learning.base import dataset_factory as DatasetFactory
+from Putil.demo.deep_learning.base import fit_data_to_input_factory as FitDataToInputFactory
+from Putil.demo.deep_learning.base import fit_decode_to_result_factory as FitDecodeToResultFactory
 from Putil.demo.deep_learning.base.util import Stage
+from Putil.base.arg_operation import args_merge
+from Putil.base.arg_base import args_log
 
-train_args = args_extract(os.path.join(args.target_path, 'args'))
+args = arg_merge(args, args_extract(os.path.join(args.target_path, 'args')))
+args.remain_data_as_negative = True
+args_log(args, MainLogger) if hvd.rank() == 0 else None
+ArgsSave(args, os.path.join(args.save_dir, 'args')) if hvd.rank() == 0 else None
 
-train_args.remain_data_as_negative = True
+dataset = DatasetFactory.dataset_factory(args)
+data_sampler = DataSamplerFactory.data_sampler_factory(args)(dataset)
+data_loader = DataLoaderFactory.data_loader_factory(args)(dataset, data_sampler, Stage.Evaluate)
 
-dataset = Dataset(train_args)
-data_sampler = DataSampler(train_args)(dataset)
-data_loader = DataLoader(train_args)(dataset, data_sampler, Stage.Evaluate)
+fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)()
+fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)()
 
-fit_data_to_input = FitDataToInput(train_args)()
-fit_decode_to_result = FitDecodeToResult(train_args)()
-
-target_models = base_operation_factory.get_models_factory(train_args)(args.traget_path)
-epochs = target_models['epochs']
-load_saved_func = base_operation_factory.load_saved_factory(train_args)
-generate_save_name_func = base_operation_factory.generate_save_name_factory(train_args)
+target_models = BaseOperationFactory.get_models_factory(args)(args.traget_path)
+epochs = target_models['epochs'] if args.target_epochs is None else args.target_epochs
+load_saved_func = BaseOperationFactory.load_saved_factory(args)
+generate_save_name_func = BaseOperationFactory.generate_save_name_factory(args)
 
 for epoch in epochs:
     model = load_saved_func(epoch, args.target_path)
-    for index, datas in enumerate(data_loader):
-        input_data = fit_data_to_input(datas) 
-        decode = model(input_data)
-        result = fit_decode_to_result(decode)
-        # process the result
-        dataset.add_result()
-        pass
-    pass
+    with torch.no_grad():
+        model.eval()
+        for index, datas in enumerate(data_loader):
+            input_data = fit_data_to_input(datas) 
+            decode = model(input_data)
+            result = fit_decode_to_result(decode)
+            # process the result
+            dataset.add_result(result)

@@ -66,10 +66,10 @@ logger):
             logger.debug('run backend')
             output = backend(output)
             # : run the loss function get the ret
-            logger.debug('run loss') if train_stage(args) else None
-            losses = loss(datas, output) if train_stage(args) else None
+            logger.debug('run loss')
+            losses = loss(datas, output)
             logger.debug('update loss to loss_scalar_collection')
-            loss_scalar_collection.batch_update(losses) if train_stage(args) else None
+            loss_scalar_collection.batch_update(losses)
             _loss = losses[loss.total_loss_name]
             # TODO: do some simple check
             #if _iou_loss.item() < -1.0 or _iou_loss.item() > 1.0:
@@ -77,13 +77,15 @@ logger):
             #if np.isnan(_loss.item()) or np.isinf(_loss.item()) is True:
             #    logger.warning('loss in train inf occured!')
             # : run the indicator function to get the indicators
-            logger.debug('run indicator') if train_stage(args) else None
-            indicators = indicator((datas, output)) if train_stage(args) else None
-            indicator_scalar_collection.batch_update(indicators) if train_stage(args) else None
+            logger.debug('run indicator')
+            indicators = indicator((datas, output))
+            indicator_scalar_collection.batch_update(indicators)
             # use the accumulation backward
-            accumulated_opt.append(_loss, optimizer, force_accumulation=args.accumulation_time \
-                if len(data_loader) - batch_idx - 1 > len(data_loader) % args.accumulation_time \
-                    else len(data_loader) % args.accumulation_time) if stage == Stage.Train else None
+            logger.debug('run accumulated optimization')
+            accumulated_opt.append(_loss, optimizer, force_accumulation=None \
+                if len(data_loader) % args.accumulation_time == 0 or \
+                    len(data_loader) - batch_idx - 1 > len(data_loader) % args.accumulation_time \
+                        else len(data_loader) % args.accumulation_time) if stage == Stage.Train else None
             ## : run the backward
             #_loss.backward() if stage == Stage.Train else None
             ## : do the optimize
