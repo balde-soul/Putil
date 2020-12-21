@@ -30,4 +30,5 @@ def aug_factory(args):
 
 def aug_arg_factory(parser, sources, names):
     #import pdb; pdb.set_trace()
-    [eval('{}.{}Arg(parser)'.format(parser, source, name)) for aug_source, aug_name in zip(sources, names)]
+    for aug_source, aug_name in zip(sources, names):
+        eval('{}.{}Arg(parser)'.format(aug_source, aug_name))

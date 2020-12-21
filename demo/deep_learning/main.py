@@ -231,7 +231,7 @@ if __name__ == '__main__':
     indicator_source = os.environ.get('indicator_source', 'standard')
     statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
     optimization_source = os.environ.get('optimization_source', 'standard')
-    aug_sources = os.environ.get('aug_sources', '').split('-')
+    aug_sources = os.environ.get('aug_sources', '').split('.')
     data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
@@ -253,7 +253,7 @@ if __name__ == '__main__':
     indicator_name = os.environ.get('indicator_name', 'DefaultIndicator')
     statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
     optimization_name = os.environ.get('optimization_name', 'DefaultOptimization')
-    aug_names = os.environ.get('aug_names', '').split('-')
+    aug_names = os.environ.get('aug_names', '').split('.')
     data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
@@ -273,7 +273,7 @@ if __name__ == '__main__':
     IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
     StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
     OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_source, optimization_name)
-    [AugFactory.aug_arg_factory(ppa.parser, aug_source, aug_name) for aug_source, aug_name in zip(aug_sources, aug_names)]
+    AugFactory.aug_arg_factory(ppa.parser, aug_sources, aug_names)
     DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
     FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
@@ -330,15 +330,15 @@ if __name__ == '__main__':
     ppa.parser.add_argument('--data_rate_in_compute_efficiency', type=int, default=200, metavar='N', \
         help='how many sample used in test to evaluate the efficiency(default: 200)')
     # continue train setting
-    ppa.parser.add_argument('--weight_path', type=str, default='', action='store', \
+    ppa.parser.add_argument('--weight_path', type=str, default=None, action='store', \
         help='the path where the trained backbone saved')
     ppa.parser.add_argument('--weight_epoch', type=int, default=None, action='store', \
         help='the epoch when saved backbone which had been trained')
     ppa.parser.add_argument('--name', type=str, action='store', default='', \
         help='the ${backbone_name}${name} would be the name of the fold to save the result')
-    retrain_mode_header = 'retrain_mode'
     ppa.parser.add_argument('--train_name', type=str, action='store', default='', \
         help='specify the name as the prefix for the continue train fold name')
+    retrain_mode_header = 'retrain_mode'
     ppa.parser.add_argument('--{}_continue'.format(retrain_mode_header), default=False, action='store_true', \
         help='continue train while this is set and the weight_path, weight_epoch is specified, ' \
             'the lr_reduce, auto_save, auto_stop would be load')

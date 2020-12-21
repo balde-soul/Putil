@@ -4,6 +4,8 @@ cat << EOF
     usage: [environ data] $0 options
 
     environ data:
+        环境变量，所有同等地位的变量需要以'.'分隔，因为环境变量不接受空格，比如aug_sources与aug_names就存在多种并列的情况，
+        需要使用aug_sources=source1.source2.source3与aug_names=name1.name2.name3的形式
         remote_debug: 使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
         log_level: 使用log_level=Info等设定log等级
         del_train_time: 使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
@@ -139,8 +141,8 @@ else
     train_name_arg=
 fi
 
-declare -A sources
-sources=(
+declare -A sources_names
+sources_names=(
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce
@@ -163,18 +165,17 @@ sources=(
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt
 )
 ## 从脚本外获取手动设置的环境变量
-for key in $(echo ${!sources[*]}); do
+for key in $(echo ${!sources_names[*]}); do
     if [ $(eval echo '$'$key) ]; then
-        echo 'manual set' $key 'from' ${sources[$key]}'(default)-->' $(eval echo '$'$key)
-        sources[$key]=$(eval echo '$'$key)
+        echo 'manual set' $key 'from' ${sources_names[$key]}'(default)-->' $(eval echo '$'$key)
+        sources_names[$key]=$(eval echo '$'$key)
     else
-        sources[$key]=${sources[$key]}
+        sources_names[$key]=${sources_names[$key]}
     fi
 done
-
 # 生成环境变量语句
 env_set_command=
-for key in $(echo ${!sources[*]}); do
-    env_set_command=$(echo $env_set_command $key=${sources[$key]})
+for key in $(echo ${!sources_names[*]}); do
+    env_set_command=$(echo $env_set_command $key=${sources_names[$key]})
 done
 echo env_command: $env_set_command
