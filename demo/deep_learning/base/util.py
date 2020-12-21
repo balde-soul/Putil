@@ -216,7 +216,7 @@ def make_sure_the_save_dir(args):
             save_dir_tensor = string_to_torch_tensor(args.save_dir, code)
             save_dir_tensor = hvd.broadcast_object(save_dir_tensor, 0, 'save_dir')
             args.save_dir = torch_tensor_to_string(save_dir_tensor, code)
-        elif hvd.rank() == 0 and args.weight_path != '' and args.weight_epoch is not None:
+        elif hvd.rank() == 0 and args.weight_path is not None and args.weight_epoch is not None:
             args.save_dir = os.path.dirname(args.weight_path)
             code = 'utf-16'
             save_dir_tensor = string_to_torch_tensor(args.save_dir, code)
