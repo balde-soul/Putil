@@ -42,6 +42,8 @@ logger):
     dataset = data_loader.dataset
     loss_scalar_collection = ScalarCollection() if train_stage(args) else None
     indicator_scalar_collection = ScalarCollection() if train_stage(args) else None
+    def accumulation_fix(index):
+        return np.ceil(index / args.accumulation_time)
     with torch.no_grad() if stage == Stage.Evaluate else nothing() as t:
         backbone.train() if stage == Stage.Train else backbone.eval()
         backend.train() if stage == Stage.Train else backend.eval()
@@ -50,7 +52,7 @@ logger):
 
         logger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
-            recorder.step += 1 if stage == Stage.Train else 0
+            recorder.step += accumulation_fix(1) if stage == Stage.Train else 0
             logger.debug('batch {}'.format(prefix))
             # TODO: data to cuda
             #img = torch.from_numpy(img).cuda();gt_box = torch.from_numpy(gt_box).cuda();gt_class = torch.from_numpy(gt_class).cuda();gt_obj = torch.from_numpy(gt_obj).cuda();radiance_factor = torch.from_numpy(radiance_factor).cuda()
@@ -98,8 +100,8 @@ logger):
                 reduced_loss_current = {ScalarCollection.generate_current_reduce_name(k): all_reduce(v, ScalarCollection.generate_current_reduce_name(k)) \
                     for k, v in indicator_scalar_collection.current_indicators.items()}
                 pass
-            scalar_log(logger, prefix, reduced_indicator_current.update(reduced_loss_current), recorder, batch_idx, len(data_loader)) \
-                if recorder.step % args.log_interval == 0 and hvd.rank() == 0 and stage == Stage.Train else None
+            scalar_log(logger, prefix, reduced_indicator_current.update(reduced_loss_current), recorder, int(accumulation_fix(batch_idx)), \
+                int(accumulation_fix(len(data_loader)))) if recorder.step % args.log_interval == 0 and hvd.rank() == 0 and stage == Stage.Train else None
             if recorder.step % args.summary_interval == 0 and stage == Stage.Train:
                 #gt_obj_ft = gt_obj.sum(1).gt(0.)
                 ## reduce the target_indicator
