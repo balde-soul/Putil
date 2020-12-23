@@ -15,7 +15,7 @@ class AugFunc(metaclass=ABCMeta):
         pass
 
     def _generate_name(self):
-        return ''
+        return type(self).__name__
 
     def _generate_doc(self):
         return ''

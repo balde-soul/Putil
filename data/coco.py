@@ -23,7 +23,6 @@ import os
 import json
 import numpy as np
 import Putil.base.logger as plog
-from Putil.base.project_base import BaseSaveFold
 from pycocotools.coco import COCO
 
 logger = plog.PutilLogConfig('coco').logger()
@@ -52,6 +51,30 @@ class COCOBase():
         _detection_cat_name_to_represent[cat_name] = _detection_cat_id_to_represent[cat_id]
     # TODO: important problem remain 当使用以下方法生成_detection_cat_name_to_represent时出现_detection_cat_id_to_represent undefined的情况
     #_detection_cat_name_to_represent = {cat_name: _detection_cat_id_to_represent[cat_id] for cat_id, cat_name in _detection_cat_id_to_cat_name.items()}
+    # datas field
+    ## base information
+    base_information_length = 3
+    image_height_index_in_base_information = 0
+    image_width_index_in_base_information = 1
+    image_id_index_in_base_information = 2
+    ## datas
+    data_length = 4
+    base_information_index = 2
+    image_index = 0
+    detection_box_index = 1
+    detection_class_index = 3
+
+    @staticmethod
+    def generate_base_information(image_ann):
+        base_information = [None] * COCOBase.base_information_length
+        base_information[COCOBase.image_height_index_in_base_information] = image_ann[0]['height']
+        base_information[COCOBase.image_width_index_in_base_information] = image_ann[0]['width']
+        base_information[COCOBase.image_id_index_in_base_information] = image_ann[0]['id']
+        return base_information
+
+    @staticmethod
+    def generate_default_datas():
+        return [None] * COCOBase.data_length
 
     @staticmethod
     def detection_get_cat_id(cat_name=None, represent_value=None):
@@ -136,7 +159,6 @@ class COCOBase():
         cat_ids,
     ):
         self._information_save_to_path = information_save_to_path
-        #BaseSaveFold()
         self._coco_root_dir = coco_root_dir
         self._stage = stage
         self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
@@ -169,6 +191,12 @@ class COCOBase():
         self._detection_indicator_result_file_name = 'detection_indicator_result'
         pass
 
+    def read_image(self, file_name):
+        image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.uint8)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        assert(image is not None)
+        return image
+
     def represent_value_to_category_id(self, represent_value):
         pass
 
@@ -176,7 +204,7 @@ class COCOBase():
     def generate_result_file_name(prefix, common_name):
         return '{}{}.csv'.format('{}_'.format(prefix) if prefix is not None else '', common_name)
 
-    def add_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False, prefix=None):
+    def add_detection_result(self, image=None, image_id=None, category_ids=None, bboxes=None, scores=None, save=False, prefix=None):
         '''
          @brief save the detection result base on one image
          @note
@@ -283,6 +311,10 @@ class COCOBase():
 
 
 class COCOData(pcd.CommonDataWithAug, COCOBase):
+    def save_result(self, *result):
+        #if self._detection and not self._stuff and not self._p
+        pass
+
     @staticmethod
     def set_seed(seed):
         pcd.CommonDataWithAug.set_seed(seed)
@@ -339,7 +371,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         use_rate=1.0,
         image_width=128,
         image_height=128,
-        remain_strategy=None):
+        remain_strategy=pcd.CommonData.RemainStrategy.Drop):
         '''
          @brief focus on coco2017
          @note 
@@ -359,15 +391,16 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
          read the dense_pose label or not
          @param[in] captions
          read the captions label or not
+         @param[in] cat_ids 
+         used as sub_data
          @param[in] use_rate
          data used rate
         '''
         self._image_width = image_width
         self._image_height = image_height
-        self._remain_strategy = remain_strategy if remain_strategy is not None else 'drop'
         COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
             key_points, stuff, panoptic, dense_pose, captions, cat_ids)
-        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate)
+        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=cat_ids, remain_strategy=remain_strategy)
 
         belong_instances = [self._detection, self._stuff, self._panoptic]
         belong_person_keypoints = [self._key_points]
@@ -398,8 +431,8 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         # TODO:record
         self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
         if self._stage in [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]:
-            self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None else self._instances_img_ids 
-            self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._cat_ids is None else {cat_id: index for index, cat_id in enumerate(self._cat_ids)}
+            self._data_field = self._instances_coco.getImgIds(catIds=self._sub_data) if self._sub_data is not None else self._instances_img_ids 
+            self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._sub_data is None else {cat_id: index for index, cat_id in enumerate(self._sub_data)}
             if self._information_save_to_path is not None:
                 with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
                     json.dump(self._detection_cat_id_to_represent, fp, indent=4)
@@ -428,13 +461,6 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
 
     def _inject_operation(self, inject_param):
         pass
-
-    def __read_image(self, file_name):
-
-        image = cv2.imread(os.path.join(self._img_root_dir, file_name)).astype(np.uint8)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        assert(image is not None)
-        return image
 
     def __generate_base_image_information(self, image_ann):
         #import pdb;pdb.set_trace()
@@ -468,13 +494,12 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         if self._stage == COCOData.Stage.STAGE_TEST:
             return self.__generate_test_from_origin_index(index)
         elif True in [self._detection, self._stuff, self._panoptic]:
+            datas = COCOBase.generate_default_datas()
             image_ann = self._instances_coco.loadImgs(self._data_field[index])
-            base_information = self.__generate_base_image_information(image_ann)
+            base_information = COCOBase.generate_base_information(image_ann)
             ann_ids = self._instances_coco.getAnnIds(self._data_field[index])
             anns = self._instances_coco.loadAnns(ann_ids)
-
-            image = self.__read_image(image_ann[0]['file_name'])
-
+            image = self.read_image(image_ann[0]['file_name'])
             # debug check
             for ann in anns:
                 box = ann['bbox']
@@ -482,20 +507,16 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
                     COCODataLogger.info(box)
                     pass
                 pass
-
             #plt.axis('off')
             ##COCODataLogger.debug(image.shape)
             #plt.imshow(image)
-
             resize_width = self._image_width
             resize_height = self._image_height
             x_scale = float(resize_width) / image.shape[1]
             y_scale = float(resize_height) / image.shape[0]
             image = cv2.resize(image, (resize_width, resize_height), interpolation=Image.BILINEAR)
-
             #self._instances_coco.showAnns(anns, draw_bbox=True)
             #plt.show()
-
             bboxes = list()
             classes = list()
             for ann in anns:
@@ -511,18 +532,18 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
             #for box in bboxes:
             #    cv2.rectangle(image, (box[0] - box[])
             #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
-            if index == 823:
-                pass
+            #if index == 823:
+            #    pass
             bboxes = clip_box(bboxes, image)
-            COCODataLogger.debug('original check:')
-            ret = COCOCommonAugBase._repack(image, bboxes, base_information, classes, image=image, bboxes=bboxes, classes=classes)
-            ret = self._aug_check(*ret)
-            _bboxes = COCOCommonAugBase.bboxes(*ret)
-            if len(_bboxes) == 0:
-                COCODataLogger.warning('original data generate no obj, regenerate')
-                ret = self._generate_from_specified(random.choice(range(0, len(self))))
-                pass
-            return ret
+            classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
+            bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
+            datas[COCOBase.base_information_index] = base_information
+            datas[COCOBase.image_index] = image
+            datas[COCOBase.detection_box_index] = bboxes
+            datas[COCOBase.detection_class_index] = classes
+            #ret = self._aug_check(*ret)
+            COCODataLogger.warning('original data generate no obj, regenerate') if len(datas[COCOBase.detection_box_index]) == 0 else None
+            return tuple(datas)
         else:
             raise NotImplementedError('unimplemented')
             pass
@@ -531,8 +552,8 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
     def _aug_check(self, *args):
         if self._stage == COCOData.Stage.STAGE_TRAIN or (self._stage == COCOData.Stage.STAGE_EVAL):
             if True in [self._detection, self._stuff, self._panoptic]:
-                bboxes = args[COCOCommonAugBase.bboxes_index]
-                classes = args[COCOCommonAugBase.classes_index]
+                bboxes = args[COCOBase.detection_box_index]
+                classes = args[COCOBase.detection_class_index]
                 assert len(bboxes) == len(classes)
                 COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
                 if len(bboxes) == 0:
@@ -567,7 +588,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
 
     def __generate_test_from_origin_index(self, index):
         image_ann = self._image_test.loadImgs(self._image_test_img_ids[index])
-        image = self.__read_image(image_ann[0]['file_name'])
+        image = self.read_image(image_ann[0]['file_name'])
         resize_width = self._image_width
         resize_height = self._image_height
         x_scale = float(resize_width) / image.shape[1]
@@ -619,44 +640,44 @@ class COCODataWithTorch(COCOData, Dataset):
                 cat_ids=cat_ids, use_rate=use_rate, image_height=image_height, image_width=image_width, remain_strategy=remain_strategy)
         Dataset.__init__(self)
         pass
-
-
-class COCOCommonAugBase:
-    instance_image_index = 0
-    image_index = instance_image_index
-    instance_bboxes_index = 1
-    bboxes_index = instance_bboxes_index
-    base_information_index = 2
-    instance_classes_index= -1
-    classes_index = instance_classes_index
-
-    @staticmethod
-    def _repack(*original_input, image=None, bboxes=None, classes=None):
-        #import pdb; pdb.set_trace()
-        image = image if image is not None else original_input[COCOCommonAugBase.image_index]
-        bboxes = np.array(bboxes if bboxes is not None else original_input[COCOCommonAugBase.bboxes_index])
-        classes = np.array(classes if classes is not None else original_input[COCOCommonAugBase.classes_index])
-        base_information = np.array(original_input[COCOCommonAugBase.base_information_index])
-        classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
-        bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
-        return image, bboxes.tolist(), base_information, classes.tolist()
-
-    @staticmethod
-    def image(*args):
-        return args[COCOCommonAugBase.image_index]
-
-    @staticmethod
-    def bboxes(*args):
-        return args[COCOCommonAugBase.bboxes_index]
-    
-    @staticmethod
-    def classes(*args):
-        return args[COCOCommonAugBase.classes_index]
-
-    @staticmethod
-    def base_information(*args):
-        return args[COCOCommonAugBase.base_information_index]
     pass
 
 
-#pcd.CommonDataManager.register('COCO', COCO)
+#class COCOCommonAugBase:
+#    instance_image_index = 0
+#    image_index = instance_image_index
+#    instance_bboxes_index = 1
+#    bboxes_index = instance_bboxes_index
+#    base_information_index = 2
+#    instance_classes_index= -1
+#    classes_index = instance_classes_index
+#
+#    @staticmethod
+#    def _repack(*original_input, image=None, bboxes=None, classes=None):
+#        #import pdb; pdb.set_trace()
+#        image = image if image is not None else original_input[COCOCommonAugBase.image_index]
+#        bboxes = np.array(bboxes if bboxes is not None else original_input[COCOCommonAugBase.bboxes_index])
+#        classes = np.array(classes if classes is not None else original_input[COCOCommonAugBase.classes_index])
+#        base_information = np.array(original_input[COCOCommonAugBase.base_information_index])
+#        classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
+#        bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
+#        return image, bboxes.tolist(), base_information, classes.tolist()
+#
+#    @staticmethod
+#    def image(*args):
+#        return args[COCOCommonAugBase.image_index]
+#
+#    @staticmethod
+#    def bboxes(*args):
+#        return args[COCOCommonAugBase.bboxes_index]
+#    
+#    @staticmethod
+#    def classes(*args):
+#        return args[COCOCommonAugBase.classes_index]
+#
+#    @staticmethod
+#    def base_information(*args):
+#        return args[COCOCommonAugBase.base_information_index]
+#    pass
+#
+##pcd.CommonDataManager.register('COCO', COCO)

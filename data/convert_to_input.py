@@ -52,3 +52,4 @@ class IOConvertorNoOp(ConvertToInput):
     pass
 
 ConvertToInputNoOp = IOConvertorNoOp
+Encode = IOConvertor

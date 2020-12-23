@@ -1,5 +1,7 @@
 #In[]:
 # coding=utf-8
+import os
+os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import numpy as np
 import Putil.base.logger as plog
 
@@ -17,7 +19,6 @@ from importlib import reload
 reload(COCO)
 import Putil.data.aug as pAug
 import Putil.data.aug as pAug
-from Putil.data.coco import COCOCommonAugBase
 from Putil.data.data_type_adapter import DataTypeAdapterNoOp as data_type_adapter
 from Putil.data.convert_to_input import ConvertToInputNoOp as convert_to_input
 

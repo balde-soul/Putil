@@ -1,6 +1,8 @@
 #In[]:
 # coding=utf-8
 import os
+#import pdb; pdb.set_trace()
+os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import numpy as np
 import Putil.base.logger as plog
 
@@ -17,7 +19,6 @@ from importlib import reload
 reload(COCO)
 import Putil.data.aug as pAug
 import Putil.data.aug as pAug
-from Putil.data.coco import COCOCommonAugBase
 from Putil.data.data_type_adapter import DataTypeAdapterNoOp as data_type_adapter
 from Putil.data.convert_to_input import ConvertToInputNoOp as convert_to_input
 
@@ -62,7 +63,7 @@ dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 #In[]
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TRAIN, './result', detection=True, use_rate=0.1, 
+dataset_train = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TRAIN, information_save_to_path, detection=True, use_rate=0.1, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()

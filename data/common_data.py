@@ -108,6 +108,17 @@ class CommonData(metaclass=ABCMeta):
     '''
     this class provide a common method to read the data
     '''
+    class RemainStrategy(Enum):
+        Drop=0 # sub_data的补集直接丢弃
+        UseAsNegative=1 # sub_data的补集最为负集合
+        UseAsBackground=2 # sub_data的补集作为背景联合sub_data中的target生成样本
+    
+    @staticmethod
+    def get_remain_strategy_field():
+        return CommonData.RemainStrategy.__members__
+
+    def save_result(self, *result):
+        raise NotImplementedError('default save_result is not implemented')
 
     @abstractmethod
     def _restart_process(self, restart_param):
@@ -133,7 +144,7 @@ class CommonData(metaclass=ABCMeta):
         '''
         pass
 
-    def __init__(self, use_rate=1.0):
+    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=RemainStrategy.Drop):
         #self._device_batch_mutex = threading.Lock()
         self._device_batch = None
         self._critical_process = None
@@ -148,6 +159,15 @@ class CommonData(metaclass=ABCMeta):
         self._data_type_adapter = data_type_adapter.DataTypeAdapterNoOp()
 
         self._use_rate = use_rate
+        self._sub_data = sub_data
+        # 输入的remain_strategy可以是CommonData.RemainStrategy中的字段、其中的值或者直接就是引用了CommonData.RemainStrategy，
+        assert remain_strategy in CommonData.RemainStrategy.__members__ or remain_strategy in CommonData.RemainStrategy._value2member_map_ or remain_strategy in CommonData.RemainStrategy
+        if type(remain_strategy).__name__ == 'str':
+            self._remain_strategy = CommonData.RemainStrategy.__members__[remain_strategy]
+        elif type(remain_strategy).__name__ == 'int':
+            self._remain_strategy = CommonData.RemainStrategy._value2member_map_[remain_strategy]
+        else:
+            self._remain_strategy = remain_strategy
         pass
 
     def _fix_field(self):
@@ -174,6 +194,7 @@ class CommonData(metaclass=ABCMeta):
          @brief follow after _convert_to_input_method
          @note default : do nothing
         '''
+        CommonDataLogger.debug('use default convert_check do nothing bu return the arg')
         return args
 
     def set_data_type_adapter(self, adapter):
@@ -355,9 +376,10 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
      @brief the CommonData which support aug
      @note
         this class complete the generate_from_specified which contain aug
+        generate_from_origin_index->aug->aug_check->convert->convert_check->data_type_adapter
     '''
-    def __init__(self, use_rate=1.0):
-        CommonData.__init__(self, use_rate=use_rate)
+    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
+        CommonData.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
         self._aug_node = Aug.AugNode(Aug.AugFuncNoOp())
         self._aug_node.freeze_node()
         pass
@@ -391,6 +413,7 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
          @brief follow after _aug_node
          @note default : do nothing
         '''
+        CommonDataWithAugLogger.debug('use default aug_check do nothing bu return the arg')
         return args
     pass
 
