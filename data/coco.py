@@ -39,6 +39,11 @@ import Putil.data.common_data as pcd
 
 
 class COCOBase():
+    '''
+     @brief
+     @note
+      有关coco的信息，总共有四类任务：目标检测detection、语意分割stuff、全景分割pann
+    '''
     # represent->cat_id->cat_name->represent
     _detection_represent_to_cat_id = OrderedDict({0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 13, 12: 14, 13: 15, 14: 16, 15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22, 21: 23, 22: 24, 23: 25, 24: 27, 25: 28, 26: 31, 27: 32, 28: 33, 29: 34, 30: 35, 31: 36, 32: 37, 33: 38, 34: 39, 35: 40, 36: 41, 37: 42, 38: 43, 39: 44, 40: 46, 41: 47, 42: 48, 43: 49, 44: 50, 45: 51, 46: 52, 47: 53, 48: 54, 49: 55, 50: 56, 51: 57, 52: 58, 53: 59, 54: 60, 55: 61, 56: 62, 57: 63, 58: 64, 59: 65, 60: 67, 61: 70, 62: 72, 63: 73, 64: 74, 65: 75, 66: 76, 67: 77, 68: 78, 69: 79, 70: 80, 71: 81, 72: 82, 73: 84, 74: 85, 75: 86, 76: 87, 77: 88, 78: 89, 79: 90})
     _detection_cat_id_to_represent = OrderedDict()
@@ -59,10 +64,17 @@ class COCOBase():
     image_id_index_in_base_information = 2
     ## datas
     data_length = 4
-    base_information_index = 2
     image_index = 0
     detection_box_index = 1
+    base_information_index = 2
     detection_class_index = 3
+    ## result
+    result_length = 5 # format: list
+    result_base_information_index = 0
+    result_image_index = 1
+    result_detection_box_index = 2 # format: [[top_x, top_y, width, height], ...]
+    result_detection_class_index = 3 # format: [class_represent] class_represent表示的是当前class使用的索引号，不是cat_id
+    result_detection_class_score = 4
 
     @staticmethod
     def generate_base_information(image_ann):
@@ -75,6 +87,10 @@ class COCOBase():
     @staticmethod
     def generate_default_datas():
         return [None] * COCOBase.data_length
+
+    @staticmethod
+    def generate_default_result():
+        return [None] * COCOBase.result_length
 
     @staticmethod
     def detection_get_cat_id(cat_name=None, represent_value=None):
@@ -161,8 +177,8 @@ class COCOBase():
         self._information_save_to_path = information_save_to_path
         self._coco_root_dir = coco_root_dir
         self._stage = stage
-        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.STAGE_TRAIN else \
-            ('val2017' if self._stage == COCOData.Stage.STAGE_EVAL else 'test2017')
+        self._img_root_name = 'train2017' if self._stage == COCOData.Stage.Train else \
+            ('val2017' if self._stage == COCOData.Stage.Evaluate else 'test2017')
         self._img_root_dir = os.path.join(self._coco_root_dir, self._img_root_name)
         self._detection = detection
         self._key_points = key_points
@@ -198,6 +214,22 @@ class COCOBase():
         return image
 
     def represent_value_to_category_id(self, represent_value):
+        pass
+
+    def add_result(self, result, save=False, prefix=None):
+        if self._detection:
+            #self.add_detection_result(
+            #    image=result[COCOBase.result_image_index], 
+            #    image_id=result[COCOBase.result_base_information_index][COCOBase.image_id_index_in_base_information],
+            #    category_ids=)
+            raise NotImplementedError('save the detection result is not implemented')
+            pass
+        elif self._stuff:
+            raise NotImplementedError('save the detection result is not implemented')
+            pass
+        else:
+            raise NotImplementedError('save the detection result is not implemented')
+            pass
         pass
 
     @staticmethod
@@ -310,7 +342,7 @@ class COCOBase():
     pass
 
 
-class COCOData(pcd.CommonDataWithAug, COCOBase):
+class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
     def save_result(self, *result):
         #if self._detection and not self._stuff and not self._p
         pass
@@ -350,11 +382,6 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         else:
             return id_lists[0]
         pass
-
-    class Stage(Enum):
-        STAGE_TRAIN = 0
-        STAGE_EVAL = 1
-        STAGE_TEST = 2
 
     def __init__(
         self, 
@@ -406,18 +433,18 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         belong_person_keypoints = [self._key_points]
         belong_captions = [self._captions]
 
-        with_label = [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]
-        without_label = [COCOData.Stage.STAGE_TEST]
+        with_label = [COCOData.Stage.Train, COCOData.Stage.Evaluate]
+        without_label = [COCOData.Stage.Test]
         self._instances_coco, instances_load = (COCO(self._instances_file_train \
-            if self._stage == COCOData.Stage.STAGE_TRAIN else self._instances_file_eval), True) \
+            if self._stage == COCOData.Stage.Train else self._instances_file_eval), True) \
                 if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
         self._instances_img_ids = self._instances_coco.getImgIds() if instances_load else list() 
         self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoints_train \
-            if self._stage == COCOData.Stage.STAGE_TRAIN else self._person_keypoints_eval), True) \
+            if self._stage == COCOData.Stage.Train else self._person_keypoints_eval), True) \
                 if ((self._stage in with_label) and (self._key_points)) else (None, False)
         self._persion_keypoints_img_ids = self._person_keypoints_coco.getImgIds() if key_point_load else list()
         self._captions_coco, captions_load = (COCO(self._captions_train \
-            if self._stage == COCOData.Stage.STAGE_TRAIN else self._captions_eval), True) \
+            if self._stage == COCOData.Stage.Train else self._captions_eval), True) \
                 if ((self._stage in with_label) and (self._captions)) else (None, False)
         self._captions_img_ids = self._captions_coco.getImgIds() if captions_load else list()
         self._image_test, image_test_load = (COCO(self._image_info_test), True) if self._stage in without_label else (None, False)
@@ -430,14 +457,14 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         #     self._captions_img_ids, self._image_test_img_ids])
         # TODO:record
         self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
-        if self._stage in [COCOData.Stage.STAGE_TRAIN, COCOData.Stage.STAGE_EVAL]:
+        if self._stage in [COCOData.Stage.Train, COCOData.Stage.Evaluate]:
             self._data_field = self._instances_coco.getImgIds(catIds=self._sub_data) if self._sub_data is not None else self._instances_img_ids 
             self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._sub_data is None else {cat_id: index for index, cat_id in enumerate(self._sub_data)}
             if self._information_save_to_path is not None:
                 with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
                     json.dump(self._detection_cat_id_to_represent, fp, indent=4)
         self._fix_field()
-        
+     
         # check the ann
         if self._stage in with_label:
             image_without_ann = dict()
@@ -491,7 +518,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
          [2] base_information list|[list|[int|image_height, int|image_width, int|image_id], ...]
          [-1] classes list int [class_index, ....] 0 for the background class may not equal with the category_id
         '''
-        if self._stage == COCOData.Stage.STAGE_TEST:
+        if self._stage == COCOData.Stage.Test:
             return self.__generate_test_from_origin_index(index)
         elif True in [self._detection, self._stuff, self._panoptic]:
             datas = COCOBase.generate_default_datas()
@@ -550,7 +577,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
         pass
 
     def _aug_check(self, *args):
-        if self._stage == COCOData.Stage.STAGE_TRAIN or (self._stage == COCOData.Stage.STAGE_EVAL):
+        if self._stage == COCOData.Stage.Train or (self._stage == COCOData.Stage.Evaluate):
             if True in [self._detection, self._stuff, self._panoptic]:
                 bboxes = args[COCOBase.detection_box_index]
                 classes = args[COCOBase.detection_class_index]
@@ -563,7 +590,7 @@ class COCOData(pcd.CommonDataWithAug, COCOBase):
             else:
                 # TODO: other type
                 pass
-        elif self._stage == COCOData.Stage.STAGE_TEST:
+        elif self._stage == COCOData.Stage.Test:
             pass
         else:
             raise ValueError('stage: {} not supported'.format(self._stage))

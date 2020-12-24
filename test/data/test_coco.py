@@ -31,7 +31,7 @@ information_save_to_path = './test/data/result/test_coco'
 if os.path.exists(information_save_to_path) is False:
     os.mkdir(information_save_to_path)
 #In[]
-dataset_test = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TEST, information_save_to_path, detection=True, 
+dataset_test = COCO.COCOData(root_dir, COCO.COCOData.Stage.Test, information_save_to_path, detection=True, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -42,7 +42,7 @@ dataset_test.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('test data amount: {0}'.format(len(dataset_test)))
 t = dataset_test[0]
 #In[]
-dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_EVAL, information_save_to_path, detection=True, 
+dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.Evaluate, information_save_to_path, detection=True, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -52,7 +52,7 @@ dataset_evaluate.set_data_type_adapter(data_type_adapter())
 dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 #In[]
-dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_EVAL, information_save_to_path=information_save_to_path, detection=True, 
+dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.Evaluate, information_save_to_path=information_save_to_path, detection=True, 
 image_height=image_height, image_width=image_width, cat_ids=list(COCO.COCOBase._detection_cat_id_to_cat_name.keys())[0: 2])
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
@@ -63,7 +63,7 @@ dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 #In[]
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_TRAIN, information_save_to_path, detection=True, use_rate=0.1, 
+dataset_train = COCO.COCOData(root_dir, COCO.COCOData.Stage.Train, information_save_to_path, detection=True, use_rate=0.1, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()

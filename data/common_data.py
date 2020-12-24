@@ -418,6 +418,17 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
     pass
 
 
+class CommonDataForTrainEvalTest(CommonDataWithAug):
+    class Stage(Enum):
+        Train=0
+        Evaluate=1
+        Test=2
+
+    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
+        CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
+        pass
+
+
 class CombineCommonData(CommonDataWithAug):
     '''
      @brief combine some common_data
