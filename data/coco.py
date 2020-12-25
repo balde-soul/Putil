@@ -47,17 +47,17 @@ class COCOBase():
     真正对应有目标任务ann的图片的id，通过coco_basical_statistic可以得知：三个标注文件是包含关系caption包含instance包含person_keypoint
     '''
     # represent->cat_id->cat_name->represent
-    _detection_represent_to_cat_id = OrderedDict({0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 13, 12: 14, 13: 15, 14: 16, 15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22, 21: 23, 22: 24, 23: 25, 24: 27, 25: 28, 26: 31, 27: 32, 28: 33, 29: 34, 30: 35, 31: 36, 32: 37, 33: 38, 34: 39, 35: 40, 36: 41, 37: 42, 38: 43, 39: 44, 40: 46, 41: 47, 42: 48, 43: 49, 44: 50, 45: 51, 46: 52, 47: 53, 48: 54, 49: 55, 50: 56, 51: 57, 52: 58, 53: 59, 54: 60, 55: 61, 56: 62, 57: 63, 58: 64, 59: 65, 60: 67, 61: 70, 62: 72, 63: 73, 64: 74, 65: 75, 66: 76, 67: 77, 68: 78, 69: 79, 70: 80, 71: 81, 72: 82, 73: 84, 74: 85, 75: 86, 76: 87, 77: 88, 78: 89, 79: 90})
-    _detection_cat_id_to_represent = OrderedDict()
-    for represent, cat_id in _detection_represent_to_cat_id.items():
-        _detection_cat_id_to_represent[cat_id] = represent
-    #_detection_cat_id_to_represent = {cat_id: represent for represent, cat_id in _detection_represent_to_cat_id.items()}
-    _detection_cat_id_to_cat_name = OrderedDict({1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'})
-    _detection_cat_name_to_represent = OrderedDict()
-    for cat_id, cat_name in _detection_cat_id_to_cat_name.items():
-        _detection_cat_name_to_represent[cat_name] = _detection_cat_id_to_represent[cat_id]
-    # TODO: important problem remain 当使用以下方法生成_detection_cat_name_to_represent时出现_detection_cat_id_to_represent undefined的情况
-    #_detection_cat_name_to_represent = {cat_name: _detection_cat_id_to_represent[cat_id] for cat_id, cat_name in _detection_cat_id_to_cat_name.items()}
+    represent_to_cat_id = OrderedDict({0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 13, 12: 14, 13: 15, 14: 16, 15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22, 21: 23, 22: 24, 23: 25, 24: 27, 25: 28, 26: 31, 27: 32, 28: 33, 29: 34, 30: 35, 31: 36, 32: 37, 33: 38, 34: 39, 35: 40, 36: 41, 37: 42, 38: 43, 39: 44, 40: 46, 41: 47, 42: 48, 43: 49, 44: 50, 45: 51, 46: 52, 47: 53, 48: 54, 49: 55, 50: 56, 51: 57, 52: 58, 53: 59, 54: 60, 55: 61, 56: 62, 57: 63, 58: 64, 59: 65, 60: 67, 61: 70, 62: 72, 63: 73, 64: 74, 65: 75, 66: 76, 67: 77, 68: 78, 69: 79, 70: 80, 71: 81, 72: 82, 73: 84, 74: 85, 75: 86, 76: 87, 77: 88, 78: 89, 79: 90})
+    cat_id_to_represent = OrderedDict()
+    for represent, cat_id in represent_to_cat_id.items():
+        cat_id_to_represent[cat_id] = represent
+    #cat_id_to_represent = {cat_id: represent for represent, cat_id in represent_to_cat_id.items()}
+    cat_id_to_cat_name = OrderedDict({1: 'person', 2: 'bicycle', 3: 'car', 4: 'motorcycle', 5: 'airplane', 6: 'bus', 7: 'train', 8: 'truck', 9: 'boat', 10: 'traffic light', 11: 'fire hydrant', 13: 'stop sign', 14: 'parking meter', 15: 'bench', 16: 'bird', 17: 'cat', 18: 'dog', 19: 'horse', 20: 'sheep', 21: 'cow', 22: 'elephant', 23: 'bear', 24: 'zebra', 25: 'giraffe', 27: 'backpack', 28: 'umbrella', 31: 'handbag', 32: 'tie', 33: 'suitcase', 34: 'frisbee', 35: 'skis', 36: 'snowboard', 37: 'sports ball', 38: 'kite', 39: 'baseball bat', 40: 'baseball glove', 41: 'skateboard', 42: 'surfboard', 43: 'tennis racket', 44: 'bottle', 46: 'wine glass', 47: 'cup', 48: 'fork', 49: 'knife', 50: 'spoon', 51: 'bowl', 52: 'banana', 53: 'apple', 54: 'sandwich', 55: 'orange', 56: 'broccoli', 57: 'carrot', 58: 'hot dog', 59: 'pizza', 60: 'donut', 61: 'cake', 62: 'chair', 63: 'couch', 64: 'potted plant', 65: 'bed', 67: 'dining table', 70: 'toilet', 72: 'tv', 73: 'laptop', 74: 'mouse', 75: 'remote', 76: 'keyboard', 77: 'cell phone', 78: 'microwave', 79: 'oven', 80: 'toaster', 81: 'sink', 82: 'refrigerator', 84: 'book', 85: 'clock', 86: 'vase', 87: 'scissors', 88: 'teddy bear', 89: 'hair drier', 90: 'toothbrush'})
+    cat_name_to_represent = OrderedDict()
+    for cat_id, cat_name in cat_id_to_cat_name.items():
+        cat_name_to_represent[cat_name] = cat_id_to_represent[cat_id]
+    # TODO: important problem remain 当使用以下方法生成cat_name_to_represent时出现cat_id_to_represent undefined的情况
+    #cat_name_to_represent = {cat_name: cat_id_to_represent[cat_id] for cat_id, cat_name in cat_id_to_cat_name.items()}
     # datas field
     ## base information
     base_information_length = 3
@@ -97,12 +97,12 @@ class COCOBase():
     @staticmethod
     def detection_get_cat_id(cat_name=None, represent_value=None):
         assert False in [t is None for t in [cat_name, represent_value]]
-        return COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] if cat_name is not None else COCOBase._detection_represent_to_cat_id[represent_value]
+        return COCOBase.represent_to_cat_id[COCOBase.cat_name_to_represent[cat_name]] if cat_name is not None else COCOBase.represent_to_cat_id[represent_value]
 
     @staticmethod
     def detection_get_cat_name(cat_id=None, represent_value=None):
         assert False in [t is None for t in [cat_id, represent_value]]
-        return COCOBase._detection_cat_id_to_cat_name[cat_id] if cat_id is not None else COCOBase._detection_cat_id_to_cat_name[COCOBase._detection_represent_to_cat_id[represent_value]]
+        return COCOBase.cat_id_to_cat_name[cat_id] if cat_id is not None else COCOBase.cat_id_to_cat_name[COCOBase.represent_to_cat_id[represent_value]]
     
     @staticmethod
     def coco_basical_statistic(coco_root_dir, save_to):
@@ -162,8 +162,8 @@ class COCOBase():
 
     @staticmethod
     def detection_statistic_obj_size_follow_cat(cat_names, ann_file, save_to):
-        cat_ids = [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
-            else [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_names]]]
+        cat_ids = [COCOBase.represent_to_cat_id[COCOBase.cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
+            else [COCOBase.represent_to_cat_id[COCOBase.cat_name_to_represent[cat_names]]]
         coco = COCO(ann_file)
         #row_amount = np.floor(np.sqrt(len(cat_ids)))
         #col_amount = row_amount
@@ -178,10 +178,10 @@ class COCOBase():
             bbox_area = anns_df['bbox'].apply(lambda x: x[2] * x[3])
             plt.rcParams['savefig.dpi'] = 300
             (bbox_area/100).plot.hist(grid=True, bins=500, rwidth=0.9, color='#607c8e')
-            plt.title(COCOBase._detection_cat_id_to_cat_name[cat_id])
+            plt.title(COCOBase.cat_id_to_cat_name[cat_id])
             plt.ylabel('Counts')
             plt.xlabel('bbox area/100')
-            plt.savefig(os.path.join(save_to, 'box_area_histogram_{}.png'.format(COCOBase._detection_cat_id_to_cat_name[cat_id])))
+            plt.savefig(os.path.join(save_to, 'box_area_histogram_{}.png'.format(COCOBase.cat_id_to_cat_name[cat_id])))
             plt.close()
             #plt.show()
             #hist, xedges, yedges = np.histogram2d(anns_df['bbox'].apply(lambda x: x[2]), anns_df['bbox'].apply(lambda x: x[3]), bins=1000)
@@ -192,8 +192,8 @@ class COCOBase():
     def detection_statistic_img_amount_obj_amount(ann_file, save_to, cat_name=None):
         coco = COCO(ann_file)
         if cat_name is not None:
-            cat_ids = [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
-                else [COCOBase._detection_represent_to_cat_id[COCOBase._detection_cat_name_to_represent[cat_names]]]
+            cat_ids = [COCOBase.represent_to_cat_id[COCOBase.cat_name_to_represent[cat_name]] for cat_name in cat_names] if type(cat_names).__name__ == 'list'\
+                else [COCOBase.represent_to_cat_id[COCOBase.cat_name_to_represent[cat_names]]]
             pass
         else:
             cat_ids = coco.getCatIds()
@@ -202,7 +202,7 @@ class COCOBase():
         for cat_id in cat_ids:
             img_id = coco.getImgIds(catIds=[cat_id])
             ann_id = coco.getAnnIds(catIds=[cat_id])
-            result.append({'category': COCOBase._detection_cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), \
+            result.append({'category': COCOBase.cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), \
                 'cat_id': cat_id, 'obj_amount': len(ann_id)})
             pass
         result.append({'category': 'all', 'img_amount': len(set([v['image_id'] for k, v in coco.anns.items()])), 'cat_id': 'all', \
@@ -253,11 +253,63 @@ class COCOBase():
         
         self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
-        self._person_keypoints_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
-        self._person_keypoints_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
-        self._captions_train = os.path.join(self._coco_root_dir, 'annotations/captions_train2017.json')
-        self._captions_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
+        self._person_keypoint_file_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
+        self._person_keypoints_file_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
+        self._captions_file_train = os.path.join(self._coco_root_dir, 'annotations/captions_train2017.json')
+        self._captions_file_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
         self._image_info_test = os.path.join(self._coco_root_dir, 'annotations/image_info_test2017.json')
+
+        belong_instances = [self._detection, self._stuff, self._panoptic]
+        belong_person_keypoints = [self._key_points]
+        belong_captions = [self._captions]
+
+        with_label = [COCOData.Stage.Train, COCOData.Stage.Evaluate]
+        without_label = [COCOData.Stage.Test]
+        self._captions_coco, captions_load = (COCO(self._captions_file_train \
+            if self._stage == COCOData.Stage.Train else self._captions_file_eval), True) \
+                if ((self._stage in with_label) and (self._captions)) else (None, False)
+        self._captions_img_ids = [v['image_id'] for k, v in self._captions_coco.anns.items()] if captions_load else list()
+        self._instances_coco, instances_load = (COCO(self._instances_file_train \
+            if self._stage == COCOData.Stage.Train else self._instances_file_eval), True) \
+                if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
+        self._instances_img_ids = [v['image_id'] for k, v in self._instances_coco.anns.items()] if instances_load else list() 
+        self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoint_file_train \
+            if self._stage == COCOData.Stage.Train else self._person_keypoints_file_eval), True) \
+                if ((self._stage in with_label) and (self._key_points)) else (None, False)
+        self._person_keypoints_img_ids = [v['image_id'] for k, v in self._preson_keypoints_coco.anns.items()] if key_point_load else list()
+
+        self._image_test, image_test_load = (COCO(self._image_info_test), True) if self._stage in without_label else (None, False)
+        self._image_test_img_ids = self._image_test.getImgIds() if image_test_load else list()
+
+        assert [instances_load, key_point_load, captions_load, image_test_load].count(True) == 1, 'only support one type'
+        #COCOBaseLogger.warning('') if self._cat_id != COCOBase.
+        # we know use the detectio only
+        #self._data_field = COCOData.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
+        #     self._captions_img_ids, self._image_test_img_ids])
+        # TODO:record
+        self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
+        if self._stage in [COCOData.Stage.Train, COCOData.Stage.Evaluate]:
+            self._data_field = self._instances_coco.getImgIds(catIds=self._sub_data) if self._sub_data is not None else self._instances_img_ids 
+            self.cat_id_to_represent = COCOBase.cat_id_to_represent if self._sub_data is None else {cat_id: index for index, cat_id in enumerate(self._sub_data)}
+            if self._information_save_to_path is not None:
+                with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
+                    json.dump(self.cat_id_to_represent, fp, indent=4)
+        self._fix_field()
+     
+        # check the ann
+        if self._stage in with_label:
+            image_without_ann = dict()
+            for index in self._data_field:
+                image_ann = self._instances_coco.loadImgs(index)
+                ann_ids = self._instances_coco.getAnnIds(index)
+                if len(ann_ids) == 0:
+                    image_without_ann[index] = image_ann
+            for index_out in list(image_without_ann.keys()):
+                self._data_field.remove(index_out)
+            with open('./image_without_ann.json', 'w') as fp:
+                str_ = json.dumps(image_without_ann, indent=4)
+                fp.write(str_)
+                pass
 
         # result
         self._detection_result = None
@@ -296,7 +348,7 @@ class COCOBase():
             image_height = base_information[COCOBase.image_height_index_in_base_information]
             bboxes = result[COCOBase.result_detection_box_index] / ([image_width / image.shape[2], image_height / image.shape[1]] * 2)
             classes = result[COCOBase.result_detection_class_index]
-            classes = [self._detection_represent_to_cat_id for _class in classes]
+            classes = [self.represent_to_cat_id for _class in classes]
             scores = result[COCOBase.result_detection_class_score]
             self.add_detection_result(
                 image=image,
@@ -501,60 +553,9 @@ class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
         '''
         self._image_width = image_width
         self._image_height = image_height
+        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=cat_ids, remain_strategy=remain_strategy)
         COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
             key_points, stuff, panoptic, dense_pose, captions, cat_ids)
-        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=cat_ids, remain_strategy=remain_strategy)
-
-        belong_instances = [self._detection, self._stuff, self._panoptic]
-        belong_person_keypoints = [self._key_points]
-        belong_captions = [self._captions]
-
-        with_label = [COCOData.Stage.Train, COCOData.Stage.Evaluate]
-        without_label = [COCOData.Stage.Test]
-        self._instances_coco, instances_load = (COCO(self._instances_file_train \
-            if self._stage == COCOData.Stage.Train else self._instances_file_eval), True) \
-                if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
-        self._instances_img_ids = self._instances_coco.getImgIds() if instances_load else list() 
-        self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoints_train \
-            if self._stage == COCOData.Stage.Train else self._person_keypoints_eval), True) \
-                if ((self._stage in with_label) and (self._key_points)) else (None, False)
-        self._persion_keypoints_img_ids = self._person_keypoints_coco.getImgIds() if key_point_load else list()
-        self._captions_coco, captions_load = (COCO(self._captions_train \
-            if self._stage == COCOData.Stage.Train else self._captions_eval), True) \
-                if ((self._stage in with_label) and (self._captions)) else (None, False)
-        self._captions_img_ids = self._captions_coco.getImgIds() if captions_load else list()
-        self._image_test, image_test_load = (COCO(self._image_info_test), True) if self._stage in without_label else (None, False)
-        self._image_test_img_ids = self._image_test.getImgIds() if image_test_load else list()
-
-        assert [instances_load, key_point_load, captions_load, image_test_load].count(True) == 1, "only support one ann file"
-
-        # we know use the detectio only
-        #self._data_field = COCOData.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
-        #     self._captions_img_ids, self._image_test_img_ids])
-        # TODO:record
-        self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
-        if self._stage in [COCOData.Stage.Train, COCOData.Stage.Evaluate]:
-            self._data_field = self._instances_coco.getImgIds(catIds=self._sub_data) if self._sub_data is not None else self._instances_img_ids 
-            self._detection_cat_id_to_represent = COCOBase._detection_cat_id_to_represent if self._sub_data is None else {cat_id: index for index, cat_id in enumerate(self._sub_data)}
-            if self._information_save_to_path is not None:
-                with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
-                    json.dump(self._detection_cat_id_to_represent, fp, indent=4)
-        self._fix_field()
-     
-        # check the ann
-        if self._stage in with_label:
-            image_without_ann = dict()
-            for index in self._data_field:
-                image_ann = self._instances_coco.loadImgs(index)
-                ann_ids = self._instances_coco.getAnnIds(index)
-                if len(ann_ids) == 0:
-                    image_without_ann[index] = image_ann
-            for index_out in list(image_without_ann.keys()):
-                self._data_field.remove(index_out)
-            with open('./image_without_ann.json', 'w') as fp:
-                str_ = json.dumps(image_without_ann, indent=4)
-                fp.write(str_)
-                pass
         pass
 
     def _restart_process(self, restart_param):
@@ -628,7 +629,7 @@ class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
                 elif ann['category_id'] not in self._cat_ids:
                     continue
                 box = ann['bbox']
-                classes.append(self._detection_cat_id_to_represent[ann['category_id']])
+                classes.append(self.cat_id_to_represent[ann['category_id']])
                 #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
                 bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
                 pass

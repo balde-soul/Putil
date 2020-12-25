@@ -49,7 +49,7 @@ for i in range(0, use_amount):
     base_informations = data[2]
     bboxes = (np.array(data[1]) * np.array([[base_informations[1] / image.shape[1], base_informations[0] / image.shape[0]] * 2])).tolist()
     classes = data[-1]
-    category_ids = [dataset_evaluate._detection_represent_to_cat_id[_class] for _class in classes]
+    category_ids = [dataset_evaluate.represent_to_cat_id[_class] for _class in classes]
     image_ids.append(base_informations[-1])
     image_bbox[base_informations[-1]] = data[1]
     dataset_evaluate.add_detection_result(image=image, image_id=base_informations[-1], \

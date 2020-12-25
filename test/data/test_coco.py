@@ -53,7 +53,7 @@ dataset_evaluate.set_convert_to_input_method(convert_to_input())
 TestCocoLogger.info('evaluate data amount: {0}'.format(len(dataset_evaluate)))
 #In[]
 dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.Evaluate, information_save_to_path=information_save_to_path, detection=True, 
-image_height=image_height, image_width=image_width, cat_ids=list(COCO.COCOBase._detection_cat_id_to_cat_name.keys())[0: 2])
+image_height=image_height, image_width=image_width, cat_ids=list(COCO.COCOBase.cat_id_to_cat_name.keys())[0: 2])
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()
 dataset_evaluate.set_aug_node_root(root_node)

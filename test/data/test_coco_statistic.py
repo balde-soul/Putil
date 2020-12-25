@@ -34,7 +34,7 @@ if args.test_coco_basical_statistic:
     coco.COCOBase.coco_basical_statistic(coco_root_dir, save_to_path)
 #In[]
 if args.test_obj_size_follow_cat:
-    cat_names = list(coco.COCOBase._detection_cat_name_to_represent.keys())
+    cat_names = list(coco.COCOBase.cat_name_to_represent.keys())
     coco.COCOBase.detection_statistic_obj_size_follow_cat(cat_names=cat_names, ann_file=train_ann_file, save_to=train_save_to_path)
     coco.COCOBase.detection_statistic_obj_size_follow_cat(cat_names=cat_names, ann_file=evaluate_ann_file, save_to=evaluate_save_to_path)
 
