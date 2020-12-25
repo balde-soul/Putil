@@ -42,7 +42,9 @@ class COCOBase():
     '''
      @brief
      @note
-      有关coco的信息，总共有四类任务：目标检测detection、语意分割stuff、全景分割pann
+        有关coco的信息，总共有四类大任务：目标检测detection、全景分割panoptic、图像内容描述captions、人体目标点检测keypoints
+        使用getImgIds不指定catIds获取到的img_ids是所有图片的id，可以使用[v['image_id'] for k, v in coco.anns.items()]来获取
+    真正对应有目标任务ann的图片的id，通过coco_basical_statistic可以得知：三个标注文件是包含关系caption包含instance包含person_keypoint
     '''
     # represent->cat_id->cat_name->represent
     _detection_represent_to_cat_id = OrderedDict({0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 13, 12: 14, 13: 15, 14: 16, 15: 17, 16: 18, 17: 19, 18: 20, 19: 21, 20: 22, 21: 23, 22: 24, 23: 25, 24: 27, 25: 28, 26: 31, 27: 32, 28: 33, 29: 34, 30: 35, 31: 36, 32: 37, 33: 38, 34: 39, 35: 40, 36: 41, 37: 42, 38: 43, 39: 44, 40: 46, 41: 47, 42: 48, 43: 49, 44: 50, 45: 51, 46: 52, 47: 53, 48: 54, 49: 55, 50: 56, 51: 57, 52: 58, 53: 59, 54: 60, 55: 61, 56: 62, 57: 63, 58: 64, 59: 65, 60: 67, 61: 70, 62: 72, 63: 73, 64: 74, 65: 75, 66: 76, 67: 77, 68: 78, 69: 79, 70: 80, 71: 81, 72: 82, 73: 84, 74: 85, 75: 86, 76: 87, 77: 88, 78: 89, 79: 90})
@@ -74,7 +76,7 @@ class COCOBase():
     result_image_index = 1
     result_detection_box_index = 2 # format: [[top_x, top_y, width, height], ...]
     result_detection_class_index = 3 # format: [class_represent] class_represent表示的是当前class使用的索引号，不是cat_id
-    result_detection_class_score = 4
+    result_detection_score_index = 4
 
     @staticmethod
     def generate_base_information(image_ann):
@@ -101,6 +103,62 @@ class COCOBase():
     def detection_get_cat_name(cat_id=None, represent_value=None):
         assert False in [t is None for t in [cat_id, represent_value]]
         return COCOBase._detection_cat_id_to_cat_name[cat_id] if cat_id is not None else COCOBase._detection_cat_id_to_cat_name[COCOBase._detection_represent_to_cat_id[represent_value]]
+    
+    @staticmethod
+    def coco_basical_statistic(coco_root_dir, save_to):
+        '''
+         @brief
+           统计每个任务形式使用的图像数量以及重叠数量
+        '''
+        instances_file_train = os.path.join(coco_root_dir, 'annotations/instances_train2017.json')
+        instances_file_eval = os.path.join(coco_root_dir, 'annotations/instances_val2017.json')
+        person_keypoints_train = os.path.join(coco_root_dir, 'annotations/person_keypoints_train2017.json')
+        person_keypoints_eval = os.path.join(coco_root_dir, 'annotations/person_keypoints_val2017.json')
+        captions_train = os.path.join(coco_root_dir, 'annotations/captions_train2017.json')
+        captions_eval = os.path.join(coco_root_dir, 'annotations/captions_val2017.json')
+        image_info_test = os.path.join(coco_root_dir, 'annotations/image_info_test2017.json')
+        # img_amount
+        result = list()
+        itcoco = COCO(instances_file_train)
+        i_train_img_ids = set([v['image_id'] for k, v in itcoco.anns.items()])
+        result.append({'name': 'train_instance', 'img_amount': len(i_train_img_ids)})
+        ptcoco = COCO(person_keypoints_train)
+        p_train_img_ids = set([v['image_id'] for k, v in ptcoco.anns.items()])
+        result.append({'name': 'train_person_keypoint', 'img_amount': len(p_train_img_ids)})
+        ctcoco = COCO(captions_train)
+        c_train_img_ids = set([v['image_id'] for k, v in ctcoco.anns.items()])
+        result.append({'name': 'train_caption', 'img_amount': len(c_train_img_ids)})
+        img_ids_in_instance_and_person_keypoint = [i for i in p_train_img_ids if i in i_train_img_ids]
+        result.append({'name': 'train_instance_person_keypoint', 'img_amount': len(img_ids_in_instance_and_person_keypoint)})
+        img_ids_in_instance_and_caption = [i for i in p_train_img_ids if i in c_train_img_ids]
+        result.append({'name': 'train_instance_caption', 'img_amount': len(img_ids_in_instance_and_caption)})
+        img_ids_in_instance_and_person_keypoint_and_caption = [i for i in img_ids_in_instance_and_person_keypoint if i in img_ids_in_instance_and_caption]
+        result.append({'name': 'instance_person_keypoint_caption', 'img_amount': len(img_ids_in_instance_and_person_keypoint_and_caption)})
+
+        iecoco = COCO(instances_file_eval)
+        i_eval_img_ids = set([v['image_id'] for k, v in iecoco.anns.items()])
+        result.append({'name': 'eval_instance', 'img_amount': len(i_eval_img_ids)})
+        pecoco = COCO(person_keypoints_eval)
+        p_eval_img_ids = set([v['image_id'] for k, v in pecoco.anns.items()])
+        result.append({'name': 'eval_person_keypoint', 'img_amount': len(p_eval_img_ids)})
+        cecoco = COCO(captions_eval)
+        c_eval_img_ids = set([v['image_id'] for k, v in cecoco.anns.items()])
+        result.append({'name': 'eval_caption', 'img_amount': len(c_eval_img_ids)})
+        img_ids_in_instance_and_person_keypoint = [i for i in p_eval_img_ids if i in i_eval_img_ids]
+        result.append({'name': 'eval_instance_person_keypoint', 'img_amount': len(img_ids_in_instance_and_person_keypoint)})
+        img_ids_in_instance_and_caption = [i for i in p_eval_img_ids if i in c_eval_img_ids]
+        result.append({'name': 'eval_instance_caption', 'img_amount': len(img_ids_in_instance_and_caption)})
+        img_ids_in_instance_and_person_keypoint_and_caption = [i for i in img_ids_in_instance_and_person_keypoint if i in img_ids_in_instance_and_caption]
+        result.append({'name': 'instance_person_keypoint_caption', 'img_amount': len(img_ids_in_instance_and_person_keypoint_and_caption)})
+        result_df = pd.DataFrame(result)
+        plt.rcParams['savefig.dpi'] = 300
+        fig = plt.figure(figsize=(5, 4))
+        ax = fig.add_subplot(111, frame_on=False) # no visible frame
+        ax.xaxis.set_visible(False)  # hide the x axis
+        ax.yaxis.set_visible(False)  # hide the y axis
+        table(ax, result_df, loc='center')
+        plt.savefig(os.path.join(save_to, 'basical_statistic.png'))
+        pass
 
     @staticmethod
     def detection_statistic_obj_size_follow_cat(cat_names, ann_file, save_to):
@@ -147,6 +205,8 @@ class COCOBase():
             result.append({'category': COCOBase._detection_cat_id_to_cat_name[cat_id], 'img_amount': len(img_id), \
                 'cat_id': cat_id, 'obj_amount': len(ann_id)})
             pass
+        result.append({'category': 'all', 'img_amount': len(set([v['image_id'] for k, v in coco.anns.items()])), 'cat_id': 'all', \
+            'obj_amount': len(coco.anns)})
         result_df = pd.DataFrame(result)
         plt.rcParams['savefig.dpi'] = 300
         fig = plt.figure(figsize=(5, 15))
@@ -216,12 +276,32 @@ class COCOBase():
     def represent_value_to_category_id(self, represent_value):
         pass
 
-    def add_result(self, result, save=False, prefix=None):
+    def save_result(self, result, save=False, prefix=None):
+        '''
+         @brief
+         @note
+          输入的result以image为基准，每一个result包含一个image，所有任务公共结果信息为image与base_information
+          detection任务的result说明：
+            主要bboxes，classes，scores
+                bboxes, ndarray, 为依照datas输出image的尺寸的bboxes，单个bbox格式为[top_x,top_y,width,height]，一张图多个bbox使用list组成bboxes
+                classes, ndarray, 使用的是模型输出的classes，COCO中存在cat_id<-->represent的映射关系，result中的classes使用的是represent，这样有利于
+            COCO的封闭性与完整性，单个classes的格式为：int，一张图每个bbox对应一个class，使用list组成classes
+                scores, ndarray, 使用的是模型输出的score，float，每个bbox对应一个score，使用list组成scores
+        '''
         if self._detection:
-            #self.add_detection_result(
-            #    image=result[COCOBase.result_image_index], 
-            #    image_id=result[COCOBase.result_base_information_index][COCOBase.image_id_index_in_base_information],
-            #    category_ids=)
+            base_information = result[COCOBase.result_base_information_index]
+            image = result[COCOBase.result_image_index]
+            image_id = base_information[COCOBase.image_id_index_in_base_information]
+            image_width = base_information[COCOBase.image_width_index_in_base_information]
+            image_height = base_information[COCOBase.image_height_index_in_base_information]
+            bboxes = result[COCOBase.result_detection_box_index] / ([image_width / image.shape[2], image_height / image.shape[1]] * 2)
+            classes = result[COCOBase.result_detection_class_index]
+            classes = [self._detection_represent_to_cat_id for _class in classes]
+            scores = result[COCOBase.result_detection_class_score]
+            self.add_detection_result(
+                image=image,
+                image_id=image_id,
+                category_ids=classes)
             raise NotImplementedError('save the detection result is not implemented')
             pass
         elif self._stuff:
@@ -343,10 +423,6 @@ class COCOBase():
 
 
 class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
-    def save_result(self, *result):
-        #if self._detection and not self._stuff and not self._p
-        pass
-
     @staticmethod
     def set_seed(seed):
         pcd.CommonDataWithAug.set_seed(seed)

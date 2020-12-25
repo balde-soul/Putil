@@ -40,6 +40,14 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "test_coco_basical_statistic",
+            "type": "python",
+            "request": "launch",
+            "program": "test/data/test_coco_statistic.py",
+            "console": "integratedTerminal",
+            "args": ["--test_coco_basical_statistic"]
+        },
+        {
             "name": "test_coco_statistic_object_size_follow_cat",
             "type": "python",
             "request": "launch",
