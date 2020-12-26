@@ -12,11 +12,11 @@ logger = plog.PutilLogConfig('TestCOCODataUnit').logger()
 logger.setLevel(plog.DEBUG)
 
 import Putil.data.coco as coco
-from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox as Convertor 
+from Putil.data.io_convertor import IOConvertorNoOp
 
 coco.COCOData.set_seed(64)
-coco_data = coco.COCOData('/data2/Public_Data/COCO/unzip_data/2017', coco.COCOData.Stage.STAGE_EVAL, '', detection=True)
-convertor = Convertor(4, sigma=np.array([[0.1, 0.0], [0.0, 0.1]], dtype=np.float32))
+coco_data = coco.COCOData('/data2/Public_Data/COCO/unzip_data/2017', coco.COCOData.Stage.Evaluate, './test/data/result/test_coco_data_unit', detection=True)
+convertor = IOConvertorNoOp()
 coco_data.set_convert_to_input_method(convertor)
 data = coco_data[1]
 

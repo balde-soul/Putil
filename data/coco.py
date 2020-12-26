@@ -1,4 +1,6 @@
 # coding=utf-8
+import copy
+from colorama import Fore
 from pycocotools.cocoeval import COCOeval
 import matplotlib.pyplot as plt
 import skimage.io as io
@@ -38,7 +40,7 @@ from Putil.data.util.vision_util.detection_util import clip_box_using_image as c
 import Putil.data.common_data as pcd
 
 
-class COCOBase():
+class COCOBase(pcd.CommonDataForTrainEvalTest):
     '''
      @brief
      @note
@@ -232,8 +234,11 @@ class COCOBase():
         panoptic,
         dense_pose,
         captions,
-        cat_ids,
+        use_rate,
+        remain_strategy,
+        cat_ids=None,
     ):
+        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=cat_ids, remain_strategy=remain_strategy)
         self._information_save_to_path = information_save_to_path
         self._coco_root_dir = coco_root_dir
         self._stage = stage
@@ -253,7 +258,7 @@ class COCOBase():
         
         self._instances_file_train = os.path.join(self._coco_root_dir, 'annotations/instances_train2017.json')
         self._instances_file_eval = os.path.join(self._coco_root_dir, 'annotations/instances_val2017.json')
-        self._person_keypoint_file_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
+        self._person_keypoints_file_train = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_train2017.json')
         self._person_keypoints_file_eval = os.path.join(self._coco_root_dir, 'annotations/person_keypoints_val2017.json')
         self._captions_file_train = os.path.join(self._coco_root_dir, 'annotations/captions_train2017.json')
         self._captions_file_eval = os.path.join(self._coco_root_dir, 'annotations/captions_val2017.json')
@@ -263,18 +268,18 @@ class COCOBase():
         belong_person_keypoints = [self._key_points]
         belong_captions = [self._captions]
 
-        with_label = [COCOData.Stage.Train, COCOData.Stage.Evaluate]
-        without_label = [COCOData.Stage.Test]
+        with_label = [COCOBase.Stage.Train, COCOBase.Stage.Evaluate]
+        without_label = [COCOBase.Stage.Test]
         self._captions_coco, captions_load = (COCO(self._captions_file_train \
-            if self._stage == COCOData.Stage.Train else self._captions_file_eval), True) \
+            if self._stage == COCOBase.Stage.Train else self._captions_file_eval), True) \
                 if ((self._stage in with_label) and (self._captions)) else (None, False)
         self._captions_img_ids = [v['image_id'] for k, v in self._captions_coco.anns.items()] if captions_load else list()
         self._instances_coco, instances_load = (COCO(self._instances_file_train \
-            if self._stage == COCOData.Stage.Train else self._instances_file_eval), True) \
+            if self._stage == COCOBase.Stage.Train else self._instances_file_eval), True) \
                 if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
         self._instances_img_ids = [v['image_id'] for k, v in self._instances_coco.anns.items()] if instances_load else list() 
         self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoint_file_train \
-            if self._stage == COCOData.Stage.Train else self._person_keypoints_file_eval), True) \
+            if self._stage == COCOBase.Stage.Train else self._person_keypoints_file_eval), True) \
                 if ((self._stage in with_label) and (self._key_points)) else (None, False)
         self._person_keypoints_img_ids = [v['image_id'] for k, v in self._preson_keypoints_coco.anns.items()] if key_point_load else list()
 
@@ -284,33 +289,45 @@ class COCOBase():
         assert [instances_load, key_point_load, captions_load, image_test_load].count(True) == 1, 'only support one type'
         #COCOBaseLogger.warning('') if self._cat_id != COCOBase.
         # we know use the detectio only
-        #self._data_field = COCOData.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
+        #self._data_field = COCOBase.__get_common_id([self._instances_img_ids, self._persion_keypoints_img_ids, \
         #     self._captions_img_ids, self._image_test_img_ids])
         # TODO:record
-        self._data_field = self._instances_img_ids + self._persion_keypoints_img_ids + self._captions_img_ids + self._image_test_img_ids
-        if self._stage in [COCOData.Stage.Train, COCOData.Stage.Evaluate]:
-            self._data_field = self._instances_coco.getImgIds(catIds=self._sub_data) if self._sub_data is not None else self._instances_img_ids 
-            self.cat_id_to_represent = COCOBase.cat_id_to_represent if self._sub_data is None else {cat_id: index for index, cat_id in enumerate(self._sub_data)}
-            if self._information_save_to_path is not None:
-                with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
-                    json.dump(self.cat_id_to_represent, fp, indent=4)
+        if self._stage in [COCOBase.Stage.Train, COCOBase.Stage.Evaluate]:
+            if key_point_load:
+                assert not instances_load and not captions_load, 'should not use person_keypoint with caption and instance'
+                COCOBaseLogger.warning(Fore.RED + 'cat_id is invalid in person_keypoint' + Fore.RESET) if self._cat_ids is not None else None
+                self._data_field = self._person_keypoints_img_ids
+            if instances_load:
+                COCOBaseLogger.info('use instance{}'.format(' and caption' if captions_load else ''))
+                self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None else self._instances_img_ids
+                self._cat_id_to_represent = copy.deepcopy(COCOBase.cat_id_to_represent) if self._cat_ids is None else {cat_id: index for index, cat_id in enumerate(self._cat_ids)}
+                self._represent_to_cat_id = {v: k for k, v in self._cat_id_to_represent.items()}
+                if self._information_save_to_path is not None:
+                    with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
+                        json.dump(self.cat_id_to_represent, fp, indent=4)
+            if captions_load and not instances_load:
+                COCOBaseLogger.info('use caption')
+                self._data_field = self._captions_img_ids
+        elif self._stage == COCOBase.Stage.Test:
+            COCOBaseLogger.warning(Fore.RED + 'cat_ids is invalid in Test' + Fore.RESET) if self._cat_ids is not None else None
+            self._data_field = self._image_test_img_ids
+        else:
+            raise NotImplementedError(Fore.RED + 'Stage: {} is not Implemented'.format(stage) + Fore.RESET)
         self._fix_field()
-     
-        # check the ann
-        if self._stage in with_label:
-            image_without_ann = dict()
-            for index in self._data_field:
-                image_ann = self._instances_coco.loadImgs(index)
-                ann_ids = self._instances_coco.getAnnIds(index)
-                if len(ann_ids) == 0:
-                    image_without_ann[index] = image_ann
-            for index_out in list(image_without_ann.keys()):
-                self._data_field.remove(index_out)
-            with open('./image_without_ann.json', 'w') as fp:
-                str_ = json.dumps(image_without_ann, indent=4)
-                fp.write(str_)
-                pass
-
+        ## check the ann
+        #if self._stage in with_label:
+        #    image_without_ann = dict()
+        #    for index in self._data_field:
+        #        image_ann = self._instances_coco.loadImgs(index)
+        #        ann_ids = self._instances_coco.getAnnIds(index)
+        #        if len(ann_ids) == 0:
+        #            image_without_ann[index] = image_ann
+        #    for index_out in list(image_without_ann.keys()):
+        #        self._data_field.remove(index_out)
+        #    with open('./image_without_ann.json', 'w') as fp:
+        #        str_ = json.dumps(image_without_ann, indent=4)
+        #        fp.write(str_)
+        #        pass
         # result
         self._detection_result = None
         self._detection_result_file_name = 'detection_result'
@@ -348,12 +365,12 @@ class COCOBase():
             image_height = base_information[COCOBase.image_height_index_in_base_information]
             bboxes = result[COCOBase.result_detection_box_index] / ([image_width / image.shape[2], image_height / image.shape[1]] * 2)
             classes = result[COCOBase.result_detection_class_index]
-            classes = [self.represent_to_cat_id for _class in classes]
+            classes = [self._represent_to_cat_id[_class] for _class in classes]
             scores = result[COCOBase.result_detection_class_score]
             self.add_detection_result(
                 image=image,
                 image_id=image_id,
-                category_ids=classes)
+                category_ids=classes, bboxes=bboxes, scores=scores, save=save, prefix=prefix)
             raise NotImplementedError('save the detection result is not implemented')
             pass
         elif self._stuff:
@@ -474,7 +491,7 @@ class COCOBase():
     pass
 
 
-class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
+class COCOData(COCOBase):
     @staticmethod
     def set_seed(seed):
         pcd.CommonDataWithAug.set_seed(seed)
@@ -553,9 +570,8 @@ class COCOData(pcd.CommonDataForTrainEvalTest, COCOBase):
         '''
         self._image_width = image_width
         self._image_height = image_height
-        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=cat_ids, remain_strategy=remain_strategy)
         COCOBase.__init__(self, coco_root_dir, stage, information_save_to_path, detection, \
-            key_points, stuff, panoptic, dense_pose, captions, cat_ids)
+            key_points, stuff, panoptic, dense_pose, captions, use_rate, remain_strategy, cat_ids)
         pass
 
     def _restart_process(self, restart_param):
