@@ -29,7 +29,7 @@ image_width = 512
 root_dir = '/data2/Public_Data/COCO/unzip_data/2017'
 
 #In[]
-dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.STAGE_EVAL, './test/data/result', detection=True, 
+dataset_evaluate = COCO.COCOData(root_dir, COCO.COCOData.Stage.Evaluate, './test/data/result/test_coco_detection_result', detection=True, 
 image_height=image_height, image_width=image_width)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.freeze_node()

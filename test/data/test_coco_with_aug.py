@@ -30,26 +30,35 @@ from Putil.data.vision_data_aug.detection.rectangle import VerticalFlipCombine a
 from Putil.data.vision_data_aug.detection.rectangle import RandomHSVCombine as RHC
 from Putil.data.aug import AugFunc
 import Putil.data.aug as pAug
-from Putil.data.coco import COCOCommonAugBase
+from Putil.data.coco import COCOData
 from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox as Convertor
 
 
-class COCOCommonAugFuncBase(AugFunc, COCOCommonAugBase):
+class COCOCommonAugFuncBase(AugFunc):
     def __init__(self):
         AugFunc.__init__(self)
-        COCOCommonAugBase.__init__(self)
         pass
 
     def get_image_and_bboxes(self, *args):
-        return args[COCOCommonAugBase.image_index], args[COCOCommonAugBase.bboxes_index]
+        return args[COCOData.image_index], args[COCOData.detection_box_index]
     
     def repack(self, *args, image, bboxes):
+        temp_args = list(args)
+        classes = temp_args[COCOData.detection_class_index]
+        bboxes = temp_args[COCOData.detection_box_index]
+        classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
+        bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
+        temp_args[COCOData.detection_box_index] = bboxes
+        temp_args[COCOData.detection_class_index] = classes
+        temp_args[COCOData.image_index] = image
+        return tuple(temp_args)
+
         return self._repack(*args, image=image, bboxes=bboxes, classes=None)
 
 
 class CombineAugFuncHF(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = HFC()
         pass
 
@@ -68,7 +77,7 @@ class CombineAugFuncHF(COCOCommonAugFuncBase):
 
 class CombineAugFuncVF(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = VFC()
         pass
 
@@ -86,7 +95,7 @@ class CombineAugFuncVF(COCOCommonAugFuncBase):
 
 class CombineAugFuncRRC(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = RRC(scale=1)
         pass
 
@@ -105,7 +114,7 @@ class CombineAugFuncRRC(COCOCommonAugFuncBase):
 
 class CombineAugFuncRTC(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = RTC(translate=0.5)
         pass
 
@@ -125,7 +134,7 @@ class CombineAugFuncRTC(COCOCommonAugFuncBase):
 
 class CombineAugFuncRRB(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = RRB(50)
         pass
 
@@ -144,7 +153,7 @@ class CombineAugFuncRRB(COCOCommonAugFuncBase):
 
 class CombineAugFuncRSC(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = RSC(0.2)
         pass
 
@@ -162,7 +171,7 @@ class CombineAugFuncRSC(COCOCommonAugFuncBase):
 
 class CombineAugFuncRHC(COCOCommonAugFuncBase):
     def __init__(self):
-        COCOCommonAugBase.__init__(self)
+        
         self._aug = RHC(0.0, 50.0, 50.0)
         pass
 
@@ -181,7 +190,7 @@ class CombineAugFuncRHC(COCOCommonAugFuncBase):
 seed = 64
 
 COCO.COCOData.set_seed(seed)
-dataset_train = COCO.COCOData('/data2/Public_Data/COCO', COCO.COCOData.Stage.STAGE_EVAL, './result', detection=True)
+dataset_train = COCO.COCOData('/data2/Public_Data/COCO/unzip_data/2017', COCO.COCOData.Stage.Evaluate, './test/data/result', detection=True)
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
