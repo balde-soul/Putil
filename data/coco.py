@@ -75,7 +75,7 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
     ## result
     result_length = 5 # format: list
     result_base_information_index = 0
-    result_image_index = 1
+    result_image_index = 1 # image 表示当前的图像，shape为[Height, Width, Channel], 类型为RGB，注意cv2读取以及写图像都默认是BGR格式
     result_detection_box_index = 2 # format: [[top_x, top_y, width, height], ...]
     result_detection_class_index = 3 # format: [class_represent] class_represent表示的是当前class使用的索引号，不是cat_id
     result_detection_score_index = 4
@@ -273,15 +273,15 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
         self._captions_coco, captions_load = (COCO(self._captions_file_train \
             if self._stage == COCOBase.Stage.Train else self._captions_file_eval), True) \
                 if ((self._stage in with_label) and (self._captions)) else (None, False)
-        self._captions_img_ids = [v['image_id'] for k, v in self._captions_coco.anns.items()] if captions_load else list()
+        self._captions_img_ids = list(set([v['image_id'] for k, v in self._captions_coco.anns.items()])) if captions_load else list()
         self._instances_coco, instances_load = (COCO(self._instances_file_train \
             if self._stage == COCOBase.Stage.Train else self._instances_file_eval), True) \
                 if ((self._stage in with_label) and (True in [self._detection, self._stuff, self._panoptic])) else (None, False)
-        self._instances_img_ids = [v['image_id'] for k, v in self._instances_coco.anns.items()] if instances_load else list() 
+        self._instances_img_ids = list(set([v['image_id'] for k, v in self._instances_coco.anns.items()])) if instances_load else list() 
         self._person_keypoints_coco, key_point_load = (COCO(self._person_keypoint_file_train \
             if self._stage == COCOBase.Stage.Train else self._person_keypoints_file_eval), True) \
                 if ((self._stage in with_label) and (self._key_points)) else (None, False)
-        self._person_keypoints_img_ids = [v['image_id'] for k, v in self._preson_keypoints_coco.anns.items()] if key_point_load else list()
+        self._person_keypoints_img_ids = list(set([v['image_id'] for k, v in self._preson_keypoints_coco.anns.items()])) if key_point_load else list()
 
         self._image_test, image_test_load = (COCO(self._image_info_test), True) if self._stage in without_label else (None, False)
         self._image_test_img_ids = self._image_test.getImgIds() if image_test_load else list()
@@ -299,12 +299,12 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 self._data_field = self._person_keypoints_img_ids
             if instances_load:
                 COCOBaseLogger.info('use instance{}'.format(' and caption' if captions_load else ''))
-                self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None else self._instances_img_ids
+                self._data_field = self._instances_coco.getImgIds(catIds=self._cat_ids) if self._cat_ids is not None and self._remain_strategy == COCOBase.RemainStrategy.Drop else self._instances_img_ids
                 self._cat_id_to_represent = copy.deepcopy(COCOBase.cat_id_to_represent) if self._cat_ids is None else {cat_id: index for index, cat_id in enumerate(self._cat_ids)}
                 self._represent_to_cat_id = {v: k for k, v in self._cat_id_to_represent.items()}
                 if self._information_save_to_path is not None:
                     with open(os.path.join(self._information_save_to_path, 'detection_cat_id_to_represent.json'), 'w') as fp:
-                        json.dump(self.cat_id_to_represent, fp, indent=4)
+                        json.dump(self._cat_id_to_represent, fp, indent=4)
             if captions_load and not instances_load:
                 COCOBaseLogger.info('use caption')
                 self._data_field = self._captions_img_ids
@@ -345,7 +345,7 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
     def represent_value_to_category_id(self, represent_value):
         pass
 
-    def save_result(self, result, save=False, prefix=None):
+    def save_result(self, result=None, save=False, prefix=None):
         '''
          @brief
          @note
@@ -356,22 +356,31 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 classes, ndarray, 使用的是模型输出的classes，COCO中存在cat_id<-->represent的映射关系，result中的classes使用的是represent，这样有利于
             COCO的封闭性与完整性，单个classes的格式为：int，一张图每个bbox对应一个class，使用list组成classes
                 scores, ndarray, 使用的是模型输出的score，float，每个bbox对应一个score，使用list组成scores
+         @param[in] result result默认为None，当result为None时，是不增加result数据的，其他照常进行
+         @param[in] save bool类型，决定是否将当前的result保存到文件中
         '''
+        if result is None:
+            self.add_detection_result(save=save, prefix=prefix)
+            return
         if self._detection:
             base_information = result[COCOBase.result_base_information_index]
             image = result[COCOBase.result_image_index]
             image_id = base_information[COCOBase.image_id_index_in_base_information]
             image_width = base_information[COCOBase.image_width_index_in_base_information]
             image_height = base_information[COCOBase.image_height_index_in_base_information]
-            bboxes = result[COCOBase.result_detection_box_index] / ([image_width / image.shape[2], image_height / image.shape[1]] * 2)
+            # true_image_size / resized_image_size = true_box_size / resized_box_size
+            bboxes = result[COCOBase.result_detection_box_index] * ([image_width / image.shape[1], image_height / image.shape[0]] * 2)
+            bboxes = bboxes if type(bboxes).__name__ == 'list' else bboxes.tolist()
             classes = result[COCOBase.result_detection_class_index]
             classes = [self._represent_to_cat_id[_class] for _class in classes]
-            scores = result[COCOBase.result_detection_class_score]
+            classes = classes if type(classes).__name__ == 'list' else classes.tolist()
+            scores = result[COCOBase.result_detection_score_index]
+            scores = scores if type(scores).__name__ == 'list' else scores.tolist()
             self.add_detection_result(
                 image=image,
                 image_id=image_id,
                 category_ids=classes, bboxes=bboxes, scores=scores, save=save, prefix=prefix)
-            raise NotImplementedError('save the detection result is not implemented')
+            return 0
             pass
         elif self._stuff:
             raise NotImplementedError('save the detection result is not implemented')
@@ -400,10 +409,9 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
          _detection_result would be set as None, _detection_result_file would be changed
          @param[in] prefix str the prefix of the file name to save the result
         '''
-        sync_status = [list(image), image_id, list(category_ids), list(bboxes), list(scores)]
-        if None in sync_status:
-            assert(len(set(sync_status)) == 1), COCODataLogger.fatal('all element should be None while None in sync_status: {}'.format(sync_status))
-            pass
+        sync_status = [image is None, image_id is None, category_ids is None, bboxes is None, scores is None]
+        if True in sync_status:
+            COCODataLogger.warning(Fore.RED + 'None found in the result data, nothing would be add to result' + Fore.RESET)
         else:
             used_wh = image.shape[0: 2][::-1]
             self._detection_result = pd.DataFrame() if self._detection_result is None else self._detection_result
@@ -411,7 +419,6 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             for category_id, bbox, score in zip(category_ids, bboxes, scores):
                 result_temp.append({'image_id': image_id, 'category_id': category_id, 'bbox': bbox, 'score': score})
             self._detection_result = self._detection_result.append(result_temp, ignore_index=True)
-            pass
         if save:
             if self._detection_result is not None:
                 # : save the _detection_result
@@ -428,13 +435,18 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             pass
         pass
 
-    def evaluate_detection(self, image_ids=None, cat_ids=None, prefix=None):
+    def evaluate(self, image_ids=None, cat_ids=None, prefix=None, use_visual=False):
+        pass
+
+    def evaluate_detection(self, image_ids=None, cat_ids=None, scores=None, ious=None, prefix=None, use_visual=False):
         '''
          @brief evaluate the performance
          @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
          then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
          @param[in] image_ids the images would be considered in the evaluate
          @param[in] cat_ids the categories would be considered in the evaluate
+         @param[in] scores list格式，阈值，超过该值的bbox才被考虑
+         @param[in] ious list格式，阈值，考虑基于这些iou阈值的ap与ar
         '''
         assert type(prefix).__name__ == 'list' or prefix is None or type(prefix).__name__ == 'str'
         target_files = [COCOBase.generate_result_file_name(prefix, self._detection_result_file_name) for _prefix in prefix] if type(prefix).__name__ == 'list' \
@@ -449,20 +461,55 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 detection_result = detection_result_temp
                 pass
             pass
-        index_name = {index: name for index, name in enumerate(list(detection_result.columns))}
-        detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(detection_result))]
-
-        with open(os.path.join(self._information_save_to_path, 'formated_detection_result.json'), 'w') as fp:
-            json.dump(detection_result_formated, fp)
+        for score in scores:
+            sub_detection_result = detection_result[detection_result['score'] >= score]
+            if use_visual:
+                visual_save_to = os.path.join(self._information_save_to_path, '{}-{}'.format(prefix, score))
+                if os.path.exists(visual_save_to) and os.path.isdir(visual_save_to):
+                    pass
+                else:
+                    os.mkdir(visual_save_to)
+                    pass
+                from Putil.trainer.visual.image_visual.point_visual import PointVisual
+                from Putil.trainer.visual.image_visual.rectangle_visual import RectangleVisual
+                pv = PointVisual(); rv = RectangleVisual(2)
+                img_anns = self._instances_coco.loadImgs(image_ids)
+                for img_ann in img_anns:
+                    img_numpy = self.read_image(img_ann['file_name'])
+                    result_for_this_image = sub_detection_result[sub_detection_result['image_id']==img_ann['id']]
+                    def return_center_xy(s):
+                        '''提供生成中心点x，y的方法，用于DataFrame的apply'''
+                        s['x'] = s['bbox'][0] + 0.5 * s['bbox'][2]
+                        s['y'] = s['bbox'][1] + 0.5 * s['bbox'][3]
+                        return s
+                    def return_normal_rectangle(s):
+                        '''提供分离bbox的方法，因为原本在DataFrame中存储bbox使用的是一个list，没法转化为[*, 4]格式的ndarry
+                        目前没有找到其他方法，使用该函数分离[top_x, top_y, width, height]'''
+                        s['top_x'], s['top_y'], s['w'], s['h'] = s['bbox'][0], s['bbox'][1], s['bbox'][2], s['bbox'][3]
+                        return s
+                    if not result_for_this_image.empty:
+                        img_visual = pv.visual_index(img_numpy, result_for_this_image.apply(return_center_xy, axis=1)[['x', 'y']].values, [0, 255, 0])
+                        img_visual = rv.rectangle_visual(img_visual, pd.DataFrame(result_for_this_image['bbox']).apply(return_normal_rectangle, axis=1)[['top_x', 'top_y', 'w', 'h']].values, \
+                            scores=result_for_this_image['score'], fontScale=0.3)
+                    else:
+                        img_visual = img_numpy
+                    cv2.imwrite(os.path.join(visual_save_to, '{}.png'.format(img_ann['id'])), cv2.cvtColor(img_visual, cv2.COLOR_RGB2BGR))
+                pass
+            index_name = {index: name for index, name in enumerate(list(sub_detection_result.columns))}
+            sub_detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(sub_detection_result))]
+                
+            json_file_path = os.path.join(self._information_save_to_path, 'score_{}_formated_sub_detection_result.json'.format(score))
+            with open(json_file_path, 'w') as fp:
+                json.dump(sub_detection_result_formated, fp)
         
-        detection_result_coco = self._instances_coco.loadRes(os.path.join(self._information_save_to_path, 'formated_detection_result.json'))
-        #result_image_ids = detection_result_coco.getImgIds()
-        cocoEval = COCOeval(self._instances_coco, detection_result_coco, 'bbox')
-        cocoEval.params.imgIds  = image_ids if image_ids is not None else self._instances_coco.getImgIds()
-        cocoEval.params.catIds = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
-        cocoEval.evaluate()
-        cocoEval.accumulate()
-        cocoEval.summarize()
+            sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
+            #result_image_ids = sub_detection_result_coco.getImgIds()
+            cocoEval = COCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
+            cocoEval.params.imgIds  = image_ids if image_ids is not None else self._instances_coco.getImgIds()
+            cocoEval.params.catIds = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
+            cocoEval.evaluate()
+            cocoEval.accumulate()
+            cocoEval.summarize()
         pass
 
     def evaluate_segmentation(self, image_ids, cat_ids, prefix):
@@ -621,12 +668,12 @@ class COCOData(COCOBase):
             anns = self._instances_coco.loadAnns(ann_ids)
             image = self.read_image(image_ann[0]['file_name'])
             # debug check
-            for ann in anns:
-                box = ann['bbox']
-                if (box[0] + box[2] > image.shape[1]) or (box[1] + box[3] > image.shape[0]):
-                    COCODataLogger.info(box)
-                    pass
-                pass
+            #for ann in anns:
+            #    box = ann['bbox']
+            #    if (box[0] + box[2] > image.shape[1]) or (box[1] + box[3] > image.shape[0]):
+            #        COCODataLogger.info(box)
+            #        pass
+            #    pass
             #plt.axis('off')
             ##COCODataLogger.debug(image.shape)
             #plt.imshow(image)
@@ -645,7 +692,7 @@ class COCOData(COCOBase):
                 elif ann['category_id'] not in self._cat_ids:
                     continue
                 box = ann['bbox']
-                classes.append(self.cat_id_to_represent[ann['category_id']])
+                classes.append(self._cat_id_to_represent[ann['category_id']])
                 #bboxes.append([(box[0] + 0.5 * box[2]) * x_scale, (box[1] + 0.5 * box[3]) * y_scale, box[2] * x_scale, box[3] * y_scale])
                 bboxes.append([box[0] * x_scale, box[1] * y_scale, box[2] * x_scale, box[3] * y_scale])
                 pass
@@ -654,15 +701,16 @@ class COCOData(COCOBase):
             #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
             #if index == 823:
             #    pass
-            bboxes = clip_box(bboxes, image)
-            classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
-            bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
+            if len(bboxes) != 0:
+                bboxes = clip_box(bboxes, image)
+                classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
+                bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
             datas[COCOBase.base_information_index] = base_information
             datas[COCOBase.image_index] = image
             datas[COCOBase.detection_box_index] = bboxes
             datas[COCOBase.detection_class_index] = classes
             #ret = self._aug_check(*ret)
-            COCODataLogger.warning('original data generate no obj, regenerate') if len(datas[COCOBase.detection_box_index]) == 0 else None
+            COCODataLogger.warning('original data generate no obj') if len(datas[COCOBase.detection_box_index]) == 0 else None
             return tuple(datas)
         else:
             raise NotImplementedError('unimplemented')

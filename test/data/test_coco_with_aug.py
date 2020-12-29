@@ -51,7 +51,6 @@ class COCOCommonAugFuncBase(AugFunc):
     def repack(self, *args, image, bboxes):
         temp_args = list(args)
         classes = temp_args[COCOData.detection_class_index]
-        bboxes = temp_args[COCOData.detection_box_index]
         classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
         bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
         temp_args[COCOData.detection_box_index] = bboxes

@@ -43,6 +43,8 @@ class HorizontalFlip(IH):
         '''
         image = args[0]
         bboxes = args[1]
+        if len(bboxes) == 0:
+            return bboxes,
         bboxes = np.array(bboxes)
         bboxes[:, 0] = image.shape[1] - 1 - bboxes[:, 0] - bboxes[:, 2]
         bboxes = np.array(clip_box(bboxes, image))
@@ -100,6 +102,8 @@ class VerticalFlip(IV):
         '''
         image = args[0]
         bboxes = args[1]
+        if len(bboxes) == 0:
+            return bboxes,
         bboxes = np.array(bboxes)
         bboxes[:, 1] = image.shape[0] - 1 - bboxes[:, 1] - bboxes[:, 3]
         bboxes = np.array(clip_box(bboxes, image))
@@ -150,6 +154,8 @@ class Resample(IR):
         assert (self._resample_scale_x is not None) and (self._resample_scale_y is not None)
         image = args[0]
         bboxes = args[1]
+        if len(bboxes) == 0:
+            return bboxes,
 
         img_shape = image.shape
 
@@ -235,6 +241,8 @@ class Translate(IT):
         self.check_factor()
         image = args[0]
         bboxes = np.array(args[1])
+        if len(bboxes) == 0:
+            return bboxes,
 
         image_shape = image.shape
         
@@ -431,6 +439,8 @@ class Rotate(IRE):
         '''
         image = args[0]
         bboxes = np.array(args[1])
+        if len(bboxes) == 0:
+            return bboxes,
 
         angle = self.angle
         
@@ -516,8 +526,10 @@ class Shear(IS):
         image = args[0]
         image_shape = image.shape
         bboxes = args[1]
-        bboxes = np.array(bboxes)
+        if len(bboxes) == 0:
+            return bboxes,
         
+        bboxes = np.array(bboxes)
         shear_factor = self.shear_factor_x
 
         if shear_factor < 0:
