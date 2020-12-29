@@ -505,3 +505,37 @@ class HSV(ImageHSV, pAug.AugFunc):
         image = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_HSV2BGR)
         return image, 
     pass
+
+
+class ImageNoise:
+    def __init__(self):
+        pass
+
+    def set_sigma(self):
+        pass
+
+    def get_sigma(self):
+        pass
+    mu = property(get_sigma, set_sigma)
+
+    def set_mu(self):
+        pass
+
+    def get_mu(self):
+        pass
+    mu = property(get_mu, set_mu)
+    pass
+
+
+class Noise(ImageNoise, pAug.AugFunc):
+    def __init__(self):
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        shape = image.shape
+        np.random.normal()
+        noise = tf.random_normal(shape=tf.shape(x), mean=0.0, stddev=1.0,
+        dtype=tf.float32)
+        output = tf.add(x, noise)
+        pass
