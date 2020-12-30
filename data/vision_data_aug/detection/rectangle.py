@@ -20,6 +20,7 @@ from Putil.data.vision_data_aug.image_aug import Rotate as IRE
 from Putil.data.vision_data_aug.image_aug import rotate_im as rotate_im
 from Putil.data.vision_data_aug.image_aug import Shear as IS
 from Putil.data.vision_data_aug.image_aug import HSV as IHSV
+from Putil.data.vision_data_aug.image_aug import Noise as Noise
 from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box
 
 
@@ -731,3 +732,18 @@ class RandomHSVCombine(pAug.AugFunc):
     def name(self):
         return 'HSV'
     pass
+
+
+class NoiseCombine(pAug.AugFunc):
+    def __init__(self, mu, sigma):
+        pAug.AugFunc.__init__(self)
+        self._noise = Noise()
+        self._noise.mu = mu
+        self._noise.sigma = sigma
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+        image = self._noise(image)
+        return image, bboxes

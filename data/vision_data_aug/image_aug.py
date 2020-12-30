@@ -509,33 +509,51 @@ class HSV(ImageHSV, pAug.AugFunc):
 
 class ImageNoise:
     def __init__(self):
+        self._mu = None
+        self._sigma = None
         pass
 
-    def set_sigma(self):
+    def set_sigma(self, sigma):
+        self._sigma = sigma
         pass
 
     def get_sigma(self):
-        pass
-    mu = property(get_sigma, set_sigma)
+        return self._sigma
+    sigma = property(get_sigma, set_sigma)
 
-    def set_mu(self):
+    def set_mu(self, mu):
+        self._mu = mu
         pass
 
     def get_mu(self):
-        pass
+        return self._mu
     mu = property(get_mu, set_mu)
     pass
 
 
 class Noise(ImageNoise, pAug.AugFunc):
     def __init__(self):
+        ImageNoise.__init__(self)
+        pAug.AugFunc.__init__(self)
         pass
 
     def __call__(self, *args):
         image = args[0]
         shape = image.shape
-        np.random.normal()
-        noise = tf.random_normal(shape=tf.shape(x), mean=0.0, stddev=1.0,
-        dtype=tf.float32)
-        output = tf.add(x, noise)
-        pass
+        original_image_max_follow_channel = np.max(np.max(image, axis=0), axis=0)
+        original_image_min_follow_channel = np.min(np.min(image, axis=0), axis=0)
+
+        temp_image = np.random.normal(self._mu, self._sigma, shape) + image
+        image_max_follow_channel = np.max(np.max(temp_image, axis=0), axis=0)
+        image_min_follow_channel = np.min(np.min(temp_image, axis=0), axis=0)
+        temp_image = (temp_image - image_min_follow_channel) / (image_max_follow_channel - image_min_follow_channel)
+        temp_image = np.clip(temp_image, original_image_min_follow_channel / original_image_max_follow_channel, [1.0, 1.0, 1.0])
+        temp_image = temp_image * original_image_max_follow_channel
+        temp_image = temp_image.astype(image.dtype)
+
+        #temp_image_2 = np.random.normal(self._mu, self._sigma, shape) + image
+        #image_max_follow_channel = np.max(np.max(temp_image_2, axis=0), axis=0)
+        #image_min_follow_channel = np.min(np.min(temp_image_2, axis=0), axis=0)
+        #temp_image_2 = (temp_image_2 - image_min_follow_channel) / (image_max_follow_channel - image_min_follow_channel) * 255
+        #temp_image_2 = temp_image_2.astype(image.dtype)
+        return temp_image
