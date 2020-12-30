@@ -544,12 +544,13 @@ class Noise(ImageNoise, pAug.AugFunc):
         original_image_min_follow_channel = np.min(np.min(image, axis=0), axis=0)
 
         temp_image = np.random.normal(self._mu, self._sigma, shape) + image
-        image_max_follow_channel = np.max(np.max(temp_image, axis=0), axis=0)
-        image_min_follow_channel = np.min(np.min(temp_image, axis=0), axis=0)
-        temp_image = (temp_image - image_min_follow_channel) / (image_max_follow_channel - image_min_follow_channel)
-        temp_image = np.clip(temp_image, original_image_min_follow_channel / original_image_max_follow_channel, [1.0, 1.0, 1.0])
-        temp_image = temp_image * original_image_max_follow_channel
-        temp_image = temp_image.astype(image.dtype)
+        temp_image = np.clip(temp_image, 0, 255).astype(np.uint8)
+        #image_max_follow_channel = np.max(np.max(temp_image, axis=0), axis=0)
+        #image_min_follow_channel = np.min(np.min(temp_image, axis=0), axis=0)
+        #temp_image = (temp_image - image_min_follow_channel) / (image_max_follow_channel - image_min_follow_channel)
+        #temp_image = np.clip(temp_image, original_image_min_follow_channel / original_image_max_follow_channel, [1.0, 1.0, 1.0])
+        #temp_image = temp_image * original_image_max_follow_channel
+        #temp_image = temp_image.astype(image.dtype)
 
         #temp_image_2 = np.random.normal(self._mu, self._sigma, shape) + image
         #image_max_follow_channel = np.max(np.max(temp_image_2, axis=0), axis=0)
