@@ -558,3 +558,26 @@ class Noise(ImageNoise, pAug.AugFunc):
         #temp_image_2 = (temp_image_2 - image_min_follow_channel) / (image_max_follow_channel - image_min_follow_channel) * 255
         #temp_image_2 = temp_image_2.astype(image.dtype)
         return temp_image
+    pass
+
+
+class ImageContrast:
+    def __init__(self):
+        self._contrast = None
+        pass
+
+    def set_contrast(self, contrast):
+        self._contrast = contrast
+    
+    def get_contrast(self):
+        return self._contrast
+    contrast = property(get_contrast, set_contrast)
+
+class Contrast(ImageContrast, pAug.AugFunc):
+    def __init__(self):
+        ImageContrast.__init__(self)
+        pAug.AugFunc.__init__(self)
+
+    def __call__(self, *args):
+        image = args[0]
+        return np.clip(image + (image - np.mean(image[:, :, 0] * 0.299) + np.mean(image[:, :, 1] * 0.587) + np.mean(image[:, :, 2] * 0.114)) * self._contrast / 255.0,  0, 255).astype(np.uint8)
