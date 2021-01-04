@@ -735,15 +735,26 @@ class RandomHSVCombine(pAug.AugFunc):
 
 
 class NoiseCombine(pAug.AugFunc):
-    def __init__(self, mu, sigma):
+    def __init__(self, mu_factor=None, sigma_factor=None):
         pAug.AugFunc.__init__(self)
         self._noise = Noise()
-        self._noise.mu = mu
-        self._noise.sigma = sigma
+        self._mu_factor = mu_factor if mu_factor is not None else 0
+        self._sigma_factor = sigma_factor if sigma_factor is not None else 0
+        self._mu_factor = (-self._mu_factor, self._mu_factor) if type(self._mu_factor).__name__ != 'tuple' else self._mu_factor
+        self._sigma_factor = (0.0, self._sigma_factor) if type(self._sigma_factor).__name__ != 'tuple' else self._sigma_factor
+        assert self._sigma_factor[0] >= 0.0 and self._sigma_factor[1] >= 0.0
         pass
 
     def __call__(self, *args):
         image = args[0]
         bboxes = args[1]
+
+        mu = random.uniform(*self._mu_factor)
+        sigma = 0
+        while sigma == 0:
+            sigma = random.uniform(*self._sigma_factor)
+
+        self._noise.mu = mu
+        self._noise.sigma = sigma
         image = self._noise(image)
         return image, bboxes

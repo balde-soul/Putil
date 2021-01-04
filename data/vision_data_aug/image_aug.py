@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 import random
 import numpy as np
 import cv2
@@ -559,6 +560,41 @@ class Noise(ImageNoise, pAug.AugFunc):
         #temp_image_2 = temp_image_2.astype(image.dtype)
         return temp_image
     pass
+
+
+class ImageSaltNoise:
+    def __init__(self):
+        self._prob = None
+        self._thresh = None
+        pass
+
+    def get_prob(self):
+        return self._prob
+
+    def set_prob(self, prob):
+        self._prob = prob
+        self._thresh = 1.0 - self._prob
+        pass
+    prob = property(get_prob, set_prob)
+
+    def get_thresh(self):
+        return self._thresh
+    thresh = property(get_thresh)
+    pass
+
+
+class SaltNoise(ImageSaltNoise, pAug.AugFunc):
+    def __init__(self):
+        ImageSaltNoise.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        image = copy.deepcopy(args[0])
+        shift = np.random.random(image.shape)
+        image[shift < self._prob] = 0
+        image[shift > self._thresh] = 255
+        return image
 
 
 class ImageContrast:

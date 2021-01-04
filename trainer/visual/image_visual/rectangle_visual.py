@@ -18,7 +18,7 @@ class RectangleVisual:
         '''
          @brief 
          @note
-         @param[in] image
+         @param[in] image dtype is uint8
          shape [height, width, channel], type: uint8
          @param[in] rectangles 
          ndarray or list with shape [rectangle_amount, 4], type: float, format: [[top_left_x, top_left_y, width, height], ...]
