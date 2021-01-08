@@ -16,9 +16,9 @@ class UncertaintyLoss(nn.Module):
         self.sigma = nn.Parameter(sigma)
         self.v_num = v_num
 
-    def forward(self, *input):
+    def forward(self, **input):
         loss = 0
-        for i in range(self.v_num):
-            loss += input[i] / (2 * self.sigma[i] ** 2)
+        for index, (_input_name, _input_value) in enumerate(input.items()):
+            loss += _input_value / (2 * self.sigma[index] ** 2)
         loss += torch.log(self.sigma.pow(2).prod())
-        return loss
+        return loss, {k: self.sigma[index] for index, (k, v) in enumerate(input.items())}
