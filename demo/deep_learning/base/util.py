@@ -13,6 +13,8 @@ logger = plog.PutilLogConfig('util').logger()
 logger.setLevel(plog.DEBUG)
 MakeSureTheSaveDirLogger = logger.getChild('MakeSureTheSaveDir')
 MakeSureTheSaveDirLogger.setLevel(plog.DEBUG)
+TorchLoadCheckpointedLogger = logger.getChild('TorchLoadCheckpoited')
+TorchLoadCheckpointedLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
@@ -153,7 +155,11 @@ def torch_load_checkpointed(epoch, full_path, target_modules, **kwargs):
     logger.info(Fore.BLUE + 'load checkpointed from {}'.format(target_checkpointed) + Fore.RESET)
     state_dict = torch.load(target_checkpointed, map_location=kwargs.get('map_location', None))
     for module_name, module in target_modules.items():
-        eval('module.load_state_dict(state_dict[\'{}\'])'.format(module_name))
+        if module_name not in state_dict.keys():
+            TorchLoadCheckpointedLogger.warning(Fore.RED + '{} is not in the state_dict'.format(module_name) + Fore.RESET)
+        else:
+            TorchLoadCheckpointedLogger.info(Fore.GREEN + 'load {}'.format(module_name) + Fore.RESET)
+            eval('module.load_state_dict(state_dict[\'{}\'])'.format(module_name))
         pass
     pass
 

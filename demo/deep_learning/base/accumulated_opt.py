@@ -11,6 +11,8 @@ def DefaultAccumulatedOptArg(parser):
     pass
 
 class torch_DefaultAccumulatedOpt:
+    '''
+    '''
     def __init__(self, args):
         self._accumulation = args.accumulation_time
         self._count = 0
