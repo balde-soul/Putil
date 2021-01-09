@@ -1,7 +1,8 @@
 # coding=utf-8
 import copy
 from colorama import Fore
-from pycocotools.cocoeval import COCOeval
+#from pycocotools.cocoeval import COCOeval
+from Putil.data.cocoeval import CustomCOCOeval as COCOeval
 import matplotlib.pyplot as plt
 import skimage.io as io
 import pylab
@@ -443,8 +444,8 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
          @brief evaluate the performance
          @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
          then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
-         @param[in] image_ids the images would be considered in the evaluate
-         @param[in] cat_ids the categories would be considered in the evaluate
+         @param[in] image_ids the images would be considered in the evaluate, 当没有指定时，则对目标coco的getImgIds的所有image进行evaluate
+         @param[in] cat_ids the categories would be considered in the evaluate，当没有指定时，则对目标coco的getCatIds的所有cat进行evaluate
          @param[in] scores list格式，阈值，超过该值的bbox才被考虑
          @param[in] ious list格式，阈值，考虑基于这些iou阈值的ap与ar
         '''
@@ -461,8 +462,13 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 detection_result = detection_result_temp
                 pass
             pass
+        if scores is not None:
+            t = lambda x, score: x >= score
+        else:
+            t = lambda x, score: x != None
+        scores = [None] if scores is None else scores
         for score in scores:
-            sub_detection_result = detection_result[detection_result['score'] >= score]
+            sub_detection_result = detection_result[t(detection_result['score'], score)]
             if use_visual:
                 visual_save_to = os.path.join(self._information_save_to_path, '{}-{}'.format(prefix, score))
                 if os.path.exists(visual_save_to) and os.path.isdir(visual_save_to):
@@ -473,8 +479,10 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 from Putil.trainer.visual.image_visual.point_visual import PointVisual
                 from Putil.trainer.visual.image_visual.rectangle_visual import RectangleVisual
                 pv = PointVisual(); rv = RectangleVisual(2)
+                image_ids = self._instances_coco.getImgids() if image_ids is None else image_ids
                 img_anns = self._instances_coco.loadImgs(image_ids)
-                for img_ann in img_anns:
+                for image_id in image_ids:
+                    img_ann = self._instances_coco.loadImgs([image_id])[0]
                     img_numpy = self.read_image(img_ann['file_name'])
                     result_for_this_image = sub_detection_result[sub_detection_result['image_id']==img_ann['id']]
                     def return_center_xy(s):
@@ -505,8 +513,9 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
             #result_image_ids = sub_detection_result_coco.getImgIds()
             cocoEval = COCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
-            cocoEval.params.imgIds  = image_ids if image_ids is not None else self._instances_coco.getImgIds()
-            cocoEval.params.catIds = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
+            cocoEval.params.imgIds  = image_ids if image_ids is not None else cocoEval.params.imgIds
+            cocoEval.params.catIds = cat_ids if cat_ids is not None else cocoEval.params.catIds
+            cocoEval.params.iouThrs = ious if ious is not None else cocoEval.params.iouThrs
             cocoEval.evaluate()
             cocoEval.accumulate()
             cocoEval.summarize()
