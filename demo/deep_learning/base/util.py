@@ -252,12 +252,13 @@ def generate_train_time_dir_name(train_time):
 def make_sure_the_train_time(args):
     hvd = horovod.horovod(args)
     if train_stage(args):
-        if hvd.rank() == 0 and args.weight_epoch is None and args.weight_epoch is None: 
-            print(Fore.GREEN + 'get the untrained train time is 0' + Fore.RESET)
-            args.train_time = 0
-            train_time_tensor = torch.IntTensor([args.train_time])
-            train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
-        elif hvd.rank() == 0 and (args.weight_path != '') and (args.weight_epoch is not None):
+        #if hvd.rank() == 0 and args.weight_epoch is None and args.weight_epoch is None: 
+        #    print(Fore.GREEN + 'get the untrained train time is 0' + Fore.RESET)
+        #    args.train_time = 0
+        #    train_time_tensor = torch.IntTensor([args.train_time])
+        #    train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
+        #elif hvd.rank() == 0 and (args.weight_path != '') and (args.weight_epoch is not None):
+        if hvd.rank() == 0:# and (args.weight_path != '') and (args.weight_epoch is not None):
             item_list = os.listdir(args.save_dir)
             max_time = 0
             for _item in item_list:
