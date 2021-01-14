@@ -42,7 +42,10 @@ class RectangleVisual:
             classes = [0] * len(rectangles)
         scores = [None] * len(rectangles) if scores is None else scores
         for rectangle, cla, sco in zip(rectangles, classes, scores):
-            color = color_map[cla] if color_map is not None else [0, 255, 0]
+            if color_map is not None:
+                color = color_map[cla] if len(color_map) > cla else color_map[0]
+            else:
+                color = [0, 255, 0]
             image = cv2.rectangle(image, pt1=tuple(rectangle[0: 2]), pt2=tuple(rectangle[2: 4]), color=color, thickness=self._thickness)
             #import pdb; pdb.set_trace()
             image = cv2.putText(image, str(sco).split('.')[0] + '.' + str(sco).split('.')[1][:3], \
