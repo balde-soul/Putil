@@ -368,8 +368,8 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
         [command.put(_MultiProcessingDataLoaderIter.Command.ContinueTheIteration) for command in self._command]
         pass
 
-    def __exit__(self, exc_type, exc_value, traceback):
-    #def __del__(self):
+    #def __exit__(self, exc_type, exc_value, traceback):
+    def __del__(self):
         #import pdb; pdb.set_trace()
         self._index_control_scommand.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration)
         #self._index_control_scommand.put(_MultiProcessingDataLoaderIter.Command.StopTheIteration)
