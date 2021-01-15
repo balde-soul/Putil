@@ -11,11 +11,14 @@ MainLogger.setLevel(plog.DEBUG)
 
 import Putil.data.common_data as pcd
 import multiprocessing
+from Putil.data import aug
+AugFuncNoOp = aug.AugFuncNoOp
+AugNode = aug.AugNode
 
 
 class TestCommonData(pcd.CommonDataWithAug):
     def __init__(self):
-        pcd.CommonData.__init__(self)
+        pcd.CommonDataWithAug.__init__(self)
         self._data_field = list(range(0, 100))
         pass
 
@@ -65,6 +68,12 @@ if __name__ == '__main__':
 
     data = TestCommonData()
 
+    root_aug = AugNode(AugFuncNoOp())
+    root_aug.add_child(AugNode(AugFuncNoOp()))
+    root_aug.freeze_node()
+
+    data.set_aug_node_root(root_aug)
+
     restart_param = dict()
 
     test_time = 10
@@ -80,7 +89,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 1, print(len(data))
             for d in got_data:
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (1, 1)
                     assert get.indexs().shape == (1,)
@@ -101,7 +110,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 1
             for d in got_data:
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (11, 1)
                     assert get.indexs().shape == (11,)
@@ -120,7 +129,7 @@ if __name__ == '__main__':
             got_data = data.generate_data()
             assert len(got_data) == 2
             for index, d in enumerate(got_data):
-                for k, v in d.items():
+                for v in d:
                     get = v
                     assert get.datas().shape == (restart_param['device_batch'][index], 1), print(get.datas().shape)
                     assert get.indexs().shape == (restart_param['device_batch'][index],)
@@ -152,7 +161,7 @@ if __name__ == '__main__':
             assert len(got_data) == 1
             if count == 33:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.indexs()[-1].index_info().type() == 'normal', print(get.indexs()[-1].index_info().type())
                         assert get.datas().shape == (1, 1), print(get[0].datas().shape)
@@ -172,7 +181,7 @@ if __name__ == '__main__':
             assert len(got_data) == 2
             if count == 33:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.datas().shape == (1, 1), print(get.datas().shape)
                         assert get.datas().shape == (1, 1), print(get.datas().shape)
@@ -182,7 +191,7 @@ if __name__ == '__main__':
                 pass
             else:
                 for index, d in enumerate(got_data):
-                    for k, v in d.items():
+                    for v in d:
                         get = v
                         assert get.datas().shape == (1 if index == 0 else 2, 1), print(get.datas().shape)
                         pass

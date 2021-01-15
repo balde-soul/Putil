@@ -205,7 +205,7 @@ root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
 root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 root_node.add_child(pAug.AugNode(CombineAugFuncVF()))
 root_node.freeze_node()
-dataset_train.set_aug_node_root(root_node)
+dataset_train.set_aug_node_root(root_node, [np.random.sample() for _rn in root_node])
 class_amount = 80
 convertor = IOConvertorNoOp()
 dataset_train.set_convert_to_input_method(convertor)
