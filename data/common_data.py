@@ -1,4 +1,7 @@
 # coding=utf-8
+##@package common_data
+#提供Dataset基本类与功能
+#
 from enum import Enum
 import random
 import Putil.PutilEnvSet as penv
@@ -41,7 +44,15 @@ class ProxyBase(NamespaceProxy):
     pass
 
 
+## taaa
+# @param[in] param1
+def test_func(param1):
+    pass
+
+
+##IndexInfo
 class IndexInfo:
+    ##@param[in] point
     def __init__(self, point, type, *args, **kwargs):
         self._point = point
         self._type = type
@@ -371,29 +382,62 @@ class CommonData(metaclass=ABCMeta):
 
 import Putil.data.aug as Aug
 
-class CommonDataWithAug(CommonData, metaclass=ABCMeta):
-    '''
-     @brief the CommonData which support aug
-     @note
-        this class complete the generate_from_specified which contain aug
-        generate_from_origin_index->aug->aug_check->convert->convert_check->data_type_adapter
-    '''
-    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
-        CommonData.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
-        self._aug_node = Aug.AugNode(Aug.AugFuncNoOp())
-        self._aug_node.freeze_node()
+##该类提供保存数据集单元数据的结构，比如一个固化数据集有一个单一标记表示每一个数据单元，而DatasetField表示了该数据单元的扩展
+#为什么要用一个DatasetField来表示呢，这是为了方便以后的扩展，注意DatasetField与CommonData中的data_field的区别
+#data_field表示的是原始数据的单一标志，DatasetField表示的是扩展之后的单一标志
+class DatasetField:
+    ## @protected 原始数据的单一标志的索引
+    data_index_index = 0
+    ## @protected 扩展Func的索引
+    aug_index = 1
+    ##@brief 生成 DatasetField
+    # @param[in] data_field: 原始数据的单一标志列表
+    # @param[in] aug_node:
+    # @param[in] receptance:
+    # @return None
+    # @exception
+    def __init__(self, data_field, aug_node, receptance=None):
+        ## @private receptance
+        self._receptance = receptance
+        self._field = []
+        self._receptance = [1] * len(aug_node) if self._receptance is None else self._receptance
+        assert len(self._receptance) == len(aug_node)
+        for data_index, df in enumerate(data_field):
+            for aug_index, (aug, prob) in enumerate(zip(aug_node, self._receptance)):
+                self._field.append([data_index, aug_index]) if np.random.sample() <= prob else None
+                pass
+            pass
         pass
 
     def __len__(self):
-        return len(self._data_field) * len(self._aug_node) 
+        return len(self._field)
 
-    def set_aug_node_root(self, aug_node_root):
+    def __getitem__(self, index):
+        return self._field[index]
+    pass
+
+##@brief the CommonData which support aug
+# @note this class complete the generate_from_specified which contain aug
+# generate_from_origin_index->aug->aug_check->convert->convert_check->data_type_adapter
+class CommonDataWithAug(CommonData, metaclass=ABCMeta):
+    ##
+    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
+        CommonData.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
+        self._aug_node = None
+        self._dataset_field = None
+        pass
+
+    def __len__(self):
+        return len(self._dataset_field)
+
+    def set_aug_node_root(self, aug_node_root, receptance=None):
         self._aug_node = aug_node_root
+        self._dataset_field = DatasetField(self._data_field, aug_node_root, receptance)
         pass
 
     def _generate_from_specified(self, index):
-        oindex = index // len(self._aug_node)
-        aindex = index % len(self._aug_node)
+        oindex = self._dataset_field[index][DatasetField.data_index_index]
+        aindex = self._dataset_field[index][DatasetField.aug_index]
         CommonDataWithAugLogger.debug('original index: {0}, aug index: {1}, aug_naem: {2}'.format(oindex, aindex, self._aug_node[aindex].name))
         #ret = self._generate_from_origin_index(oindex)
         ret = self._aug_node[aindex](*self._generate_from_origin_index(oindex))
