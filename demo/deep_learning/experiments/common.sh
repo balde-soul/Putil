@@ -95,7 +95,8 @@ for (( i=0;i<${#gpus[@]};i++ )); do
     amount=(${gpus[$i]//./ })
     amount=${#amount[@]}
     echo amount: $amount
-    if [ -z '$horovod_np_arg' ]; then 
+    #if [ -z '$horovod_np_arg' ]; then 
+    if [ -z "$horovod_H_arg" ]; then
         echo 'empty'
         horovod_H_arg=$horovod_H_arg
     else 

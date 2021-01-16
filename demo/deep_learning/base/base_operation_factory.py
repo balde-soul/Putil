@@ -76,7 +76,7 @@ def empty_tensor_factory(args):
     temp_args = copy.deepcopy(args)
     def generate_empty_tensor_factory_func():
         if temp_args.framework == 'torch':
-            return project.torch_generate_empty_tensor
+            return standard.torch_generate_empty_tensor
         else:
             raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
         pass
