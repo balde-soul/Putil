@@ -54,6 +54,9 @@ class _DefaultDecode(Decode, Module):
         Decode.__init__(self, args)
         Module.__init__(self)
         pass
+
+    def __call__(self, *args):
+        return args
     pass
 
 def DefaltDecode(args):

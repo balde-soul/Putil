@@ -1,8 +1,17 @@
 # coding=utf-8
+from colorama import Fore
 from enum import Enum
 import copy
 from torch.nn import Module
 from abc import ABCMeta, abstractmethod
+from Putil.base import logger as plog
+
+root_logger = plog.PutilLogConfig('backbone').logger()
+root_logger.setLevel(plog.DEBUG)
+BackboneLogger = root_logger.getChild('Backbone')
+BackboneLogger.setLevel(plog.DEBUG)
+DefaultBackboneLogger = root_logger.getChild('DefaultBackbone')
+DefaultBackboneLogger.setLevel(plog.DEBUG)
 from Putil.torch.pretrained_model.vgg import VGG
 
 
@@ -34,7 +43,8 @@ class Backbone:
         self._backbone_arch = args.backbone_arch
         self._backbone_weight_path = args.backbone_weight_path
         self._backbone_downsample_rate = args.backbone_downsample_rate
-        assert self._backbone_downsample_rate is not None
+        pass
+    pass
 
 
 class _vgg(Backbone, Module):
@@ -138,6 +148,7 @@ class DefaultBackbone(Backbone, Module):
     def __init__(self, args):
         Backbone.__init__(self, args)
         Module.__init__(self)
+        pass
 
     def forward(self, x):
         return x
