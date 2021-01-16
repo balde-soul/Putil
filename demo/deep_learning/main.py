@@ -1,4 +1,5 @@
 # coding=utf-8
+from importlib import reload
 import re
 from colorama import Fore
 import sys
@@ -391,7 +392,8 @@ if __name__ == '__main__':
     args.model_name = model_name
     args.recorder_name = recorder_name
     args.accumulated_opt_name = accumulated_opt_name
-    args.gpus = [[int(g) for g in gpu.split('.')] for gpu in gpus]
+    args.gpus = [[int(g) for g in gpu.split('.')] for gpu in args.gpus]
+    print(args.gpus)
 
     import Putil.base.logger as plog
     reload(plog)
