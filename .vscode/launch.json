@@ -62,6 +62,19 @@
             "program": "test/data/test_coco_statistic.py",
             "console": "integratedTerminal",
             "args": ["--test_img_amount"]
-        }
+        },
+        {
+            "name": "remote attach demo deeplearning",
+            "type": "python",
+            "request": "attach",
+            "port": 12345,
+            "host": "127.0.0.1",
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/demo/deep_learning",
+                    "remoteRoot": "."
+                }
+            ]
+        },
     ]
 }
