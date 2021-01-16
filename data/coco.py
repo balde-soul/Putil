@@ -1,7 +1,7 @@
 # coding=utf-8
 import copy
 from colorama import Fore
-from pycocotools.cocoeval import COCOeval
+#from pycocotools.cocoeval import COCOeval
 import matplotlib.pyplot as plt
 import skimage.io as io
 import pylab
@@ -17,6 +17,7 @@ import random
 import json
 from skimage import io
 #import matplotlib.pyplot as plt
+from importlib import reload
 import cv2
 import time
 from enum import Enum
@@ -24,8 +25,8 @@ from PIL import Image
 import os
 import json
 import numpy as np
-import Putil.base.logger as plog
 from pycocotools.coco import COCO
+import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('coco').logger()
 logger.setLevel(plog.DEBUG)
@@ -34,10 +35,20 @@ COCODataLogger.setLevel(plog.DEBUG)
 COCOBaseLogger = logger.getChild('COCOBase')
 COCOBaseLogger.setLevel(plog.DEBUG)
 
+from Putil.data import cocoeval
+reload(cocoeval)
+COCOeval = cocoeval.CustomCOCOeval
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
+reload(bbox_convertor)
 from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
-from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box 
+from Putil.data.util.vision_util import detection_util
+rect_angle_over_border = detection_util.rect_angle_over_border
+clip_box = detection_util.clip_box_using_image
+reload(detection_util)
+rect_angle_over_border = detection_util.rect_angle_over_border
+clip_box = detection_util.clip_box_using_image
 import Putil.data.common_data as pcd
+reload(pcd)
 
 
 class COCOBase(pcd.CommonDataForTrainEvalTest):
@@ -443,8 +454,8 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
          @brief evaluate the performance
          @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
          then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
-         @param[in] image_ids the images would be considered in the evaluate
-         @param[in] cat_ids the categories would be considered in the evaluate
+         @param[in] image_ids the images would be considered in the evaluate, 当没有指定时，则对目标coco的getImgIds的所有image进行evaluate
+         @param[in] cat_ids the categories would be considered in the evaluate，当没有指定时，则对目标coco的getCatIds的所有cat进行evaluate
          @param[in] scores list格式，阈值，超过该值的bbox才被考虑
          @param[in] ious list格式，阈值，考虑基于这些iou阈值的ap与ar
         '''
@@ -461,8 +472,14 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 detection_result = detection_result_temp
                 pass
             pass
+        cat_ids = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
+        if scores is not None:
+            t = lambda x, score: x >= score
+        else:
+            t = lambda x, score: x != None
+        scores = [None] if scores is None else scores
         for score in scores:
-            sub_detection_result = detection_result[detection_result['score'] >= score]
+            sub_detection_result = detection_result[t(detection_result['score'], score)]
             if use_visual:
                 visual_save_to = os.path.join(self._information_save_to_path, '{}-{}'.format(prefix, score))
                 if os.path.exists(visual_save_to) and os.path.isdir(visual_save_to):
@@ -473,8 +490,10 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                 from Putil.trainer.visual.image_visual.point_visual import PointVisual
                 from Putil.trainer.visual.image_visual.rectangle_visual import RectangleVisual
                 pv = PointVisual(); rv = RectangleVisual(2)
+                image_ids = self._instances_coco.getImgids() if image_ids is None else image_ids
                 img_anns = self._instances_coco.loadImgs(image_ids)
-                for img_ann in img_anns:
+                for image_id in image_ids:
+                    img_ann = self._instances_coco.loadImgs([image_id])[0]
                     img_numpy = self.read_image(img_ann['file_name'])
                     result_for_this_image = sub_detection_result[sub_detection_result['image_id']==img_ann['id']]
                     def return_center_xy(s):
@@ -487,26 +506,35 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                         目前没有找到其他方法，使用该函数分离[top_x, top_y, width, height]'''
                         s['top_x'], s['top_y'], s['w'], s['h'] = s['bbox'][0], s['bbox'][1], s['bbox'][2], s['bbox'][3]
                         return s
+                    labels_for_this_image = self._instances_coco.loadAnns(self._instances_coco.getAnnIds(imgIds=[image_id], catIds=cat_ids))
                     if not result_for_this_image.empty:
+                        # visual the pre
                         img_visual = pv.visual_index(img_numpy, result_for_this_image.apply(return_center_xy, axis=1)[['x', 'y']].values, [0, 255, 0])
                         img_visual = rv.rectangle_visual(img_visual, pd.DataFrame(result_for_this_image['bbox']).apply(return_normal_rectangle, axis=1)[['top_x', 'top_y', 'w', 'h']].values, \
                             scores=result_for_this_image['score'], fontScale=0.3)
                     else:
                         img_visual = img_numpy
+                    if len(labels_for_this_image) != 0:
+                        # visual the gt
+                        gt_bboxes = np.array([label['bbox'] for label in labels_for_this_image])
+                        gt_center_xy = gt_bboxes[:, 0: 2] + gt_bboxes[:, 2: 4] / 2.0
+                        img_visual = pv.visual_index(img_visual, gt_center_xy, [255, 0, 0])
+                        img_visual = rv.rectangle_visual(img_visual, gt_bboxes, fontScale=0.3, color_map=[[255, 0, 0]])
                     cv2.imwrite(os.path.join(visual_save_to, '{}.png'.format(img_ann['id'])), cv2.cvtColor(img_visual, cv2.COLOR_RGB2BGR))
                 pass
             index_name = {index: name for index, name in enumerate(list(sub_detection_result.columns))}
             sub_detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(sub_detection_result))]
                 
-            json_file_path = os.path.join(self._information_save_to_path, 'score_{}_formated_sub_detection_result.json'.format(score))
+            json_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_formated_sub_detection_result.json'.format(prefix, score))
             with open(json_file_path, 'w') as fp:
                 json.dump(sub_detection_result_formated, fp)
         
             sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
             #result_image_ids = sub_detection_result_coco.getImgIds()
             cocoEval = COCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
-            cocoEval.params.imgIds  = image_ids if image_ids is not None else self._instances_coco.getImgIds()
-            cocoEval.params.catIds = cat_ids if cat_ids is not None else self._instances_coco.getCatIds()
+            cocoEval.params.imgIds  = image_ids if image_ids is not None else cocoEval.params.imgIds
+            cocoEval.params.catIds = cat_ids if cat_ids is not None else cocoEval.params.catIds
+            cocoEval.params.iouThrs = ious if ious is not None else cocoEval.params.iouThrs
             cocoEval.evaluate()
             cocoEval.accumulate()
             cocoEval.summarize()

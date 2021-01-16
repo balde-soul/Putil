@@ -3,6 +3,7 @@
 import os
 os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import numpy as np
+from importlib import reload
 import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
@@ -14,13 +15,13 @@ TestCocoLogger = root_logger.getChild('TestCoco')
 TestCocoLogger.setLevel(plog.DEBUG)
 
 import Putil.data.coco as COCO
-from importlib import reload;reload(COCO)
-from importlib import reload
 reload(COCO)
 import Putil.data.aug as pAug
 import Putil.data.aug as pAug
 from Putil.data.data_type_adapter import DataTypeAdapterNoOp as data_type_adapter
 from Putil.data.convert_to_input import ConvertToInputNoOp as convert_to_input
+import Putil.base.base_setting as pbs
+pbs.deterministic_setting(42, torch=False, tf=False, numpy=False)
 
 
 seed = 64
@@ -62,4 +63,4 @@ for i in range(0, use_amount):
 #In[]
 #print(dataset_evaluate._detection_result)
 #len(dataset_evaluate)
-dataset_evaluate.evaluate_detection(image_ids=image_ids, prefix='test')
+dataset_evaluate.evaluate_detection(image_ids=image_ids, prefix='test', use_visual=True)
