@@ -1,4 +1,5 @@
 # coding=utf-8
+from importlib import reload
 import re
 from colorama import Fore
 import sys
