@@ -15,15 +15,13 @@ DefaultBackboneLogger.setLevel(plog.DEBUG)
 from Putil.torch.pretrained_model.vgg import VGG
 
 
+##@brief 生成常用的backbone参数
+# @note generate the follow name space arg
+# backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
+# backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
+# backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
+# backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
 def common_backbone_arg(parser):
-    '''
-     @brief 生成常用的backbone参数
-     @note
-      backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
-      backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
-      backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
-      backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
-    '''
     parser.add_argument('--backbone_arch', type=str, default='', action='store', \
         help='specify the arch of the backbone, such 19 for backbone_name with vgg')
     parser.add_argument('--backbone_downsample_rate', type=int, default=None, action='store', \
@@ -37,19 +35,37 @@ def common_backbone_arg(parser):
 
 
 class Backbone:
+    ##@brief
+    # @param[in] args.backbone_pretrained
     def __init__(self, args):
         self._backbone_pretrained = args.backbone_pretrained
         self._backbone_name = args.backbone_name
         self._backbone_arch = args.backbone_arch
         self._backbone_weight_path = args.backbone_weight_path
+        pass
+    pass
+
+
+##@brief base common Backbone for 2D data
+# @
+class DDBackbone(Backbone):
+    ##@brief 
+    # @param[in] args for the Backbone
+    # @param[in] args.backbone_downsample_rate specify the downsample rate for the backbone
+    def __init__(self, args):
+        Backbone.__init__(self, args)
         self._backbone_downsample_rate = args.backbone_downsample_rate
         pass
     pass
 
 
-class _vgg(Backbone, Module):
+##@brief the VGG backbone
+# @note
+class _vgg(DDBackbone, Module):
+    ##@brief waiting for completing
+    # @param[in] args.
     def __init__(self, args):
-        Backbone.__init__(self, args)
+        DDBackbone.__init__(self, args)
         Module.__init__(self)
         self._vgg = VGG(self._backbone_arch, self._backbone_downsample_rate, self._backbone_weight_path, self._backbone_pretrained)
     
