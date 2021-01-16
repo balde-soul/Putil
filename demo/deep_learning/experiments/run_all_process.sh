@@ -5,7 +5,6 @@
 # 获取shell参数
 # sources与name的默认环境值
 source ./experiments/common.sh
-$env_command \
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py --help \
 #$log_level_arg \
 #$clean_train_time_arg \
