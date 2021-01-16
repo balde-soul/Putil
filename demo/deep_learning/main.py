@@ -1,4 +1,6 @@
 # coding=utf-8
+from __future__ import absolute_import
+import numpy as np
 from importlib import reload
 import re
 from colorama import Fore
@@ -7,24 +9,26 @@ import json
 import os
 from enum import Enum
 import torch
+from torch import multiprocessing as mp
+from tensorboardX import SummaryWriter
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
     checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
         auto_stop=auto_stop, optimization=optimization)
     MainLogger.info('run save') if args.debug else None
-    save(TemplateModelDecodeCombineT, epoch, args.save_dir, backbone, backend, decode)
+    save(TemplateModelDecodeCombine, epoch, args.save_dir, backbone, backend, decode)
     MainLogger.info('run deploy') if args.debug else None
-    deploy(TemplateModelDecodeCombineT, \
+    deploy(TemplateModelDecodeCombine, \
         torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda(), \
             recorder.epoch, args.save_dir, backbone, backend, decode)
 
-def do_epoch_end_process():
-    indicator = all_reduce(ret['eloss'], 'train_indicator')
+def do_epoch_end_process(epoch_result):
+    indicator = all_reduce(epoch_result['eloss'], 'train_indicator')
     save = auto_save.save_or_not(indicator)
     if save or args.debug:
         # :save the backbone in rank0
-        do_save() if hvd.rank() == 0 else None
+        do_save(epoch, TemplateModelDecodeCombine) if hvd.rank() == 0 else None
         # 此日志保存了保存模型的epoch数，为clear_train提供了依据
         MainLogger.info('save in epoch: {}'.format(recorder.epoch)) if hvd.rank() == 0 else None
     # :stop or not
@@ -41,13 +45,13 @@ def do_epoch_end_process():
 
 def train(epoch):
     ret = train_stage_common(args, Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
-         loss, optimization, indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
+         loss, optimization, train_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
     if args.evaluate_off:
         if args.debug:
             if epoch == 0:
                 return False, 
             elif epoch == 1:
-                do_epoch_end_process()
+                do_epoch_end_process(ret)
                 return False,
             else:
                 raise RuntimeError('all_process_test would only run train two epoch')
@@ -59,12 +63,12 @@ def train(epoch):
 def evaluate(epoch):
     ret = train_stage_common(args, Stage.TrainEvaluate if evaluate_stage(args) else Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
-            indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
+            evaluate_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
     if train_stage(args):
         if args.debug:
             if epoch == 0:
                 # 当在all_process_test时，第二个epoch返回stop为True
-                do_epoch_end_process()
+                do_epoch_end_process(ret)
                 return False, None, True
             else:
                 # 当在all_process_test时，第一个epoch返回stop为True
@@ -209,7 +213,7 @@ if __name__ == '__main__':
     subdir_base_on_train_time = util.subdir_base_on_train_time
     import Putil.demo.deep_learning.base.horovod as Horovod
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
-    load_save_factory = BaseOperationFactory.load_saved_factory
+    load_saved_factory = BaseOperationFactory.load_saved_factory
     load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
     checkpoint_factory = BaseOperationFactory.checkpoint_factory
     save_factory = BaseOperationFactory.save_factory
@@ -286,6 +290,8 @@ if __name__ == '__main__':
     RecorderFactory.recorder_arg_factory(ppa.parser, recorder_source, recorder_name)
     AccumulatedOptFactory.accumulated_opt_arg_factory(ppa.parser, accumulated_opt_source, accumulated_opt_name)
     # : the base information set
+    ppa.parser.add_argument('--seed', action='store', type=int, default=66, \
+        help='the seed for the random')
     ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
         help='specify the framework used')
     # debug
@@ -393,7 +399,6 @@ if __name__ == '__main__':
     args.recorder_name = recorder_name
     args.accumulated_opt_name = accumulated_opt_name
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in args.gpus]
-    print(args.gpus)
 
     import Putil.base.logger as plog
     reload(plog)
@@ -434,7 +439,7 @@ if __name__ == '__main__':
     os.mkdir(args.save_dir) if hvd.rank() == 0 else None
     hvd.broadcast_object(empty_tensor(), 0, 'sync_after_make_save_dir')
     print('rank {} train time {} save to {}'.format(hvd.rank(), args.train_time, args.save_dir))
-    log_level = plog.LogReflect(args.Level).Level
+    log_level = plog.LogReflect(args.log_level).Level
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
     plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
@@ -451,10 +456,10 @@ if __name__ == '__main__':
     reload(DatasetFactory); Dataset = DatasetFactory.dataset_factory
     reload(DataLoaderFactory); DataLoader = DataLoaderFactory.data_loader_factory
     reload(DataSamplerFactory); DataSampler = DataSamplerFactory.data_sampler_factory
-    reload(ModelFactory); Model = ModelFactory.backbone_factory
+    reload(ModelFactory); Model = ModelFactory.model_factory
     reload(LossFactory); Loss = LossFactory.loss_factory
     reload(IndicatorFactory); Indicator = IndicatorFactory.indicator_factory
-    reload(StatisticIndicatorFactory); StatisticIndicator = StatisticIndicatorFactory.statistic_indicatory_factory
+    reload(StatisticIndicatorFactory); StatisticIndicator = StatisticIndicatorFactory.statistic_indicator_factory
     reload(OptimizationFactory); Optimization = OptimizationFactory.optimization_factory
     reload(EncodeFactory); Encode = EncodeFactory.encode_factory
     reload(DecodeFactory); Decode = DecodeFactory.decode_factory
@@ -481,11 +486,13 @@ if __name__ == '__main__':
     empty_tensor_factory = BaseOperationFactory.empty_tensor_factory
     reload(AccumulatedOptFactory)
     #========================================reload 部分=====================================>
-    from Putil.demo.deep_learning.base.args_operation import args_save as ArgsSave
+    from Putil.base.arg_operation import args_save as ArgsSave
     from Putil.demo.deep_learning.base.util import Stage as Stage
-    from .util.run_train_stage import train_stage_common 
+    from util.run_train_stage import train_stage_common 
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
-    from util.train_evaluate_common import all_reduce
+    from base import util
+    all_reduce = util.all_reduce
+    iscuda = util.iscuda
     # 确定性设置
     from Putil.base import base_setting
     base_setting.deterministic_setting(args.seed)
@@ -499,12 +506,12 @@ if __name__ == '__main__':
     deploy = deploy_factory(args)() if train_stage else None
     load_saved = load_saved_factory(args)()
     load_checkpointed = load_checkpointed_factory(args)()
-    empty_tensor = generate_model_element_factory(args)()
+    #empty_tensor = generate_model_element_factory(args)()
 
     if hvd.rank() == 0:
         writer = SummaryWriter(args.save_dir, filename_suffix='-{}'.format(args.train_time))
     # prepare the GPU
-    if args.cuda:
+    if iscuda(args):
         # Horovod: pin GPU to local rank. TODO: rank is the global process index, local_rank is the local process index in a machine
         # such as -np 6 -H *.1:1 *.2:2 *.3:3 would get the rank: 0, 1, 2, 3, 4, 5 and the local rank: {[0], [0, 1], [0, 1, 2]}
         gpu_accumualation = [len(gs) for gs in args.gpus]
@@ -521,7 +528,7 @@ if __name__ == '__main__':
         torch.cuda.manual_seed(args.seed)
     # Horovod: limnit # of CPU threads to be used per worker
     torch.set_num_threads(1)
-    kwargs = {'num_workers': args.n_worker_per_dataset, 'pin_memory': True} if args.cuda else {}
+    kwargs = {'num_workers': args.n_worker_per_dataset, 'pin_memory': True}
     # When supported, use 'forkserver' to spawn dataloader workers instead of 'fork' to prevent
     # issues with Infiniband implementations that are not fork-safe
     if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
@@ -542,7 +549,7 @@ if __name__ == '__main__':
         loss = LossFactory.loss_factory(args)()
         # : build the indicator
         train_indicator = IndicatorFactory.indicator_factory(args)()
-        evaluate_indicator = IndicatorFactory.indicator_factory(args)()
+        evaluate_indicator = IndicatorFactory.indicator_factory(args)() if args.evaluate_off is not True else None
         # : build the statistic indicator
         statistic_indicator = StatisticIndicator(args)()
         # TODO: build the optimization
@@ -565,10 +572,20 @@ if __name__ == '__main__':
         auto_stop = AutoStop(args)()
         #  : the lr reduce
         lr_reduce = LrReduce(args)()
+        if iscuda(args):
+            backbone.cuda()
+            backend.cuda()
+            decode.cuda()
+            loss.cuda()
+            train_indicator.cuda()
+            evaluate_indicator.cuda() if args.evaluate_off is not True else None
+            statistic_indicator.cuda()
+            if args.use_adasum and hvd.nccl_built():
+                lr_scaler = hvd.local_size()
         pass
     recorder = RecorderFactory.recorder_factory(args)()
     encode = EncodeFactory.encode_factory(args)()
-    template_model = Model(args)
+    template_model = Model(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)() # 从data获取的datas提取backbone的input
     fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
@@ -604,15 +621,6 @@ if __name__ == '__main__':
         dataset_test = Dataset(args, Stage.Test) if args.test_off is not True else None
         test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
         test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
-    if args.cuda:
-        backbone.cuda()
-        backend.cuda()
-        decode.cuda()
-        loss.cuda()
-        indicator.cuda()
-        statistic_indicator.cuda()
-        if args.use_adasum and hvd.nccl_built():
-            lr_scaler = hvd.local_size()
     run_test_stage() if test_stage(args) else None # 如果train_off为True 同时test_off为False，则为test_stage，evaluate_stage与test_stage可以同时存在
     run_evaluate_stage() if evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为evaluate_stage，evaluate_stage与test_stage可以同时存在
     if train_stage(args):

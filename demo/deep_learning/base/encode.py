@@ -13,8 +13,10 @@ class Encode:
 class _DefaultEncode(Encode):
     def __init__(self, args):
         Encode.__init__(self, args)
-        Module.__init__(self)
         pass
+
+    def __call__(self, *args):
+        return args
 
 
 def DefaultEncode(args):
