@@ -95,13 +95,14 @@ for (( i=0;i<${#gpus[@]};i++ )); do
     amount=(${gpus[$i]//./ })
     amount=${#amount[@]}
     echo amount: $amount
-    if [ -z'$horovod_np_arg' ]; then 
+    if [ -z '$horovod_np_arg' ]; then 
         echo 'empty'
         horovod_H_arg=$horovod_H_arg
     else 
-        horovod_H_arg=$horovod_H_arg,
+        horovod_H_arg=$(echo $horovod_H_arg,)
     fi
     horovod_H_arg=$(echo $horovod_H_arg${ips[$i]}:$amount)
+    echo horovod_H_arg: $horovod_H_arg
     horovod_np_arg=$[$horovod_np_arg+$amount]
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
@@ -179,3 +180,18 @@ for key in $(echo ${!sources_names[*]}); do
     env_set_command=$(echo $env_set_command $key=${sources_names[$key]})
 done
 echo env_command: $env_set_command
+export $env_set_command
+#################################env_set_command 如何使用######################################
+#当运行一个.sh文件或者是shell命令，shell会把当前的环境变量都复制过来，也就是子类和父类的关系。通过以下几个场景解释这个概念。
+#证明父能影响子
+#直接运行命令export K=V，然后echo $K，能看到输出了V
+#写一个shell脚本，echo $K，能看到输出了V
+#证明子不能影响父
+#在一个shell脚本中export K=V，然后echo $K，能看到输出了V。
+#基于1，直接运行命令echo $K，发现输出为空
+#如果想让shell脚本中执行的环境变量影响到父环境，那么可以用source来执行
+#source xxx.sh
+#因为source的脚本是在当前环境下执行的，也就是说没有用子shell来执行（默认用sh xxx.sh是新建一个子shell来运行）。这样就可以让脚本中更改的环境变量影响到系统环境变量。但也只是当前ssh连接下的环境变量，其他连接依然不受影响。如果要更改全局的环境变量，那么可以在/etc/profile中添加export xxxx，更改完后source /etc/profile
+#如果想删除该变量，可以用unset xxxx
+###important: 子shell-shell-terminal是一个圈套环境，而source或者.这个命令解除了嵌套关系，变成了环境等价关系
+#################################env_set_command 如何使用######################################
