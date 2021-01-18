@@ -13,10 +13,10 @@ def optimization_factory(args):
     '''
      @note generate
     '''
-    if args.optimization_name == '':
+    if args.framework == 'torch':
         pass
     else:
-        raise NotImplementedError('auto save: {} is not implemented'.format(args.optimization_name))
+        raise NotImplementedError('optimization implemented only in torch')
     optimization = '{}.{}'.format(args.optimization_source, args.optimization_name)
     return eval('{}(args)'.format(optimization))
 
@@ -25,3 +25,9 @@ def optimization_arg_factory(parser, source, name):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('optimization_arg: {}'.format(arg))
     return eval('{}(parser)'.format(arg)) 
+
+
+from torch.optim import Optimizer
+
+class Optimizations(Optimizer):
+    pass

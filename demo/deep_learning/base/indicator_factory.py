@@ -28,6 +28,9 @@ def indicator_factory(args):
     return eval('{}(args)'.format(model))
 
 
+##@brief
+# @note
+# @param[in] source
 def indicator_arg_factory(parser, source, name):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('indicator_arg: {}'.format(arg))

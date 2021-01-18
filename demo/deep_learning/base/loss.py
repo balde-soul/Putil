@@ -4,6 +4,12 @@ from torch.nn import Module
 import copy
 
 
+##@brief common_loss_arg generate the common arg parser for the loss func
+# @param[in] parser the argparser
+def common_loss_arg(parser):
+    pass
+
+
 class Loss(metaclass=ABCMeta):
     '''
      @brief
@@ -22,10 +28,16 @@ class Loss(metaclass=ABCMeta):
     pass
 
 
-class _DefaultLoss(Loss):
+class _DefaultLoss(Loss, Module):
     def __init__(self, args):
         Loss.__init__(self, args)
         pass
+
+    def __call__(self, x):
+        return x
+
+    def total_loss_name(self):
+        return 'loss'
     pass
 
 

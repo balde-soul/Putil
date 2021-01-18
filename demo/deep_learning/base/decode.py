@@ -55,11 +55,11 @@ class _DefaultDecode(Decode, Module):
         Module.__init__(self)
         pass
 
-    def __call__(self, *args):
+    def __call__(self, args):
         return args
     pass
 
-def DefaltDecode(args):
+def DefaultDecode(args):
     temp_args = copy.deepcopy(args)
     def generate_default_decode():
         return _DefaultDecode(args)

@@ -1,4 +1,5 @@
 # coding=utf-8
+import torch
 from colorama import Fore
 from enum import Enum
 import copy
@@ -160,15 +161,24 @@ def unetArg(parser):
     pass
 
 
-class DefaultBackbone(Backbone, Module):
+class _DefaultBackbone(Backbone, Module):
     def __init__(self, args):
         Backbone.__init__(self, args)
         Module.__init__(self)
+        self._a = torch.nn.Parameter(torch.Tensor([0.8]), requires_grad=True)
+        self.register_parameter('a', self._a)
         pass
 
     def forward(self, x):
-        return x
+        return self._a * x
     pass
+
+
+def DefaultBackbone(args):
+    temp_args = copy.deepcopy(args)
+    def _generate_default_backbone():
+        return _DefaultBackbone(args)
+    return _generate_default_backbone
 
 
 def DefaultBackboneArg(parser):

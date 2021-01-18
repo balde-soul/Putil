@@ -14,6 +14,14 @@ from tensorboardX import SummaryWriter
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
+    eval('checkpoint(epoch, args.save_dir, {}=backbone, {}=backend, {}=lr_reduce, {}=auto_save, {}=auto_stop, {}=optimization)'.format(
+        '{}-{}'.format(args.backbone_source, args.backbone_name),
+        '{}-{}'.format(args.backend_source, args.backend_name),
+        '{}-{}'.format(args.lr_reduce_source, args.lr_reduce_name),
+        '{}-{}'.format(args.auto_save_source, args.auto_save_name),
+        '{}-{}'.format(args.auto_stop_source, args.auto_stop_name),
+        '{}-{}'.format(args.optimization_source, args.optimization_name)
+        ))
     checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
         auto_stop=auto_stop, optimization=optimization)
     MainLogger.info('run save') if args.debug else None
@@ -553,18 +561,22 @@ if __name__ == '__main__':
         # : build the statistic indicator
         statistic_indicator = StatisticIndicator(args)()
         # TODO: build the optimization
-        optimization = OptimizationFactory.optimization_factory(args)(backbone.parameters())
+        optimizations = dict()
+        optimizations.update({'opt-backbone': OptimizationFactory.optimization_factory(args)(backbone.parameters())})
+        optimizations.update({'opt-backend': OptimizationFactory.optimization_factory(args)(backend.parameters())})
         # Horovod: broadcast parameters & optimizer state.
         hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
         hvd.broadcast_parameters(backend.state_dict(), root_rank=0)
-        hvd.broadcast_optimizer_state(optimizer, root_rank=0)
+        [hvd.broadcast_optimizer_state(optimization, root_rank=0) for k, optimization in optimizations.items()]
         # Horovod: (optional) compression algorithm.
-        compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+        #compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
+        compression = hvd.Compression.none
+
         # Horovod: wrap optimizer with DistributedOptimizer.
-        optimizer = hvd.DistributedOptimizer(optimizer, \
-            named_parameters=model.named_parameters(), \
-                compression=compression, \
-                    op=hvd.Adasum if args.use_adasum else hvd.Average)
+        import horovod.torch as hvd
+        optimizations = {k: hvd.DistributedOptimizer(optimization, named_parameters=backbone.named_parameters(), \
+            compression=compression, op=hvd.Adasum if args.use_adasum else hvd.Average) \
+                for k, optimization in optimizations.items()}
         accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
         #  : the auto save
         auto_save = AutoSave(args)()
@@ -633,9 +645,9 @@ if __name__ == '__main__':
             assert np.sum(list(retrain_mode_field.values())) == 1
             MainLogger.info(Fore.YELLOW + 'this project contain retrain_mode: {}, set to: {}'.format(retrain_mode_field, ''.join([k if v else '' for k, v in retrain_mode_field.items()])) + Fore.RESET)
             target_dict = {}
+            target_dict.update(optimizations)
             target_dict.update({'backbone': backbone})
             target_dict.update({'backend': backend})
-            target_dict.update({'optimizatioin': optimization})
             target_dict.update({'recorder': recorder})
             if eval('args.{}_continue'.format(retrain_mode_header)):
                 target_dict.update({'lr_reduce': lr_reduce})
