@@ -26,7 +26,7 @@ def auto_save_factory(args):
     else:
         raise NotImplementedError('auto_save of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.auto_save_source, args.auto_save_name)
-    logger.info('auto_save model: {}, arch: {}'.format(model, args.auto_save_arch))
+    logger.info('auto_save: {}'.format(model))
     return eval('{}(args)'.format(model))
 
 def auto_save_arg_factory(parser, source, name):

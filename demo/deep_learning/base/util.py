@@ -1,3 +1,5 @@
+# coding=utf-8
+import re
 import numpy as np
 import shutil
 from importlib import reload
@@ -7,6 +9,7 @@ from colorama import Fore
 from enum import Enum
 import torch
 from torch.nn import Module
+from torch import optim
 import Putil.base.save_fold_base as psfb
 import Putil.base.logger as plog
 logger = plog.PutilLogConfig('util').logger()
@@ -388,3 +391,42 @@ def all_reduce(val, name, hvd):
 
 def iscuda(args):
     return len(args.gpus) != 0
+
+
+class CombineObj:
+    def __init__(self, objs):
+        pass
+    pass
+
+
+class TorchCombineOptimization(optim.Optimizer):
+    def __init__(self, optimizations):
+        self._optimizations = optimizations
+        optim.Optimizer.__init__(self, [param for k, optimization in self._optimizations.items() for param in optimization.param_groups for param in param['params']], {})
+        pass
+
+    def step(self):
+        for k, optimization in self._optimizations.items():
+            optimization.step()
+            pass
+        pass
+
+    def zero_grad(self):
+        for k, optimization in self._optimizations.items():
+            optimization.zero_grad()
+            pass
+        pass
+
+    def state_dict(self):
+        return {k: optimization.state_dict() for k, optimization in self._optimizations.items()}
+    
+    @property
+    def optimizations(self):
+        return self._optimizations
+    pass
+
+
+def find_repeatable_environ(base_name):
+    temp = set([k if re.search(base_name, k) is not None else None for k in os.environ.keys()])
+    temp.remove(None)
+    return temp

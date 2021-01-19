@@ -4,8 +4,8 @@ from torch import optim
 from abc import ABCMeta, abstractmethod
 
 
-def common_optimization_arg(parser):
-    parser.add_argument('--lr', type=float, action='store', default=0.001, \
+def common_optimization_arg(parser, property_type):
+    parser.add_argument('--{}lr'.format(property_type), type=float, action='store', default=0.001, \
         help='the basical learning rate')
     pass
 
@@ -21,7 +21,7 @@ class Optimization(metaclass=ABCMeta):
 
 
 class Adam(Optimization):
-    def __init__(self, args):
+    def __init__(self, args, property_type, **kwargs):
         Optimization.__init__(self, args)
     
     def __call__(self, parameters):
@@ -43,13 +43,15 @@ class Adam(Optimization):
 
 
 class DefaultOptimization(Optimization):
-    def __init__(self, args):
+    def __init__(self, args, property_type, **kwargs):
         Optimization.__init__(self, args)
         self._args = args
+        self._property_type = property_type
+        self._kwargs = kwargs
         pass
 
     def __call__(self, parameters):
-        return optim.SGD(parameters, self._args.lr)
+        return optim.SGD(parameters, eval('self._args.{}lr'.format(self._property_type)))
     pass
 #
 #
@@ -60,6 +62,6 @@ class DefaultOptimization(Optimization):
 #    return generate_default_optimization
 
 
-def DefaultOptimizationArg(parser):
-    common_optimization_arg(parser)
+def DefaultOptimizationArg(parser, property_type):
+    common_optimization_arg(parser, property_type)
     pass

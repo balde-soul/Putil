@@ -31,10 +31,11 @@ class Loss(metaclass=ABCMeta):
 class _DefaultLoss(Loss, Module):
     def __init__(self, args):
         Loss.__init__(self, args)
+        Module.__init__(self)
         pass
 
     def __call__(self, x):
-        return x
+        return (x[0] - x[1])**2
 
     def total_loss_name(self):
         return 'loss'

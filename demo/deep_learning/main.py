@@ -12,6 +12,11 @@ import torch
 from torch import multiprocessing as mp
 from tensorboardX import SummaryWriter
 
+base_optimization_source_property_type = 'optimization_source'
+base_optimization_name_property_type = 'optimization_name'
+base_backbone_source_property_type = 'backbone_source'
+base_backbone_name_property_type = 'backbone_name'
+
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
     eval('checkpoint(epoch, args.save_dir, {}=backbone, {}=backend, {}=lr_reduce, {}=auto_save, {}=auto_stop, {}=optimization)'.format(
@@ -219,7 +224,9 @@ if __name__ == '__main__':
     make_sure_the_train_time = util.make_sure_the_train_time
     clean_train_result = util.clean_train_result
     subdir_base_on_train_time = util.subdir_base_on_train_time
-    import Putil.demo.deep_learning.base.horovod as Horovod
+    from Putil.demo.deep_learning.base import horovod
+    Horovod = horovod.horovod
+    horovod_arg = horovod.horovod_arg
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
     load_saved_factory = BaseOperationFactory.load_saved_factory
     load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
@@ -230,6 +237,7 @@ if __name__ == '__main__':
     empty_tensor_factory = BaseOperationFactory.empty_tensor_factory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
+    horovod_arg(ppa.parser)
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
@@ -238,12 +246,14 @@ if __name__ == '__main__':
     data_sampler_source = os.environ.get('data_sampler_source', 'standard')
     encode_source = os.environ.get('encode_source', 'standard')
     backbone_source = os.environ.get('backbone_source', 'standard')
+    #backbone_sources = {property_type.replace(base_backbone_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_source_property_type)}
     backend_source = os.environ.get('backend_source', 'standard')
     decode_source = os.environ.get('decode_source', 'standard')
     loss_source = os.environ.get('loss_source', 'standard')
     indicator_source = os.environ.get('indicator_source', 'standard')
     statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
-    optimization_source = os.environ.get('optimization_source', 'standard')
+    ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
+    optimization_sources = {property_type.replace(base_optimization_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_source_property_type)}
     aug_sources = os.environ.get('aug_sources', '').split('.')
     data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
@@ -265,7 +275,10 @@ if __name__ == '__main__':
     loss_name = os.environ.get('loss_name', 'DefaultLoss')
     indicator_name = os.environ.get('indicator_name', 'DefaultIndicator')
     statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
-    optimization_name = os.environ.get('optimization_name', 'DefaultOptimization')
+    ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
+    optimization_names = {property_type.replace(base_optimization_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_name_property_type)}
+    [None if property_type in optimization_sources.keys() else optimization_sources.update({property_type: 'standard'}) \
+        for property_type, name in optimization_names.items()] # 完善optimization_sources中缺少而optimizations_names中存在的类型
     aug_names = os.environ.get('aug_names', '').split('.')
     data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
@@ -285,7 +298,8 @@ if __name__ == '__main__':
     LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
     IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
     StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
-    OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_source, optimization_name)
+    [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], name, property_type) \
+        for property_type, name in optimization_names.items()]
     AugFactory.aug_arg_factory(ppa.parser, aug_sources, aug_names)
     DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
@@ -376,7 +390,7 @@ if __name__ == '__main__':
     args.loss_source = loss_source
     args.indicator_source = indicator_source
     args.statistic_indicator_source = statistic_indicator_source
-    args.optimization_source = optimization_source
+    args.optimization_sources = optimization_sources
     args.aug_sources = aug_sources
     args.data_type_adapter_source = data_type_adapter_source
     args.fit_data_to_input_source = fit_data_to_input_source
@@ -398,7 +412,7 @@ if __name__ == '__main__':
     args.loss_name = loss_name
     args.indicator_name = indicator_name
     args.statistic_indicator_name = statistic_indicator_name
-    args.optimization_name = optimization_name
+    args.optimization_names = optimization_names
     args.aug_names = aug_names
     args.data_type_adapter_name = data_type_adapter_name
     args.fit_data_to_input_name = fit_data_to_input_name
@@ -411,7 +425,7 @@ if __name__ == '__main__':
     import Putil.base.logger as plog
     reload(plog)
 
-    hvd = Horovod.horovod(args)
+    hvd = Horovod(args)
     hvd.init()
     empty_tensor = empty_tensor_factory(args)()
     # the method for remote debug
@@ -483,7 +497,9 @@ if __name__ == '__main__':
     make_sure_the_train_time = util.make_sure_the_train_time
     clean_train_result = util.clean_train_result
     subdir_base_on_train_time = util.subdir_base_on_train_time
-    reload(Horovod)
+    reload(horovod)
+    Horovod = horovod.horovod
+    horovod_arg = horovod.horovod_arg
     reload(BaseOperationFactory)
     load_save_factory = BaseOperationFactory.load_saved_factory
     load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
@@ -560,23 +576,26 @@ if __name__ == '__main__':
         evaluate_indicator = IndicatorFactory.indicator_factory(args)() if args.evaluate_off is not True else None
         # : build the statistic indicator
         statistic_indicator = StatisticIndicator(args)()
-        # TODO: build the optimization
+        ##TODO: build the optimization, the optimization_source
+        # 通过environ指定了几种属性类型的optimization，使用在哪些参数需要自己定制
+        # 如果出现参数调整，则需要另外使用key，否则在load_checkpointed的时候会出现错误，可以查看load_checkpointed的代码
+        # 如果出现需要增加参数，建议新增一个key-val，这用容易管理，load_checkpointed不会出现错误
         optimizations = dict()
-        optimizations.update({'opt-backbone': OptimizationFactory.optimization_factory(args)(backbone.parameters())})
-        optimizations.update({'opt-backend': OptimizationFactory.optimization_factory(args)(backend.parameters())})
+        optimization_types = {property_type: OptimizationFactory.optimization_factory(args, property_type=property_type) for property_type, v in args.optimization_names.items()}
+        optimizations.update({'opt-backbone': (backbone, optimization_types[''](backbone.parameters()))})
+        optimizations.update({'opt-backend': (backend, optimization_types[''](backend.parameters()))})
         # Horovod: broadcast parameters & optimizer state.
         hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
         hvd.broadcast_parameters(backend.state_dict(), root_rank=0)
-        [hvd.broadcast_optimizer_state(optimization, root_rank=0) for k, optimization in optimizations.items()]
-        # Horovod: (optional) compression algorithm.
-        #compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
-        compression = hvd.Compression.none
-
-        # Horovod: wrap optimizer with DistributedOptimizer.
+        [hvd.broadcast_optimizer_state(optimization, root_rank=0) for k, (module, optimization) in optimizations.items()]
+        ##Horovod: wrap optimizer with DistributedOptimizer.
+        # 影响参数：hvd_fp16_all_reduce、hvd_reduce_mode
         import horovod.torch as hvd
-        optimizations = {k: hvd.DistributedOptimizer(optimization, named_parameters=backbone.named_parameters(), \
-            compression=compression, op=hvd.Adasum if args.use_adasum else hvd.Average) \
-                for k, optimization in optimizations.items()}
+        optimizations = {k: hvd.DistributedOptimizer(optimization, named_parameters=module.named_parameters(), \
+            compression=hvd.Compression.fp16 if args.hvd_compression_mode == 'fp16' else hvd.Compression.mro if args.hvd_compression_mode == 'mro' else hvd.Compression.none, \
+                op=hvd.Adasum if args.hvd_reduce_mode == 'AdaSum' else hvd.Average if args.hvd_reduce_mode == 'Average' else hvd.Sum) \
+                for k, (module, optimization) in optimizations.items()}
+        optimization = BaseOperationFactory.combine_optimization_factory(args)(optimizations)
         accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
         #  : the auto save
         auto_save = AutoSave(args)()
@@ -645,7 +664,7 @@ if __name__ == '__main__':
             assert np.sum(list(retrain_mode_field.values())) == 1
             MainLogger.info(Fore.YELLOW + 'this project contain retrain_mode: {}, set to: {}'.format(retrain_mode_field, ''.join([k if v else '' for k, v in retrain_mode_field.items()])) + Fore.RESET)
             target_dict = {}
-            target_dict.update(optimizations)
+            target_dict.update(optimization.state_dict())
             target_dict.update({'backbone': backbone})
             target_dict.update({'backend': backend})
             target_dict.update({'recorder': recorder})

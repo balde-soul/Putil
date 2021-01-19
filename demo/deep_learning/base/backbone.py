@@ -18,18 +18,18 @@ from Putil.torch.pretrained_model.vgg import VGG
 
 ##@brief 生成常用的backbone参数
 # @note generate the follow name space arg
-# backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
-# backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
-# backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
-# backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
-def common_backbone_arg(parser):
-    parser.add_argument('--backbone_arch', type=str, default='', action='store', \
+# <property_type>backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
+# <property_type>backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
+# <property_type>backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
+# <property_type>backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
+def common_backbone_arg(parser, property_type='', **kwargs):
+    parser.add_argument('--{}backbone_arch'.format(property_type), type=str, default='', action='store', \
         help='specify the arch of the backbone, such 19 for backbone_name with vgg')
-    parser.add_argument('--backbone_downsample_rate', type=int, default=None, action='store', \
+    parser.add_argument('--{}backbone_downsample_rate'.format(property_type), type=int, default=None, action='store', \
         help='specify the downsample rate for the backbone')
-    parser.add_argument('--backbone_pretrained', default=False, action='store_true', \
+    parser.add_argument('--{}backbone_pretrained'.format(property_type), default=False, action='store_true', \
         help='load the pretrained backbone weight or not')
-    parser.add_argument('--backbone_weight_path', type=str, default='', action='store', \
+    parser.add_argument('--{}backbone_weight_path'.format(property_type), type=str, default='', action='store', \
         help='specify the pre-trained model for the backbone, use while in finetune mode, '\
             'if the weight is specify, the backbone weight would be useless')
     pass
@@ -162,7 +162,7 @@ def unetArg(parser):
 
 
 class _DefaultBackbone(Backbone, Module):
-    def __init__(self, args):
+    def __init__(self, args, property_type, **kwargs):
         Backbone.__init__(self, args)
         Module.__init__(self)
         self._a = torch.nn.Parameter(torch.Tensor([0.8]), requires_grad=True)
@@ -181,8 +181,8 @@ def DefaultBackbone(args):
     return _generate_default_backbone
 
 
-def DefaultBackboneArg(parser):
-    common_backbone_arg(parser)
+def DefaultBackboneArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type)
     pass
 #
 #

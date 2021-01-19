@@ -81,3 +81,10 @@ def empty_tensor_factory(args):
             raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
         pass
     return generate_empty_tensor_factory_func
+
+def combine_optimization_factory(args):
+    temp_args = copy.deepcopy(args)
+    if temp_args.framework == 'torch':
+        return standard.TorchCombineOptimization
+    else:
+        raise NotImplementedError('combine_optimization in framework: {} is Not Implemented'.format(args.framework))

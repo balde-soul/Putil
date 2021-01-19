@@ -26,7 +26,7 @@ def auto_stop_factory(args):
     else:
         raise NotImplementedError('auto_stop of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.auto_stop_source, args.auto_stop_name)
-    logger.info('auto_stop model: {}, arch: {}'.format(model, args.auto_stop_arch))
+    logger.info('auto_stop: {}'.format(model))
     return eval('{}(args)'.format(model))
     
 
