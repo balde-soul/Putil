@@ -245,8 +245,7 @@ if __name__ == '__main__':
     data_loader_source = os.environ.get('data_loader_source', 'standard')
     data_sampler_source = os.environ.get('data_sampler_source', 'standard')
     encode_source = os.environ.get('encode_source', 'standard')
-    backbone_source = os.environ.get('backbone_source', 'standard')
-    #backbone_sources = {property_type.replace(base_backbone_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_source_property_type)}
+    backbone_sources = {property_type.replace(base_backbone_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_source_property_type)}
     backend_source = os.environ.get('backend_source', 'standard')
     decode_source = os.environ.get('decode_source', 'standard')
     loss_source = os.environ.get('loss_source', 'standard')
@@ -268,8 +267,9 @@ if __name__ == '__main__':
     data_loader_name = os.environ.get('data_loader_name', 'DefaultDataLoader')
     data_sampler_name = os.environ.get('data_sampler_name', 'DefaultDataSampler')
     encode_name = os.environ.get('encode_name', 'DefaultEncode')
-    #backbone_name = os.environ.get('backbone_name', 'DefaultModel')
-    backbone_name = os.environ.get('backbone_name', 'DefaultBackbone')
+    backbone_names = {property_type.replace(base_backbone_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_name_property_type)}
+    [None if property_type in backbone_sources.keys() else backbone_sources.update({property_type: 'standard'}) \
+        for property_type, name in backbone_names.items()]
     backend_name = os.environ.get('backend_name', 'DefaultBackend')
     decode_name = os.environ.get('decode_name', 'DefaultDecode')
     loss_name = os.environ.get('loss_name', 'DefaultLoss')
@@ -292,8 +292,8 @@ if __name__ == '__main__':
     DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_source, data_loader_name)
     DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_source, data_sampler_name)
     EncodeFactory.encode_arg_factory(ppa.parser, encode_source, encode_name)
-    #ModelFactory.backbone_arg_factory(ppa.parser, backbone_source, backbone_name)
-    BackboneFactory.backbone_arg_factory(ppa.parser, backbone_source, backbone_name)
+    [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], name, property_type) \
+        for property_type, name in backbone_names.items()]
     BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
     LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
     IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
@@ -384,7 +384,7 @@ if __name__ == '__main__':
     args.data_sampler_source = data_sampler_source
     args.encode_source = encode_source
     #args.backbone_source = backbone_source
-    args.backbone_source = backbone_source
+    args.backbone_sources = backbone_sources
     args.backend_source = backend_source
     args.decode_source = decode_source
     args.loss_source = loss_source
@@ -406,7 +406,7 @@ if __name__ == '__main__':
     args.data_sampler_name = data_sampler_name
     args.encode_name = encode_name
     #args.backbone_name = backbone_name
-    args.backbone_name = backbone_name
+    args.backbone_names = backbone_names
     args.backend_name = backend_name
     args.decode_name = decode_name
     args.loss_name = loss_name

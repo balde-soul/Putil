@@ -38,11 +38,10 @@ def common_backbone_arg(parser, property_type='', **kwargs):
 class Backbone:
     ##@brief
     # @param[in] args.backbone_pretrained
-    def __init__(self, args):
-        self._backbone_pretrained = args.backbone_pretrained
-        self._backbone_name = args.backbone_name
-        self._backbone_arch = args.backbone_arch
-        self._backbone_weight_path = args.backbone_weight_path
+    def __init__(self, args, property_type='', **kwargs):
+        self._backbone_pretrained = eval('args.{}backbone_pretrained'.format(property_type))
+        self._backbone_arch = eval('args.{}backbone_arch'.format(property_type))
+        self._backbone_weight_path = eval('args.{}backbone_weight_path'.format(property_type))
         pass
     pass
 
@@ -53,9 +52,9 @@ class DDBackbone(Backbone):
     ##@brief 
     # @param[in] args for the Backbone
     # @param[in] args.backbone_downsample_rate specify the downsample rate for the backbone
-    def __init__(self, args):
-        Backbone.__init__(self, args)
-        self._backbone_downsample_rate = args.backbone_downsample_rate
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
+        self._backbone_downsample_rate = eval('args.{}backbone_downsample_rate'.format(property_type))
         pass
     pass
 
@@ -65,8 +64,8 @@ class DDBackbone(Backbone):
 class _vgg(DDBackbone, Module):
     ##@brief waiting for completing
     # @param[in] args.
-    def __init__(self, args):
-        DDBackbone.__init__(self, args)
+    def __init__(self, args, property_type='', **kwargs):
+        DDBackbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         self._vgg = VGG(self._backbone_arch, self._backbone_downsample_rate, self._backbone_weight_path, self._backbone_pretrained)
     
@@ -75,15 +74,15 @@ class _vgg(DDBackbone, Module):
     pass
 
 
-def vgg(args):
+def vgg(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_vgg():
-        return _vgg(args)
+        return _vgg(args, property_type='', **kwargs)
     return generate_vgg
 
 
-def vggArg(parser):
-    common_backbone_arg(parser)
+def vggArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type='', **kwargs)
     pass
 
 
@@ -114,8 +113,8 @@ def _resnet(arch, block, layers, pretrained, progress, model_dir, **kwargs):
     return model
 
 class _resnet(Backbone, Module):
-    def __init__(self, args):
-        Backbone.__init__(self, args)
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         param = dict()
         if self._backbone_arch != 'custom':
@@ -137,15 +136,15 @@ class _resnet(Backbone, Module):
     def forward(self, x):
         pass
 
-def resnet(args):
+def resnet(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_resent():
-        return _resnet(temp_args)
+        return _resnet(temp_args, property_type, **kwargs)
     return generate_resent
 
-def resnetArg(parser):
-    common_backbone_arg(parser)
-    parser.add_argument('--resnet_help', action='store', type=str, default='', \
+def resnetArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type, **kwargs)
+    parser.add_argument('--{}resnet_help'.format(property_type), action='store', type=str, default='', \
         help='backbone_arch: [18, 34, 50, 101, 152, ext50_32x4d, ext101_32x8d, wide_50_2, wide_101_2] \n' \
             'backbone_pretrained: see the doc\n' \
                 'backbone_weight_path: see the doc')
@@ -153,17 +152,17 @@ def resnetArg(parser):
     pass
 
 
-def unet(args):
+def unet(args, property_type='', **kwargs):
     pass
 
 
-def unetArg(parser):
+def unetArg(parser, property_type='', **kwargs):
     pass
 
 
 class _DefaultBackbone(Backbone, Module):
-    def __init__(self, args, property_type, **kwargs):
-        Backbone.__init__(self, args)
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         self._a = torch.nn.Parameter(torch.Tensor([0.8]), requires_grad=True)
         self.register_parameter('a', self._a)
@@ -174,15 +173,15 @@ class _DefaultBackbone(Backbone, Module):
     pass
 
 
-def DefaultBackbone(args):
+def DefaultBackbone(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def _generate_default_backbone():
-        return _DefaultBackbone(args)
+        return _DefaultBackbone(args, property_type, **kwargs)
     return _generate_default_backbone
 
 
 def DefaultBackboneArg(parser, property_type='', **kwargs):
-    common_backbone_arg(parser, property_type)
+    common_backbone_arg(parser, property_type, **kwargs)
     pass
 #
 #

@@ -218,7 +218,7 @@ def make_sure_the_save_dir(args):
                 use_date=True if not args.debug else False, \
                     use_git=True if not args.debug else False, \
                         should_be_new=True if not args.debug else False, \
-                            base_name='{}{}{}'.format(args.backbone_name, args.name, '-debug' if args.debug else ''))
+                            base_name='{}{}'.format(args.name if args.name is not '' else 'Unnamed', '-debug' if args.debug else ''))
             bsf.mkdir(args.save_dir)
             args.save_dir = bsf.FullPath
             code = 'utf-16'
