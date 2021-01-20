@@ -10,15 +10,16 @@ def _TotalCopy(source, target):
         full_dir = os.path.join(source, _content)
         if os.path.isdir(full_dir):
             _TotalCopy(full_dir, content)
-        elif _content.spli('.')[-1] in ['bmp', 'png', 'jpg']:
-            shutil.copyfile(os.path.join(source, _content), target)
+        elif _content.split('.')[-1] in ['bmp', 'png', 'jpg']:
+            source_file = os.path.join(source, _content)
+            shutil.copy(os.path.join(source, _content), target)
             pass
         pass
     pass
 
 
 def TotalCopy(source, target):
-    project = os.path.dirname(source)
+    project = os.path.split(source)[-1]
     target_dir = os.path.join(target, project)
     if os.path.exists(target_dir) is False:
         os.mkdir(target_dir)
@@ -36,4 +37,5 @@ if __name__ == '__main__':
     source_dir = os.path.abspath(args.source_dir)
     assert os.path.isdir(args.target_dir)
     target_dir = os.path.abspath(args.target_dir)
+    TotalCopy(source_dir, target_dir)
     pass
