@@ -159,7 +159,7 @@ sources_names=(
 [indicator_source]=standard [indicator_name]=DefaultIndicator
 [statistic_indicator_source]=standard [statistic_indicator_name]=DefaultStatisticIndicator 
 [optimization_source]=standard [optimization_name]=DefaultOptimization
-[aug_sources]=standard [aug_names]=DefaultAug
+[aug_source]=standard [aug_name]=DefaultAug
 [data_type_adapter_source]=standard [data_type_adapter_name]=DefaultDataTypeAdapter
 [fit_data_to_input_source]=standard [fit_data_to_input_name]=DefaultFitDataToInput
 [fit_decode_to_result_source]=standard [fit_decode_to_result_name]=DefaultFitDecodeToResult

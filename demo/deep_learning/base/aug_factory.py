@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def aug_factory(args):
+def aug_factory(args, property_type, **kwargs):
     '''
      @brief
      @note
@@ -23,10 +23,14 @@ def aug_factory(args):
     def _combine(source, name, target):
         target = '{} {}.{}'.format(target, source, name)
         return True
-    augs = ''
+    target = ''
     [_combine(source, name, target) for source, name in zip(args.aug_sources, args.aug_names)]
     logger.info('augs: {}'.format(target))
-    return [eval('{}.{}(args)'.format(aug_source, aug_name)) for aug_source, aug_name in zip(args.aug_sources, args.aug_names)]
+    augs = list()
+    for aug_source, aug_name in zip(args.aug_sources, args.aug_names):
+        augs.append(eval('{}.{}(args)'.format(aug_source, aug_name)))
+        pass
+    return augs
 
 def aug_arg_factory(parser, sources, names):
     #import pdb; pdb.set_trace()

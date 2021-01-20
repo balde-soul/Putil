@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def fit_decode_to_result_factory(args):
+def fit_decode_to_result_factory(args, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -26,10 +26,10 @@ def fit_decode_to_result_factory(args):
     else:
         raise NotImplementedError('fit_decode_to_result of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.fit_decode_to_result_source, args.fit_decode_to_result_name)
-    logger.info('fit_decode_to_result model: {}, arch: {}'.format(model, args.fit_decode_to_result_arch))
-    return eval('{}(args)'.format(model))
+    logger.info('fit_decode_to_result: {}'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
-def fit_decode_to_result_arg_factory(parser, source, name):
+def fit_decode_to_result_arg_factory(parser, source, name, property_type='', **kwargs):
     fit_decode_to_result_arg = '{0}.{1}Arg'.format(source, name)
     logger.info('fit_decode_to_result_arg: {}'.format(name))
     return eval('{}(parser)'.format(fit_decode_to_result_arg)) 

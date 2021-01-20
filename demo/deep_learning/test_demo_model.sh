@@ -4,12 +4,13 @@
 # load checkpoint->first command content->load saved->run evaluate->load save->test
 # 获取shell参数
 # sources与name的默认环境值
-export backbone_name=DefaultBackbone
-export backend_name=DefaultBackend
+export K_backbone_name=DefaultBackbone
+export K_backend_name=DefaultBackend
 export k_optimization_name=DefaultOptimization
 export K_lr_reduce_name=DefaultLrReduce
-export aug_names=DefaultAug 
-export loss_name=DefaultLoss
+export K_aug_names=DefaultAug 
+export K_loss_name=DefaultLoss
+export K_dataset_name=DefaultDataset
 source ./experiments/common.sh
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py \
 --gpus $gpus_arg \

@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def fit_data_to_input_factory(args):
+def fit_data_to_input_factory(args, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -26,10 +26,10 @@ def fit_data_to_input_factory(args):
     else:
         raise NotImplementedError('fit_data_to_input of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.fit_data_to_input_source, args.fit_data_to_input_name)
-    logger.info('fit_data_to_input model: {}, arch: {}'.format(model, args.fit_data_to_input_arch))
-    return eval('{}(args)'.format(model))
+    logger.info('fit_data_to_input: {}'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
-def fit_data_to_input_arg_factory(parser, source, name):
+def fit_data_to_input_arg_factory(parser, source, name, property_type='', **kwargs):
     fit_data_to_input_arg = '{0}.{1}Arg'.format(source, name)
     logger.info('fit_data_to_input_arg: {}'.format(name))
-    return eval('{}(parser)'.format(fit_data_to_input_arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(fit_data_to_input_arg)) 

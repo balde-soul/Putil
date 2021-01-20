@@ -18,6 +18,8 @@ MakeSureTheSaveDirLogger = logger.getChild('MakeSureTheSaveDir')
 MakeSureTheSaveDirLogger.setLevel(plog.DEBUG)
 TorchLoadCheckpointedLogger = logger.getChild('TorchLoadCheckpoited')
 TorchLoadCheckpointedLogger.setLevel(plog.DEBUG)
+TorchIsCudableLogger = logger.getChild('IsCudable')
+TorchIsCudableLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
@@ -430,3 +432,20 @@ def find_repeatable_environ(base_name):
     temp = set([k if re.search(base_name, k) is not None else None for k in os.environ.keys()])
     temp.remove(None)
     return temp
+
+
+def get_relatived_environ(base_name):
+    return {property_type.replace(base_name, ''): os.environ[property_type] for property_type in find_repeatable_environ(base_name)}
+
+
+def complete_environ(source_dict, target_dict, default_content):
+    # 完善target_dict中缺少而source_dict中存在的类型
+    [None if property_type in target_dict.keys() else target_dict.update({property_type: default_content}) \
+        for property_type, name in source_dict.items()]
+    pass
+
+
+def Torchis_cudable(object):
+    is_cudable = isinstance(object, Module)
+    TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
+    return is_cudable

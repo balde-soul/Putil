@@ -26,7 +26,7 @@ def model_factory(args):
     else:
         raise NotImplementedError('model of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.model_source, args.model_name)
-    logger.info('model model: {}, arch: {}'.format(model, args.model_arch))
+    logger.info('model model: {}'.format(model))
     return eval('{}(args)'.format(model))
 
 

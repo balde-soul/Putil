@@ -16,6 +16,10 @@ base_optimization_source_property_type = 'optimization_source'
 base_optimization_name_property_type = 'optimization_name'
 base_backbone_source_property_type = 'backbone_source'
 base_backbone_name_property_type = 'backbone_name'
+base_dataset_source_property_type = 'dataset_source'
+base_dataset_name_property_type = 'dataset_name'
+base_aug_source_property_type = 'aug_source'
+base_aug_name_property_type = 'aug_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -225,8 +229,6 @@ if __name__ == '__main__':
     clean_train_result = util.clean_train_result
     subdir_base_on_train_time = util.subdir_base_on_train_time
     from Putil.demo.deep_learning.base import horovod
-    Horovod = horovod.horovod
-    horovod_arg = horovod.horovod_arg
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
     load_saved_factory = BaseOperationFactory.load_saved_factory
     load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
@@ -237,11 +239,11 @@ if __name__ == '__main__':
     empty_tensor_factory = BaseOperationFactory.empty_tensor_factory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
-    horovod_arg(ppa.parser)
+    horovod.horovod_arg(ppa.parser)
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
-    dataset_source = os.environ.get('dataset_source', 'standard')
+    dataset_sources = {property_type.replace(base_dataset_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_dataset_source_property_type)}
     data_loader_source = os.environ.get('data_loader_source', 'standard')
     data_sampler_source = os.environ.get('data_sampler_source', 'standard')
     encode_source = os.environ.get('encode_source', 'standard')
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_sources = {property_type.replace(base_optimization_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_source_property_type)}
-    aug_sources = os.environ.get('aug_sources', '').split('.')
+    aug_sources = {property_type.replace(base_aug_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_aug_source_property_type)}
     data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
@@ -263,7 +265,9 @@ if __name__ == '__main__':
     auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
-    dataset_name = os.environ.get('dataset_name', 'DefaultDataset')
+    dataset_names = {property_type.replace(base_dataset_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_dataset_name_property_type)}
+    [None if property_type in dataset_sources.keys() else dataset_sources.update({property_type: 'standard'}) \
+        for property_type, name in dataset_names.items()]
     data_loader_name = os.environ.get('data_loader_name', 'DefaultDataLoader')
     data_sampler_name = os.environ.get('data_sampler_name', 'DefaultDataSampler')
     encode_name = os.environ.get('encode_name', 'DefaultEncode')
@@ -279,7 +283,8 @@ if __name__ == '__main__':
     optimization_names = {property_type.replace(base_optimization_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_name_property_type)}
     [None if property_type in optimization_sources.keys() else optimization_sources.update({property_type: 'standard'}) \
         for property_type, name in optimization_names.items()] # 完善optimization_sources中缺少而optimizations_names中存在的类型
-    aug_names = os.environ.get('aug_names', '').split('.')
+    aug_names = util.get_relative_environ(base_aug_name_property_type)
+    util.complete_environ(aug_names, aug_sources, 'standard')
     data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
@@ -300,13 +305,13 @@ if __name__ == '__main__':
     StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
     [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], name, property_type) \
         for property_type, name in optimization_names.items()]
-    AugFactory.aug_arg_factory(ppa.parser, aug_sources, aug_names)
+    [AugFactory.aug_arg_factory(ppa.parser, aug_sources, aug_names, property_type) for property_type
     DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
     FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
     ModelFactory.model_arg_factory(ppa.parser, model_source, model_name)
     # data setting
-    DatasetFactory.dataset_arg_factory(ppa.parser, dataset_source, dataset_name)
+    [DatasetFactory.dataset_arg_factory(ppa.parser, dataset_sources, dataset_names, property_type) for property_type, name in dataset_names.items()]
     ## decode setting
     DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
     RecorderFactory.recorder_arg_factory(ppa.parser, recorder_source, recorder_name)
@@ -379,7 +384,7 @@ if __name__ == '__main__':
     args.auto_save_source = auto_save_source
     args.lr_reduce_source = lr_reduce_source
     args.auto_stop_source = auto_stop_source
-    args.dataset_source = dataset_source
+    args.dataset_sources = dataset_sources
     args.data_loader_source = data_loader_source
     args.data_sampler_source = data_sampler_source
     args.encode_source = encode_source
@@ -401,7 +406,7 @@ if __name__ == '__main__':
     args.auto_save_name = auto_save_name
     args.auto_stop_name = auto_stop_name
     args.lr_reduce_name = lr_reduce_name
-    args.dataset_name = dataset_name
+    args.dataset_names = dataset_names
     args.data_loader_name = data_loader_name
     args.data_sampler_name = data_sampler_name
     args.encode_name = encode_name
@@ -425,7 +430,7 @@ if __name__ == '__main__':
     import Putil.base.logger as plog
     reload(plog)
 
-    hvd = Horovod(args)
+    hvd = horovod.horovod(args)
     hvd.init()
     empty_tensor = empty_tensor_factory(args)()
     # the method for remote debug
@@ -498,8 +503,6 @@ if __name__ == '__main__':
     clean_train_result = util.clean_train_result
     subdir_base_on_train_time = util.subdir_base_on_train_time
     reload(horovod)
-    Horovod = horovod.horovod
-    horovod_arg = horovod.horovod_arg
     reload(BaseOperationFactory)
     load_save_factory = BaseOperationFactory.load_saved_factory
     load_checkpointed_factory = BaseOperationFactory.load_checkpointed_factory
@@ -515,6 +518,7 @@ if __name__ == '__main__':
     from util.run_train_stage import train_stage_common 
     from Putil.demo.deep_learning.base.util import TemplateModelDecodeCombine
     from base import util
+    from Putil.data import aug as pAug
     all_reduce = util.all_reduce
     iscuda = util.iscuda
     # 确定性设置
@@ -530,6 +534,9 @@ if __name__ == '__main__':
     deploy = deploy_factory(args)() if train_stage else None
     load_saved = load_saved_factory(args)()
     load_checkpointed = load_checkpointed_factory(args)()
+    is_cudable = BaseOperationFactory.is_cudable_factory(args)()
+    accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
+    combine_optimization = BaseOperationFactory.combine_optimization_factory(args)()
     #empty_tensor = generate_model_element_factory(args)()
 
     if hvd.rank() == 0:
@@ -595,8 +602,7 @@ if __name__ == '__main__':
             compression=hvd.Compression.fp16 if args.hvd_compression_mode == 'fp16' else hvd.Compression.mro if args.hvd_compression_mode == 'mro' else hvd.Compression.none, \
                 op=hvd.Adasum if args.hvd_reduce_mode == 'AdaSum' else hvd.Average if args.hvd_reduce_mode == 'Average' else hvd.Sum) \
                 for k, (module, optimization) in optimizations.items()}
-        optimization = BaseOperationFactory.combine_optimization_factory(args)(optimizations)
-        accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
+        optimization=combine_optimization(optimizations)
         #  : the auto save
         auto_save = AutoSave(args)()
         #  : the auto stop
@@ -604,15 +610,17 @@ if __name__ == '__main__':
         #  : the lr reduce
         lr_reduce = LrReduce(args)()
         if iscuda(args):
-            backbone.cuda()
-            backend.cuda()
-            decode.cuda()
-            loss.cuda()
-            train_indicator.cuda()
+            backbone.cuda() if is_cudable(backbone) else None
+            backend.cuda() if is_cudable(backend) else None
+            decode.cuda() if is_cudable(decode) else None
+            loss.cuda() if is_cudable(loss) else None
+            train_indicator.cuda() if is_cudable(train_indicator) else None
             evaluate_indicator.cuda() if args.evaluate_off is not True else None
-            statistic_indicator.cuda()
-            if args.use_adasum and hvd.nccl_built():
+            statistic_indicator.cuda() if is_cudable(statistic_indicator) else None
+            if args.hvd_reduce_mode and hvd.nccl_built():
                 lr_scaler = hvd.local_size()
+                pass
+            pass
         pass
     recorder = RecorderFactory.recorder_factory(args)()
     encode = EncodeFactory.encode_factory(args)()
@@ -623,7 +631,9 @@ if __name__ == '__main__':
     dataset_train = None; train_sampler = None; evaluate_loader = None
     if args.train_off is not True:
         MainLogger.info('start to generate the train dataset data_sampler data_loader')
-        dataset_train = Dataset(args, Stage.Train)
+        dataset_train = {property_type: Dataset(args, stage=Stage.Train)() for property_type, name in args.dataset_names.items()}
+        ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
+        dataset_train = dataset_train['']
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
         # for the fack data field, maybe cause the nan or inf
         for i in range(0, args.fake_aug):
@@ -642,14 +652,18 @@ if __name__ == '__main__':
     dataset_evaluate = None; evaluate_sampler = None; evaluate_loader = None
     if args.evaluate_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_evaluate = Dataset(args, Stage.Evaluate)
+        dataset_evaluate = {property_type: Dataset(args, stage=Stage.Evaluate)() for property_type, name in args.dataset_names.items()}
+        ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
+        dataset_evaluate = dataset_evaluate['']
         evaluate_sampler = DataSampler(args)(dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_evaluate is not None else None
         evaluate_loader = DataLoader(args)(dataset=dataset_evaluate, data_sampler=evaluate_sampler) if dataset_evaluate is not None else None
     # : build the test dataset
     dataset_test = None; test_sampler = None; test_loader = None
     if args.test_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_test = Dataset(args, Stage.Test) if args.test_off is not True else None
+        dataset_test = {property_type: Dataset(args, stage=Stage.Test)() for property_type, name in args.dataset_names.items()} if args.test_off is not True else None
+        ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
+        datset_test = dataset_test['']
         test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
         test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
     run_test_stage() if test_stage(args) else None # 如果train_off为True 同时test_off为False，则为test_stage，evaluate_stage与test_stage可以同时存在
