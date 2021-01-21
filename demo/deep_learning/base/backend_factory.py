@@ -30,7 +30,7 @@ def backend_factory(args):
     return eval('{}(args)'.format(model))
 
 
-def backend_arg_factory(parser, source, name):
+def backend_arg_factory(parser, source, name, property_type='', **kwargs):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('backend_arg: {}'.format(arg))
-    return eval('{}(parser)'.format(arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(arg)) 

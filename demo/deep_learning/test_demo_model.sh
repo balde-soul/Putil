@@ -8,9 +8,10 @@ export K_backbone_name=DefaultBackbone
 export K_backend_name=DefaultBackend
 export k_optimization_name=DefaultOptimization
 export K_lr_reduce_name=DefaultLrReduce
-export K_aug_names=DefaultAug 
+export K_aug_name=DefaultAug 
 export K_loss_name=DefaultLoss
 export K_dataset_name=DefaultDataset
+export K_encode_name=DefaultEncode
 source ./experiments/common.sh
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py \
 --gpus $gpus_arg \

@@ -4,7 +4,7 @@ import torch
 from torch.nn import Module
 
 
-def common_backend_arg(parser):
+def common_backend_arg(parser, property_type='', **kwargs):
     parser.add_argument('--backend_arch', type=str, action='store', default='', \
         help='the arch for the backend')
     pass
@@ -17,7 +17,7 @@ class Backend:
 
 
 class _DefaultBackend(Backend, Module):
-    def __init__(self, args):
+    def __init__(self, args, property_type='', **kwargs):
         Backend.__init__(self, args)
         Module.__init__(self)
         self._b = torch.nn.Parameter(torch.Tensor([0.2]), requires_grad=True)
@@ -29,13 +29,13 @@ class _DefaultBackend(Backend, Module):
     pass
 
 
-def DefaultBackend(args):
+def DefaultBackend(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_default_backend():
         return _DefaultBackend(args)
     return generate_default_backend
 
 
-def DefaultBackendArg(parser):
+def DefaultBackendArg(parser, property_type='', **kwags):
     common_backend_arg(parser)
     pass

@@ -143,7 +143,7 @@ def COCOArg(parser, property_type='', **kwargs):
 class _DefaultDataset(Dataset):
     def __init__(self, args, property_type='', **kwargs):
         Dataset.__init__(self, args)
-        self._dataset_field = list(range(0, 10000))
+        self._data_field = list(range(0, 10000))
         pass
 
     def _restart_process(self, restart_param):
@@ -160,7 +160,7 @@ class _DefaultDataset(Dataset):
 def DefaultDataset(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_default_dataset():
-        return DefaultDataset(temp_args, property_type, **kwargs)
+        return _DefaultDataset(temp_args, property_type, **kwargs)
     return generate_default_dataset
 
 def DefaultDatasetArg(parser, property_type='', **kwargs):

@@ -20,6 +20,10 @@ base_dataset_source_property_type = 'dataset_source'
 base_dataset_name_property_type = 'dataset_name'
 base_aug_source_property_type = 'aug_source'
 base_aug_name_property_type = 'aug_name'
+base_encode_source_property_type = 'encode_source'
+base_encode_name_property_type = 'encode_name'
+base_data_type_adapter_source_property_type = 'data_type_adapter_source'
+base_data_type_adapter_name_property_type = 'data_type_adapter_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -243,20 +247,21 @@ if __name__ == '__main__':
     auto_save_source = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
-    dataset_sources = {property_type.replace(base_dataset_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_dataset_source_property_type)}
+    dataset_sources = util.get_relatived_environ(base_dataset_source_property_type)
     data_loader_source = os.environ.get('data_loader_source', 'standard')
     data_sampler_source = os.environ.get('data_sampler_source', 'standard')
-    encode_source = os.environ.get('encode_source', 'standard')
-    backbone_sources = {property_type.replace(base_backbone_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_source_property_type)}
+    encode_sources = util.get_relatived_environ(base_encode_source_property_type)
+    backbone_sources = util.get_relatived_environ(base_backbone_source_property_type)
     backend_source = os.environ.get('backend_source', 'standard')
     decode_source = os.environ.get('decode_source', 'standard')
     loss_source = os.environ.get('loss_source', 'standard')
     indicator_source = os.environ.get('indicator_source', 'standard')
     statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
-    optimization_sources = {property_type.replace(base_optimization_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_source_property_type)}
-    aug_sources = {property_type.replace(base_aug_source_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_aug_source_property_type)}
+    optimization_sources = util.get_relatived_environ(base_optimization_source_property_type)
+    aug_sources = util.get_relatived_environ(base_aug_source_property_type)
     data_type_adapter_source = os.environ.get('data_type_adapter_source', 'standard')
+    data_type_adapter_sources = util.get_relatived_environ()
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
     model_source = os.environ.get('model_source', 'standard')
@@ -265,15 +270,14 @@ if __name__ == '__main__':
     auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
-    dataset_names = {property_type.replace(base_dataset_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_dataset_name_property_type)}
-    [None if property_type in dataset_sources.keys() else dataset_sources.update({property_type: 'standard'}) \
-        for property_type, name in dataset_names.items()]
+    dataset_names = util.get_relatived_environ(base_dataset_name_property_type)
+    util.complete_environ(dataset_names, dataset_sources, 'standard')
     data_loader_name = os.environ.get('data_loader_name', 'DefaultDataLoader')
     data_sampler_name = os.environ.get('data_sampler_name', 'DefaultDataSampler')
-    encode_name = os.environ.get('encode_name', 'DefaultEncode')
-    backbone_names = {property_type.replace(base_backbone_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_backbone_name_property_type)}
-    [None if property_type in backbone_sources.keys() else backbone_sources.update({property_type: 'standard'}) \
-        for property_type, name in backbone_names.items()]
+    encode_names = util.get_relatived_environ(base_encode_name_property_type)
+    util.complete_environ(encode_names, encode_sources, 'standard')
+    backbone_names = util.get_relatived_environ(base_backbone_name_property_type)
+    util.complete_environ(backbone_names, backbone_sources, 'standard')
     backend_name = os.environ.get('backend_name', 'DefaultBackend')
     decode_name = os.environ.get('decode_name', 'DefaultDecode')
     loss_name = os.environ.get('loss_name', 'DefaultLoss')
@@ -281,9 +285,8 @@ if __name__ == '__main__':
     statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_names = {property_type.replace(base_optimization_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_name_property_type)}
-    [None if property_type in optimization_sources.keys() else optimization_sources.update({property_type: 'standard'}) \
-        for property_type, name in optimization_names.items()] # 完善optimization_sources中缺少而optimizations_names中存在的类型
-    aug_names = util.get_relative_environ(base_aug_name_property_type)
+    util.complete_environ(optimization_names, optimization_sources, 'standard')
+    aug_names = util.get_relatived_environ(base_aug_name_property_type)
     util.complete_environ(aug_names, aug_sources, 'standard')
     data_type_adapter_name = os.environ.get('data_type_adapter_name', 'DefaultDataTypeAdapter')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
@@ -296,22 +299,20 @@ if __name__ == '__main__':
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
     DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_source, data_loader_name)
     DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_source, data_sampler_name)
-    EncodeFactory.encode_arg_factory(ppa.parser, encode_source, encode_name)
-    [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], name, property_type) \
-        for property_type, name in backbone_names.items()]
+    [EncodeFactory.encode_arg_factory(ppa.parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
+    [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
     BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
     LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
     IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
     StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
-    [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], name, property_type) \
-        for property_type, name in optimization_names.items()]
-    [AugFactory.aug_arg_factory(ppa.parser, aug_sources, aug_names, property_type) for property_type
+    [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
+    [AugFactory.aug_arg_factory(ppa.parser, aug_sources[property_type], aug_names[property_type], property_type) for property_type in aug_names.keys()]
     DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_source, data_type_adapter_name)
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
     FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
     ModelFactory.model_arg_factory(ppa.parser, model_source, model_name)
     # data setting
-    [DatasetFactory.dataset_arg_factory(ppa.parser, dataset_sources, dataset_names, property_type) for property_type, name in dataset_names.items()]
+    [DatasetFactory.dataset_arg_factory(ppa.parser, dataset_sources[property_type], dataset_names[property_type], property_type) for property_type in dataset_names.keys()]
     ## decode setting
     DecodeFactory.decode_arg_factory(ppa.parser, decode_source, decode_name)
     RecorderFactory.recorder_arg_factory(ppa.parser, recorder_source, recorder_name)
@@ -387,7 +388,7 @@ if __name__ == '__main__':
     args.dataset_sources = dataset_sources
     args.data_loader_source = data_loader_source
     args.data_sampler_source = data_sampler_source
-    args.encode_source = encode_source
+    args.encode_sources = encode_sources
     #args.backbone_source = backbone_source
     args.backbone_sources = backbone_sources
     args.backend_source = backend_source
@@ -409,7 +410,7 @@ if __name__ == '__main__':
     args.dataset_names = dataset_names
     args.data_loader_name = data_loader_name
     args.data_sampler_name = data_sampler_name
-    args.encode_name = encode_name
+    args.encode_names = encode_names
     #args.backbone_name = backbone_name
     args.backbone_names = backbone_names
     args.backend_name = backend_name
@@ -623,7 +624,7 @@ if __name__ == '__main__':
             pass
         pass
     recorder = RecorderFactory.recorder_factory(args)()
-    encode = EncodeFactory.encode_factory(args)()
+    encode = {property_type: EncodeFactory.encode_factory(args, property_type)() for property_type in args.encode_names.keys()}
     template_model = Model(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)() # 从data获取的datas提取backbone的input
@@ -631,7 +632,7 @@ if __name__ == '__main__':
     dataset_train = None; train_sampler = None; evaluate_loader = None
     if args.train_off is not True:
         MainLogger.info('start to generate the train dataset data_sampler data_loader')
-        dataset_train = {property_type: Dataset(args, stage=Stage.Train)() for property_type, name in args.dataset_names.items()}
+        dataset_train = {property_type: Dataset(args, property_type, stage=Stage.Train)() for property_type, name in args.dataset_names.items()}
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
         dataset_train = dataset_train['']
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
@@ -640,10 +641,10 @@ if __name__ == '__main__':
             root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
         if args.naug is False:
             Original = root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
-            [root_node.add_child(pAug.AugNode(aug)) for aug in AugFactory.aug_factory(args)()]
+            [root_node.add_child(pAug.AugNode(AugFactory.aug_factory(args, property_type)())) for property_type in args.aug_names.keys()]
         root_node.freeze_node()
         dataset_train.set_aug_node_root(root_node)
-        dataset_train.set_convert_to_input_method(encode)
+        dataset_train.set_convert_to_input_method(encode[''])
         dataset_train.set_data_type_adapter(DataTypeAdapterFactory.data_type_adapter_factory(args)())
         train_sampler = DataSampler(args)(dataset_train, rank_amount=hvd.size(), rank=hvd.rank())  if dataset_train is not None else None
         train_loader = DataLoader(args)(dataset_train, batch_size=args.batch_size, sampler=train_sampler) if dataset_train is not None else None

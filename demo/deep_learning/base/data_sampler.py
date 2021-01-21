@@ -1,6 +1,7 @@
 # coding=utf-8
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+from torch.utils.data.distributed import DistributedSampler as data_sampler
 
 import Putil.base.logger as plog
 
@@ -31,11 +32,10 @@ class DefaultDataSampler(DataSampler):
     def __init__(self, args):
         torch_DataSampler_logger.info('use torch DataSampler')
         DataSampler.__init__(self, args)
-        from torch.utils.data.distributed import DistributedSampler as data_sampler
         pass
 
     def __call__(self, dataset, rank_amount, rank):
-        return data_sampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
+        return data_sampler(dataset, num_replicas=rank_amount, rank=rank)
     pass
 
 

@@ -26,6 +26,6 @@ def dataset_factory(args, property_type='', **kwargs):
 
 
 def dataset_arg_factory(parser, source, name, property_type='', **kwargs):
-    arg = '{}.{}Arg'.format(source[property_type], name[property_type])
+    arg = '{}.{}Arg'.format(source, name)
     logger.info('dataset_arg: {}'.format(arg))
     return eval('{}(parser, property_type, **kwargs)'.format(arg)) 
