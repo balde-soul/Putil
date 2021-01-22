@@ -23,6 +23,10 @@ TorchIsCudableLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
+from Putil.trainer import util
+Stage = util.Stage
+reload(util)
+Stage = util.Stage
 
 # tensor operation
 def torch_generate_empty_tensor():
@@ -173,11 +177,11 @@ def torch_load_deploy(epoch, full_path):
     raise NotImplementedError('this should not called in python')
 
 
-class Stage(Enum):
-    Train=0
-    TrainEvaluate=1
-    Evaluate=2
-    Test=3
+#class Stage(Enum):
+#    Train=0
+#    TrainEvaluate=1
+#    Evaluate=2
+#    Test=3
 
 
 def evaluate_stage(args):

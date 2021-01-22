@@ -12,6 +12,8 @@ export K_aug_name=DefaultAug
 export K_loss_name=DefaultLoss
 export K_dataset_name=DefaultDataset
 export K_encode_name=DefaultEncode
+export K_data_type_adapter_name=DefaultDataTypeAdapter
+export K_data_loader_name=DefaultDataLoader
 source ./experiments/common.sh
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py \
 --gpus $gpus_arg \

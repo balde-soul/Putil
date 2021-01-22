@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def data_type_adapter_factory(args, property_type='', **kwargs):
+def data_type_adapter_factory(args, source, name, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -25,7 +25,7 @@ def data_type_adapter_factory(args, property_type='', **kwargs):
         pass
     else:
         raise NotImplementedError('data_type_adapter of framework: {} is not implemented'.format(args.framework))
-    data_type_adapter = '{0}.{1}'.format(args.data_type_adapter_source, args.data_type_adapter_name)
+    data_type_adapter = '{0}.{1}'.format(source, name)
     logger.info('data_type_adapter data_type_adapter: {}'.format(data_type_adapter))
     return eval('{}(args, property_type, **kwargs)'.format(data_type_adapter))
 

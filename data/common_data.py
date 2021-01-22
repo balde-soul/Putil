@@ -2,6 +2,7 @@
 ##@package common_data
 #提供Dataset基本类与功能
 #
+from importlib import reload
 from enum import Enum
 import random
 import Putil.PutilEnvSet as penv
@@ -31,8 +32,13 @@ DataPutProcessLogger.setLevel(plog.DEBUG)
 GeneratedDataLogger = logger.getChild('GeneratedData')
 GeneratedDataLogger.setLevel(plog.DEBUG)
 import Putil.data.convert_to_input as convert_to_input
+reload(convert_to_input)
 import Putil.data.data_type_adapter as data_type_adapter
+reload(convert_to_input)
 import Putil.data.fit_all_common_data as fit_all_common_data
+reload(fit_all_common_data)
+import Putil.trainer.util as util
+reload(util)
 
 
 class CommonDataManager(BaseManager):
@@ -463,10 +469,11 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
 
 
 class CommonDataForTrainEvalTest(CommonDataWithAug):
-    class Stage(Enum):
-        Train=0
-        Evaluate=1
-        Test=2
+    Stage = util.Stage
+    #class Stage(Enum):
+    #    Train=0
+    #    Evaluate=1
+    #    Test=2
 
     def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
         CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
