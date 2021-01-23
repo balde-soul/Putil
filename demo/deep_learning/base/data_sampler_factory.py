@@ -11,16 +11,16 @@ reload(standard)
 reload(project)
 
 
-def data_sampler_factory(args):
+def data_sampler_factory(args, data_sampler_source, data_sampler_name, property_type='', **kwargs):
     if args.framework == 'torch':
         pass
     else:
         raise NotImplementedError('data_loader of framework: {} is not implemented'.format(args.framework))
-    data_sampler = '{}.{}'.format(args.data_sampler_source, args.data_sampler_name)
-    return eval('{}(args)'.format(data_sampler))
+    data_sampler = '{}.{}'.format(data_sampler_source, data_sampler_name)
+    return eval('{}(args, property_type, **kwargs)'.format(data_sampler))
 
 
-def data_sampler_arg_factory(parser, source, name):
+def data_sampler_arg_factory(parser, source, name, property_type='', **kwargs):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('data_sampler_arg: {}'.format(arg))
-    return eval('{}(parser)'.format(arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(arg)) 

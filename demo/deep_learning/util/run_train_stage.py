@@ -1,4 +1,5 @@
 # coding=utf-8
+import numpy as np
 from importlib import reload
 import torch
 import time
@@ -12,6 +13,7 @@ nothing = util.nothing
 ScalarCollection = util.ScalarCollection
 all_reduce = util.all_reduce
 scalar_log = util.scalar_log
+from Putil.demo.deep_learning.base import horovod
 
 def train_stage_common(args, 
 stage, 
@@ -36,10 +38,10 @@ logger):
       关于log： Train阶段会根据log_interval进行打印，Train与TrainEvaluate阶段在epoch之后会进行indicator与loss的mean allreduce然后log，step都为recorder.step
       关于summary： Train阶段会根据summary_interval进行summary，Train与TrainEvaluate阶段epoch之后都会对相关数据的mean allreduce进行summary，step都为recorder.step
     '''
+    hvd = horovod.horovod(args)
     assert train_stage(args)
     recorder.epoch = epoch if stage == Stage.Train else recorder.epoch
     prefix = 'train' if stage == Stage.Train else 'evaluate'
-    dataset = data_loader.dataset
     loss_scalar_collection = ScalarCollection() if train_stage(args) else None
     indicator_scalar_collection = ScalarCollection() if train_stage(args) else None
     def accumulation_fix(index):
@@ -48,7 +50,7 @@ logger):
         backbone.train() if stage == Stage.Train else backbone.eval()
         backend.train() if stage == Stage.Train else backend.eval()
         decode.train() if stage == Stage.Train else decode.eval()
-        data_loader.data_sampler.set_epoch(epoch) if stage == Stage.Train else None
+        data_loader.sampler.set_epoch(epoch) if stage == Stage.Train else None
 
         logger.debug('start to {} epoch'.format(prefix))
         for batch_idx, datas in enumerate(data_loader):
@@ -82,7 +84,7 @@ logger):
             indicator_scalar_collection.batch_update(indicators)
             # use the accumulation backward
             logger.debug('run accumulated optimization')
-            accumulated_opt.append(_loss, optimizer, force_accumulation=None \
+            accumulated_opt.append(_loss, optimization, force_accumulation=None \
                 if len(data_loader) % args.accumulation_time == 0 or \
                     len(data_loader) - batch_idx - 1 > len(data_loader) % args.accumulation_time \
                         else len(data_loader) % args.accumulation_time) if stage == Stage.Train else None

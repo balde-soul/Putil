@@ -39,6 +39,7 @@ class Backbone:
     ##@brief
     # @param[in] args.backbone_pretrained
     def __init__(self, args, property_type='', **kwargs):
+        self._args = args
         self._backbone_pretrained = eval('args.{}backbone_pretrained'.format(property_type))
         self._backbone_arch = eval('args.{}backbone_arch'.format(property_type))
         self._backbone_weight_path = eval('args.{}backbone_weight_path'.format(property_type))
@@ -164,12 +165,21 @@ class _DefaultBackbone(Backbone, Module):
     def __init__(self, args, property_type='', **kwargs):
         Backbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
-        self._a = torch.nn.Parameter(torch.Tensor([0.8]), requires_grad=True)
-        self.register_parameter('a', self._a)
+        self._params = list()
+        input_shape = 1
+        for index, inter_cell in enumerate(eval('self._args.{}interlayer_cell'.format(property_type))):
+            temp_param = torch.nn.Parameter(torch.rand([inter_cell, input_shape], dtype=torch.float32, requires_grad=True))
+            self.register_parameter('inter_cell_{}'.format(index), temp_param)
+            self._params.append((index, temp_param))
+            input_shape = inter_cell
         pass
 
     def forward(self, x):
-        return self._a * x
+        out = x
+        for index, param in self._params:
+            out = torch.matmul(param, out)
+            pass
+        return out
     pass
 
 
@@ -182,6 +192,8 @@ def DefaultBackbone(args, property_type='', **kwargs):
 
 def DefaultBackboneArg(parser, property_type='', **kwargs):
     common_backbone_arg(parser, property_type, **kwargs)
+    parser.add_argument('--{}interlayer_cell'.format(property_type), nargs='+', type=int, default=[32, 32, 16], \
+        help='the inter layer nerve cell amount, a list, the len represent the layer amount, the cell represent the nerve amount')
     pass
 #
 #

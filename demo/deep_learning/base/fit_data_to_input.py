@@ -16,7 +16,7 @@ class _DefaultFitDataToInput:
         '''
          @brief generate the input for the backbone
         '''
-        return datas
+        return datas[0]
 
 def DefaultFitDataToInput(args, property_type='', **kwargs):
     '''

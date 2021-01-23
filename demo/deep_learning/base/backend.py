@@ -20,12 +20,12 @@ class _DefaultBackend(Backend, Module):
     def __init__(self, args, property_type='', **kwargs):
         Backend.__init__(self, args)
         Module.__init__(self)
-        self._b = torch.nn.Parameter(torch.Tensor([0.2]), requires_grad=True)
-        self.register_parameter('b', self._b)
         pass
 
     def forward(self, x):
-        return self._b * x
+        #mul = torch.matmul(, x)
+        out = x
+        return torch.tanh(mul)
     pass
 
 

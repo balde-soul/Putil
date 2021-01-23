@@ -26,6 +26,8 @@ base_data_type_adapter_source_property_type = 'data_type_adapter_source'
 base_data_type_adapter_name_property_type = 'data_type_adapter_name'
 base_data_loader_source_property_type = 'data_loader_source'
 base_data_loader_name_property_type = 'data_loader_name'
+base_data_sampler_source_property_type = 'data_sampler_source'
+base_data_sampler_name_property_type = 'data_sampler_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -67,7 +69,7 @@ def do_epoch_end_process(epoch_result):
     return stop, lr_reduce.LrNow, save
 
 def train(epoch):
-    ret = util.train_stage_common(args, util.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
+    ret = run_train_stage.train_stage_common(args, util.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
          loss, optimization, train_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
     if args.evaluate_off:
         if args.debug:
@@ -237,7 +239,7 @@ if __name__ == '__main__':
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
     dataset_sources = util.get_relatived_environ(base_dataset_source_property_type)
     data_loader_sources = util.get_relatived_environ(base_data_loader_source_property_type)
-    data_sampler_source = os.environ.get('data_sampler_source', 'standard')
+    data_sampler_sources = util.get_relatived_environ(base_data_sampler_source_property_type)
     encode_sources = util.get_relatived_environ(base_encode_source_property_type)
     backbone_sources = util.get_relatived_environ(base_backbone_source_property_type)
     backend_source = os.environ.get('backend_source', 'standard')
@@ -261,7 +263,8 @@ if __name__ == '__main__':
     util.complete_environ(dataset_names, dataset_sources, 'standard')
     data_loader_names = util.get_relatived_environ(base_data_loader_name_property_type)
     util.complete_environ(data_loader_names, data_loader_sources, 'standard')
-    data_sampler_name = os.environ.get('data_sampler_name', 'DefaultDataSampler')
+    data_sampler_names = util.get_relatived_environ(base_data_sampler_name_property_type)
+    util.complete_environ(data_sampler_names, data_sampler_sources, 'standard')
     encode_names = util.get_relatived_environ(base_encode_name_property_type)
     util.complete_environ(encode_names, encode_sources, 'standard')
     backbone_names = util.get_relatived_environ(base_backbone_name_property_type)
@@ -287,7 +290,7 @@ if __name__ == '__main__':
     AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
     [DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_sources[property_type], data_loader_names[property_type], property_type) for property_type in data_loader_names.keys()]
-    DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_source, data_sampler_name)
+    [DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_sources[property_type], data_sampler_names[property_type], property_type) for property_type in data_sampler_names.keys()]
     [EncodeFactory.encode_arg_factory(ppa.parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
     [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
     BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
@@ -376,7 +379,7 @@ if __name__ == '__main__':
     args.auto_stop_source = auto_stop_source
     args.dataset_sources = dataset_sources
     args.data_loader_sources = data_loader_sources
-    args.data_sampler_source = data_sampler_source
+    args.data_sampler_sources = data_sampler_sources
     args.encode_sources = encode_sources
     #args.backbone_source = backbone_source
     args.backbone_sources = backbone_sources
@@ -398,7 +401,7 @@ if __name__ == '__main__':
     args.lr_reduce_name = lr_reduce_name
     args.dataset_names = dataset_names
     args.data_loader_names = data_loader_names
-    args.data_sampler_name = data_sampler_name
+    args.data_sampler_names = data_sampler_names
     args.encode_names = encode_names
     #args.backbone_name = backbone_name
     args.backbone_names = backbone_names
@@ -491,6 +494,7 @@ if __name__ == '__main__':
     from Putil.base.arg_operation import args_save as ArgsSave
     from util.run_train_stage import train_stage_common 
     from Putil.data import aug as pAug
+    from util import run_train_stage
     # 确定性设置
     from Putil.base import base_setting
     ## BaseOperationFactory
@@ -558,9 +562,9 @@ if __name__ == '__main__':
         # 如果出现参数调整，则需要另外使用key，否则在load_checkpointed的时候会出现错误，可以查看load_checkpointed的代码
         # 如果出现需要增加参数，建议新增一个key-val，这用容易管理，load_checkpointed不会出现错误
         optimizations = dict()
-        optimization_types = {property_type: OptimizationFactory.optimization_factory(args, property_type=property_type) for property_type, v in args.optimization_names.items()}
-        optimizations.update({'opt-backbone': (backbone, optimization_types[''](backbone.parameters()))})
-        optimizations.update({'opt-backend': (backend, optimization_types[''](backend.parameters()))})
+        optimization = {property_type: OptimizationFactory.optimization_factory(args, property_type=property_type) for property_type, v in args.optimization_names.items()}
+        optimizations.update({'opt-backbone': (backbone, util.get_module(optimization)(backbone.parameters()))})
+        #optimizations.update({'opt-backend': (backend, util.get_module(optimization)(backend.parameters()))})
         # Horovod: broadcast parameters & optimizer state.
         hvd.broadcast_parameters(backbone.state_dict(), root_rank=0)
         hvd.broadcast_parameters(backend.state_dict(), root_rank=0)
@@ -594,16 +598,20 @@ if __name__ == '__main__':
         pass
     recorder = RecorderFactory.recorder_factory(args)()
     encode = {property_type: EncodeFactory.encode_factory(args, property_type)() for property_type in args.encode_names.keys()}
+    encode = util.get_module(encode)
     template_model = ModelFactory.model_factory(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)() # 从data获取的datas提取backbone的input
     fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
+    data_type_adapter = {property_type: DataTypeAdapterFactory.data_type_adapter_factory(args, args.data_type_adapter_sources[property_type], args.data_type_adapter_names[property_type], property_type)() \
+        for property_type in data_type_adapter_names.keys()}
+    data_type_adapter = util.get_module(data_type_adapter)
     dataset_train = None; train_sampler = None; evaluate_loader = None
     if args.train_off is not True:
         MainLogger.info('start to generate the train dataset data_sampler data_loader')
         dataset_train = {property_type: DatasetFactory.dataset_factory(args, property_type, stage=util.Stage.Train)() for property_type, name in args.dataset_names.items()}
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
-        dataset_train = dataset_train['']
+        dataset_train = util.get_module(dataset_train)
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
         # for the fack data field, maybe cause the nan or inf
         for i in range(0, args.fake_aug):
@@ -613,34 +621,55 @@ if __name__ == '__main__':
             [root_node.add_child(pAug.AugNode(AugFactory.aug_factory(args, property_type)())) for property_type in args.aug_names.keys()]
         root_node.freeze_node()
         dataset_train.set_aug_node_root(root_node)
-        dataset_train.set_convert_to_input_method(encode[''])
-        data_type_adapter = {property_type: DataTypeAdapterFactory.data_type_adapter_factory(args, args.data_type_adapter_sources[property_type], args.data_type_adapter_names[property_type], property_type)() \
-            for property_type in data_type_adapter_names.keys()}
-        dataset_train.set_data_type_adapter(data_type_adapter[''])
-        train_sampler = DataSamplerFactory.data_sampler_factory(args)(dataset_train, rank_amount=hvd.size(), rank=hvd.rank())  if dataset_train is not None else None
+        dataset_train.set_convert_to_input_method(encode)
+        dataset_train.set_data_type_adapter(data_type_adapter)
+        train_sampler = {property_type: DataSamplerFactory.data_sampler_factory(args, args.data_sampler_sources[property_type], args.data_sampler_names[property_type], property_type)( \
+            dataset_train, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()}  if dataset_train is not None else None
+        train_sampler = util.get_module(train_sampler)
         train_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
-            dataset_train, data_sampler=train_sampler, stage=util.Stage.Train) for property_type in args.data_loader_names.keys()} if dataset_train is not None else None
+            dataset=dataset_train, data_sampler=train_sampler, stage=util.Stage.Train) for property_type in args.data_loader_names.keys()} if dataset_train is not None else None
+        train_loader = util.get_module(train_loader)
         MainLogger.info('generate adataset train successful: {} sample'.format(len(dataset_train)))
     # : build the evaluate dataset
     dataset_evaluate = None; evaluate_sampler = None; evaluate_loader = None
     if args.evaluate_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_evaluate = {property_type: Dataset(args, stage=util.Stage.Evaluate)() for property_type, name in args.dataset_names.items()}
+        dataset_evaluate = {property_type: DatasetFactory.dataset_factory(args, stage=util.Stage.Evaluate)() for property_type, name in args.dataset_names.items()}
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
-        dataset_evaluate = dataset_evaluate['']
-        evaluate_sampler = DataSampler(args)(dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_evaluate is not None else None
-        evaluate_loader = DataLoader(args)(dataset=dataset_evaluate, data_sampler=evaluate_sampler) if dataset_evaluate is not None else None
+        dataset_evaluate = util.get_module(dataset_evaluate)
+        root_node = pAug.AugNode(pAug.AugFuncNoOp())
+        root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+        root_node.freeze_node()
+        dataset_evaluate.set_aug_node_root(root_node)
+        dataset_evaluate.set_convert_to_input_method(encode)
+        dataset_evaluate.set_data_type_adapter(data_type_adapter)
+        evaluate_sampler = {property_type: DataSamplerFactory.data_sampler_factory(args, args.data_sampler_sources[property_type], args.data_sampler_names[property_type], property_type)( \
+            dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()} if dataset_evaluate is not None else None
+        evaluate_sampler = util.get_module(evaluate_sampler)
+        evaluate_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
+            dataset=dataset_evaluate, data_sampler=evaluate_sampler, stage=util.Stage.Evaluate) for property_type in args.data_loader_names.keys()} if dataset_evaluate is not None else None
+        evaluate_loader = util.get_module(evaluate_loader)
     # : build the test dataset
     dataset_test = None; test_sampler = None; test_loader = None
     if args.test_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_test = {property_type: Dataset(args, stage=util.Stage.Test)() for property_type, name in args.dataset_names.items()} if args.test_off is not True else None
+        dataset_test = {property_type: DatasetFactory.dataset_factory(args, stage=util.Stage.Test)() for property_type, name in args.dataset_names.items()} if args.test_off is not True else None
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
-        datset_test = dataset_test['']
-        test_sampler = DataSampler(args)(dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) if dataset_test is not None else None
-        test_loader = DataLoader(args)(dataset_test, data_sampler=test_sampler) if dataset_test is not None else None
-    run_util.test_stage() if util.test_stage(args) else None # 如果train_off为True 同时test_off为False，则为util.test_stage，util.evaluate_stage与util.test_stage可以同时存在
-    run_util.evaluate_stage() if util.evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为util.evaluate_stage，util.evaluate_stage与util.test_stage可以同时存在
+        dataset_test = util.get_module(dataset_test)
+        root_node = pAug.AugNode(pAug.AugFuncNoOp())
+        root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
+        root_node.freeze_node()
+        dataset_test.set_aug_node_root(root_node)
+        dataset_test.set_convert_to_input_method(encode)
+        dataset_test.set_data_type_adapter(data_type_adapter)
+        test_sampler = {property_type: DataSamplerFactory.data_sampler_factory(args, args.data_sampler_sources[property_type], args.data_sampler_names[property_type], property_type)( \
+            dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()} if dataset_test is not None else None
+        test_sampler = util.get_module(test_sampler)
+        test_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
+            dataset_test, data_sampler=test_sampler, stage=util.Stage.Test) for property_type in args.data_loader_names.keys()} if dataset_test is not None else None
+        test_loader = util.get_module(test_loader)
+    test_stage() if util.test_stage(args) else None # 如果train_off为True 同时test_off为False，则为util.test_stage，util.evaluate_stage与util.test_stage可以同时存在
+    evaluate_stage() if util.evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为util.evaluate_stage，util.evaluate_stage与util.test_stage可以同时存在
     if util.train_stage(args):
         # 如果train_off不为True，就是util.train_stage，只是util.train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:
@@ -679,9 +708,9 @@ if __name__ == '__main__':
                         args.weight_path = args.save_dir
                         args.weight_epoch = 1
                         MainLogger.debug('run the evaluate stage')
-                        run_util.evaluate_stage() if not args.evaluate_off else None
+                        evaluate_stage() if not args.evaluate_off else None
                         MainLogger.debug('run the test stage')
-                        run_util.test_stage() if not args.test_off else None
+                        test_stage() if not args.test_off else None
                     break
                 if evaluate_ret[2] is True and args.test_off is False:
                     MainLogger.info('run test')

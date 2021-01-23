@@ -12,7 +12,7 @@ torch_DataSampler_logger.setLevel(plog.DEBUG)
 
 
 class DataSampler(metaclass=ABCMeta):
-    def __init__(self, args):
+    def __init__(self, args, property_type='', **kwargs):
         self._args = args
         pass
 
@@ -29,9 +29,9 @@ class DataSampler(metaclass=ABCMeta):
 
 
 class DefaultDataSampler(DataSampler):
-    def __init__(self, args):
+    def __init__(self, args, property_type='', **kwargs):
         torch_DataSampler_logger.info('use torch DataSampler')
-        DataSampler.__init__(self, args)
+        DataSampler.__init__(self, args, property_type, **kwargs)
         pass
 
     def __call__(self, dataset, rank_amount, rank):
@@ -39,5 +39,5 @@ class DefaultDataSampler(DataSampler):
     pass
 
 
-def DefaultDataSamplerArg(parser):
+def DefaultDataSamplerArg(parser, property_type='', **kwargs):
     pass

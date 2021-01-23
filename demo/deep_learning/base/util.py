@@ -448,6 +448,9 @@ def complete_environ(source_dict, target_dict, default_content):
         for property_type, name in source_dict.items()]
     pass
 
+def get_module(module_dict, target=''):
+    return module_dict[target]
+
 
 def Torchis_cudable(object):
     is_cudable = isinstance(object, Module)
