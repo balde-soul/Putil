@@ -392,7 +392,7 @@ def all_reduce(val, name, hvd):
     if type(val).__name__ != 'Tensor':
         val = torch.tensor(val)
     avg_tensor = hvd.allreduce(val, name=name)
-    return avg_tensor.item()
+    return avg_tensor
 
 
 def iscuda(args):

@@ -154,7 +154,7 @@ class _DefaultDataset(Dataset):
 
     def _generate_from_origin_index(self, index):
         x = np.random.sample() * 1000
-        return np.array([x]), np.array([np.sin(x)])
+        return np.array([[x]], dtype=np.float32), np.array([[np.sin(x)]], dtype=np.float32)
     pass
 
 def DefaultDataset(args, property_type='', **kwargs):

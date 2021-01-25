@@ -6,10 +6,12 @@ import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('fit_data_to_input').logger()
 logger.setLevel(plog.DEBUG)
+from Putil.demo.deep_learning.base import util
 
 
 class _DefaultFitDataToInput:
     def __init__(self, args, property_type='', **kwargs):
+        self._args = args
         pass
     
     def __call__(self, datas):

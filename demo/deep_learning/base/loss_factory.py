@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def loss_factory(args):
+def loss_factory(args, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -25,7 +25,7 @@ def loss_factory(args):
     else:
         raise NotImplementedError('loss of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.loss_source, args.loss_name)
-    return eval('{}(args)'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
 
 def loss_arg_factory(parser, source, name):

@@ -168,7 +168,7 @@ class _DefaultBackbone(Backbone, Module):
         self._params = list()
         input_shape = 1
         for index, inter_cell in enumerate(eval('self._args.{}interlayer_cell'.format(property_type))):
-            temp_param = torch.nn.Parameter(torch.rand([inter_cell, input_shape], dtype=torch.float32, requires_grad=True))
+            temp_param = torch.nn.Parameter(torch.rand([input_shape, inter_cell], dtype=torch.float32, requires_grad=True))
             self.register_parameter('inter_cell_{}'.format(index), temp_param)
             self._params.append((index, temp_param))
             input_shape = inter_cell
@@ -176,9 +176,8 @@ class _DefaultBackbone(Backbone, Module):
 
     def forward(self, x):
         out = x
-        for index, param in self._params:
-            out = torch.matmul(param, out)
-            pass
+        for (index, param) in self._params:
+            out = torch.matmul(out, param)
         return out
     pass
 

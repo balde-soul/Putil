@@ -28,6 +28,12 @@ base_data_loader_source_property_type = 'data_loader_source'
 base_data_loader_name_property_type = 'data_loader_name'
 base_data_sampler_source_property_type = 'data_sampler_source'
 base_data_sampler_name_property_type = 'data_sampler_name'
+base_fit_to_loss_input_source_property_type = 'fit_to_loss_input_source'
+base_fit_to_loss_input_name_property_type = 'fit_to_loss_input_name'
+base_fit_to_indicator_input_source_property_type = 'fit_to_indicator_input_source'
+base_fit_to_indicator_input_name_property_type = 'fit_to_indicator_input_name'
+base_indicator_source_property_type = 'indicator_source'
+base_indicator_name_property_type = 'indicator_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -70,7 +76,7 @@ def do_epoch_end_process(epoch_result):
 
 def train(epoch):
     ret = run_train_stage.train_stage_common(args, util.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
-         loss, optimization, train_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
+         loss, optimization, train_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if args.evaluate_off:
         if args.debug:
             if epoch == 0:
@@ -88,7 +94,7 @@ def train(epoch):
 def evaluate(epoch):
     ret = util.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
-            evaluate_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, MainLogger)
+            evaluate_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if util.train_stage(args):
         if args.debug:
             if epoch == 0:
@@ -225,6 +231,8 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import aug_factory as AugFactory
     from Putil.demo.deep_learning.base import data_type_adapter_factory as DataTypeAdapterFactory
     from Putil.demo.deep_learning.base import fit_data_to_input_factory as FitDataToInputFactory
+    from Putil.demo.deep_learning.base import fit_to_loss_input_factory as FitToLossInputFactory
+    from Putil.demo.deep_learning.base import fit_to_indicator_input_factory as FitToIndicatorInputFactory
     from Putil.demo.deep_learning.base import fit_decode_to_result_factory as FitDecodeToResultFactory
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
     from Putil.demo.deep_learning.base import recorder_factory as RecorderFactory
@@ -245,13 +253,15 @@ if __name__ == '__main__':
     backend_source = os.environ.get('backend_source', 'standard')
     decode_source = os.environ.get('decode_source', 'standard')
     loss_source = os.environ.get('loss_source', 'standard')
-    indicator_source = os.environ.get('indicator_source', 'standard')
+    indicator_sources = util.get_relatived_environ(base_indicator_source_property_type)
     statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_sources = util.get_relatived_environ(base_optimization_source_property_type)
     aug_sources = util.get_relatived_environ(base_aug_source_property_type)
     data_type_adapter_sources = util.get_relatived_environ(base_data_type_adapter_source_property_type)
     fit_data_to_input_source = os.environ.get('fit_data_to_input_source', 'standard')
+    fit_to_loss_input_sources = util.get_relatived_environ(base_fit_to_loss_input_source_property_type)
+    fit_to_indicator_input_sources = util.get_relatived_environ(base_fit_to_indicator_input_source_property_type)
     fit_decode_to_result_source = os.environ.get('fit_decode_to_result_source', 'standard')
     model_source = os.environ.get('model_source', 'standard')
     recorder_source = os.environ.get('recorder_source', 'standard')
@@ -272,7 +282,8 @@ if __name__ == '__main__':
     backend_name = os.environ.get('backend_name', 'DefaultBackend')
     decode_name = os.environ.get('decode_name', 'DefaultDecode')
     loss_name = os.environ.get('loss_name', 'DefaultLoss')
-    indicator_name = os.environ.get('indicator_name', 'DefaultIndicator')
+    indicator_names = util.get_relatived_environ(base_indicator_name_property_type)
+    util.complete_environ(indicator_names, indicator_sources, 'standard')
     statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_names = {property_type.replace(base_optimization_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_name_property_type)}
@@ -282,6 +293,10 @@ if __name__ == '__main__':
     data_type_adapter_names = util.get_relatived_environ(base_data_type_adapter_name_property_type)
     util.complete_environ(data_type_adapter_names, data_type_adapter_sources, 'standard')
     fit_data_to_input_name = os.environ.get('fit_data_to_input_name', 'DefaultFitDataToInput')
+    fit_to_loss_input_names = util.get_relatived_environ(base_fit_to_loss_input_name_property_type)
+    util.complete_environ(fit_to_loss_input_names, fit_to_loss_input_sources, 'standard')
+    fit_to_indicator_input_names = util.get_relatived_environ(base_fit_to_indicator_input_name_property_type)
+    util.complete_environ(fit_to_indicator_input_names, fit_to_indicator_input_sources, 'standard')
     fit_decode_to_result_name = os.environ.get('fit_decode_to_result_name', 'DefaultFitDecodeToResult')
     model_name = os.environ.get('model_name', 'DefaultModel')
     recorder_name = os.environ.get('recorder_name', 'DefaultRecorder')
@@ -295,12 +310,15 @@ if __name__ == '__main__':
     [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
     BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
     LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
-    IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_source, indicator_name)
+    print(indicator_sources)
+    [IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_sources[property_type], indicator_names[property_type], property_type) for property_type in indicator_names.keys()]
     StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
     [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
     [AugFactory.aug_arg_factory(ppa.parser, aug_sources[property_type], aug_names[property_type], property_type) for property_type in aug_names.keys()]
     [DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_sources[property_type], data_type_adapter_names[property_type]) for property_type in data_type_adapter_names.keys()]
     FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
+    [FitToLossInputFactory.fit_to_loss_input_arg_factory(ppa.parser, fit_to_loss_input_sources[property_type], fit_to_loss_input_names[property_type], property_type) for property_type in fit_to_loss_input_names.keys()]
+    [FitToIndicatorInputFactory.fit_to_indicator_input_arg_factory(ppa.parser, fit_to_indicator_input_sources[property_type], fit_to_indicator_input_names[property_type], property_type) for property_type in fit_to_indicator_input_names.keys()]
     FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
     ModelFactory.model_arg_factory(ppa.parser, model_source, model_name)
     # data setting
@@ -386,12 +404,14 @@ if __name__ == '__main__':
     args.backend_source = backend_source
     args.decode_source = decode_source
     args.loss_source = loss_source
-    args.indicator_source = indicator_source
+    args.indicator_sources = indicator_sources
     args.statistic_indicator_source = statistic_indicator_source
     args.optimization_sources = optimization_sources
     args.aug_sources = aug_sources
     args.data_type_adapter_sources = data_type_adapter_sources
     args.fit_data_to_input_source = fit_data_to_input_source
+    args.fit_to_loss_input_sources = fit_to_loss_input_sources
+    args.fit_to_indicator_input_sources = fit_to_indicator_input_sources
     args.fit_decode_to_result_source = fit_decode_to_result_source
     args.model_source = model_source
     args.recorder_source = recorder_source
@@ -408,12 +428,14 @@ if __name__ == '__main__':
     args.backend_name = backend_name
     args.decode_name = decode_name
     args.loss_name = loss_name
-    args.indicator_name = indicator_name
+    args.indicator_names = indicator_names
     args.statistic_indicator_name = statistic_indicator_name
     args.optimization_names = optimization_names
     args.aug_names = aug_names
     args.data_type_adapter_names = data_type_adapter_names
     args.fit_data_to_input_name = fit_data_to_input_name
+    args.fit_to_loss_input_names = fit_to_loss_input_names
+    args.fit_to_indicator_input_names = fit_to_indicator_input_names
     args.fit_decode_to_result_name = fit_decode_to_result_name
     args.model_name = model_name
     args.recorder_name = recorder_name
@@ -484,6 +506,8 @@ if __name__ == '__main__':
     reload(EncodeFactory)
     reload(DecodeFactory)
     reload(FitDataToInputFactory)
+    reload(FitToLossInputFactory)
+    reload(FitToIndicatorInputFactory)
     reload(FitDecodeToResultFactory)
     reload(RecorderFactory)
     reload(util)
@@ -543,6 +567,11 @@ if __name__ == '__main__':
     pab.args_log(args, MainLogger) if hvd.rank() == 0 else None
     ArgsSave(args, os.path.join(args.save_dir, 'args')) if hvd.rank() == 0 else None
     #========================================the arg would not change after this=============================================>
+    fit_to_loss_input = {property_type: FitToLossInputFactory.fit_to_loss_input_factory(args, property_type)() for property_type in args.fit_to_loss_input_names.keys()} # 从data获取的datas提取loss的input（label）
+    fit_to_loss_input = util.get_module(fit_to_loss_input)
+    fit_to_indicator_input = {property_type: FitToIndicatorInputFactory.fit_to_indicator_input_factory(args, args.fit_to_indicator_input_sources[property_type], args.fit_to_indicator_input_names[property_type], property_type)() for property_type in args.fit_to_indicator_input_names.keys()}
+    fit_to_indicator_input = util.get_module(fit_to_indicator_input)
+    fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
     if util.train_stage(args):
         # : build the backbone
         backbone = BackboneFactory.backbone_factory(args)()
@@ -551,10 +580,12 @@ if __name__ == '__main__':
         # : build decode
         decode = DecodeFactory.decode_factory(args)()
         # : build the loss
-        loss = LossFactory.loss_factory(args)()
+        loss = LossFactory.loss_factory(args, fit_to_loss_input=fit_to_loss_input)()
         # : build the indicator
-        train_indicator = IndicatorFactory.indicator_factory(args)()
-        evaluate_indicator = IndicatorFactory.indicator_factory(args)() if args.evaluate_off is not True else None
+        train_indicator = {property_type: IndicatorFactory.indicator_factory(args, args.indicator_sources[property_type], args.indicator_names[property_type], fit_to_indicator_input=fit_to_indicator_input)() for property_type in args.indicator_names.keys()}
+        train_indicator = util.get_module(train_indicator)
+        evaluate_indicator = {property_type: IndicatorFactory.indicator_factory(args, args.indicator_sources[property_type], args.indicator_names[property_type], fit_to_indicator_input=fit_to_indicator_input)() for property_type in args.indicator_names.keys()} if args.evaluate_off is not True else None
+        evaluate_indicator = util.get_module(evaluate_indicator) if args.evaluate_off is not True else None
         # : build the statistic indicator
         statistic_indicator = StatisticIndicatorFactory.statistic_indicator_factory(args)()
         ##TODO: build the optimization, the optimization_source
@@ -602,7 +633,6 @@ if __name__ == '__main__':
     template_model = ModelFactory.model_factory(args)()
     # : build the train dataset
     fit_data_to_input = FitDataToInputFactory.fit_data_to_input_factory(args)() # 从data获取的datas提取backbone的input
-    fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
     data_type_adapter = {property_type: DataTypeAdapterFactory.data_type_adapter_factory(args, args.data_type_adapter_sources[property_type], args.data_type_adapter_names[property_type], property_type)() \
         for property_type in data_type_adapter_names.keys()}
     data_type_adapter = util.get_module(data_type_adapter)

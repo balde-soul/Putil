@@ -15,6 +15,9 @@ export K_encode_name=DefaultEncode
 export K_data_type_adapter_name=DefaultDataTypeAdapter
 export K_data_sampler_name=DefaultDataSampler
 export K_data_loader_name=DefaultDataLoader
+export K_fit_to_loss_input_name=DefaultFitToLossInput
+export K_fit_to_indicator_input_name=DefaultFitToIndicatorInput
+export K_indicator_name=DefaultIndicator
 source ./experiments/common.sh
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py \
 --gpus $gpus_arg \

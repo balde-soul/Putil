@@ -23,9 +23,7 @@ class _DefaultBackend(Backend, Module):
         pass
 
     def forward(self, x):
-        #mul = torch.matmul(, x)
-        out = x
-        return torch.tanh(mul)
+        return torch.tanh(torch.mean(x, -1))
     pass
 
 
