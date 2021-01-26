@@ -157,13 +157,13 @@ sources_names=(
 [decode_source]=standard [decode_name]=DefaultDecode
 [loss_source]=standard [loss_name]=DefaultLoss
 [indicator_source]=standard [indicator_name]=DefaultIndicator
-[statistic_indicator_source]=standard [statistic_indicator_name]=DefaultStatisticIndicator 
+[indicator_statistic_source]=standard [indicator_statistic_name]=DefaultIndicatorStatistic
 [optimization_source]=standard [optimization_name]=DefaultOptimization
 [aug_source]=standard [aug_name]=DefaultAug
 [data_type_adapter_source]=standard [data_type_adapter_name]=DefaultDataTypeAdapter
 [fit_data_to_input_source]=standard [fit_data_to_input_name]=DefaultFitDataToInput
-[fit_to_loss_source]=standard [fit_to_loss_name]=DefaultFitToLossInput
-[fit_to_indicator_source]=standard [fit_to_indicator_name]=DefaultFitToIndicatorInput
+[fit_to_loss_input_source]=standard [fit_to_loss_input_name]=DefaultFitToLossInput
+[fit_to_indicator_input_source]=standard [fit_to_indicator_input_name]=DefaultFitToIndicatorInput
 [fit_decode_to_result_source]=standard [fit_decode_to_result_name]=DefaultFitDecodeToResult
 [recorder_source]=standard [recorder_name]=DefaultRecorder
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt

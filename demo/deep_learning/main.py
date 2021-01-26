@@ -34,6 +34,8 @@ base_fit_to_indicator_input_source_property_type = 'fit_to_indicator_input_sourc
 base_fit_to_indicator_input_name_property_type = 'fit_to_indicator_input_name'
 base_indicator_source_property_type = 'indicator_source'
 base_indicator_name_property_type = 'indicator_name'
+base_indicator_statistic_source_property_type = 'indicator_statistic_source'
+base_indicator_statistic_name_property_type = 'indicator_statistic_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -76,7 +78,7 @@ def do_epoch_end_process(epoch_result):
 
 def train(epoch):
     ret = run_train_stage.train_stage_common(args, util.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
-         loss, optimization, train_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, writer, MainLogger)
+         loss, optimization, train_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if args.evaluate_off:
         if args.debug:
             if epoch == 0:
@@ -94,7 +96,7 @@ def train(epoch):
 def evaluate(epoch):
     ret = util.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
-            evaluate_indicator, statistic_indicator, accumulated_opt, train_loader, recorder, writer, MainLogger)
+            evaluate_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if util.train_stage(args):
         if args.debug:
             if epoch == 0:
@@ -209,10 +211,10 @@ if __name__ == '__main__':
     #    help='the name of the indicator in the indicator_factory, see the util.indicator_factory')
     #ppa.parser.add_argument('--indicator_source', type=str, default='standard', action='store', \
     #    help='standard: from the Putil.demo.base.deep_learning.indicator; project: from this project')
-    #ppa.parser.add_argument('--statistic_indicator_name', type=str, default='', action='store', \
-    #    help='the name of the statistic_indicator in the statistic_indicator_factory, see the util.statistic_indicator_factory')
-    #ppa.parser.add_argument('--statistic_indicator_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.statistic_indicator; project: from this project')
+    #ppa.parser.add_argument('--indicator_statistic_name', type=str, default='', action='store', \
+    #    help='the name of the indicator_statistic in the indicator_statistic_factory, see the util.indicator_statistic_factory')
+    #ppa.parser.add_argument('--indicator_statistic_source', type=str, default='standard', action='store', \
+    #    help='standard: from the Putil.demo.base.deep_learning.indicator_statistic; project: from this project')
     #<tag=====================================这些是需要reload的==============================================
     from Putil.demo.deep_learning.base import auto_save_factory as AutoSaveFactory
     from Putil.demo.deep_learning.base import auto_stop_factory as AutoStopFactory
@@ -226,7 +228,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import decode_factory as DecodeFactory
     from Putil.demo.deep_learning.base import loss_factory as LossFactory
     from Putil.demo.deep_learning.base import indicator_factory as IndicatorFactory
-    from Putil.demo.deep_learning.base import statistic_indicator_factory as StatisticIndicatorFactory
+    from Putil.demo.deep_learning.base import indicator_statistic_factory as IndicatorStatisticFactory
     from Putil.demo.deep_learning.base import optimization_factory as OptimizationFactory
     from Putil.demo.deep_learning.base import aug_factory as AugFactory
     from Putil.demo.deep_learning.base import data_type_adapter_factory as DataTypeAdapterFactory
@@ -254,7 +256,7 @@ if __name__ == '__main__':
     decode_source = os.environ.get('decode_source', 'standard')
     loss_source = os.environ.get('loss_source', 'standard')
     indicator_sources = util.get_relatived_environ(base_indicator_source_property_type)
-    statistic_indicator_source = os.environ.get('statistic_indicator_source', 'standard')
+    indicator_statistic_sources = util.get_relatived_environ(base_indicator_statistic_source_property_type)
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_sources = util.get_relatived_environ(base_optimization_source_property_type)
     aug_sources = util.get_relatived_environ(base_aug_source_property_type)
@@ -284,7 +286,8 @@ if __name__ == '__main__':
     loss_name = os.environ.get('loss_name', 'DefaultLoss')
     indicator_names = util.get_relatived_environ(base_indicator_name_property_type)
     util.complete_environ(indicator_names, indicator_sources, 'standard')
-    statistic_indicator_name = os.environ.get('statistic_indicator_name', 'DefaultStatisticIndicator')
+    indicator_statistic_names = util.get_relatived_environ(base_indicator_statistic_name_property_type)
+    util.complete_environ(indicator_statistic_names, indicator_statistic_sources, 'standard')
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
     optimization_names = {property_type.replace(base_optimization_name_property_type, ''): os.environ[property_type] for property_type in util.find_repeatable_environ(base_optimization_name_property_type)}
     util.complete_environ(optimization_names, optimization_sources, 'standard')
@@ -310,9 +313,8 @@ if __name__ == '__main__':
     [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
     BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
     LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
-    print(indicator_sources)
     [IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_sources[property_type], indicator_names[property_type], property_type) for property_type in indicator_names.keys()]
-    StatisticIndicatorFactory.statistic_indicator_arg_factory(ppa.parser, statistic_indicator_source, statistic_indicator_name)
+    [IndicatorStatisticFactory.indicator_statistic_arg_factory(ppa.parser, indicator_statistic_sources[property_type], indicator_statistic_names[property_type]) for property_type in indicator_statistic_names.keys()]
     [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
     [AugFactory.aug_arg_factory(ppa.parser, aug_sources[property_type], aug_names[property_type], property_type) for property_type in aug_names.keys()]
     [DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_sources[property_type], data_type_adapter_names[property_type]) for property_type in data_type_adapter_names.keys()]
@@ -405,7 +407,7 @@ if __name__ == '__main__':
     args.decode_source = decode_source
     args.loss_source = loss_source
     args.indicator_sources = indicator_sources
-    args.statistic_indicator_source = statistic_indicator_source
+    args.indicator_statistic_sources = indicator_statistic_sources
     args.optimization_sources = optimization_sources
     args.aug_sources = aug_sources
     args.data_type_adapter_sources = data_type_adapter_sources
@@ -429,7 +431,7 @@ if __name__ == '__main__':
     args.decode_name = decode_name
     args.loss_name = loss_name
     args.indicator_names = indicator_names
-    args.statistic_indicator_name = statistic_indicator_name
+    args.indicator_statistic_names = indicator_statistic_names
     args.optimization_names = optimization_names
     args.aug_names = aug_names
     args.data_type_adapter_names = data_type_adapter_names
@@ -501,7 +503,7 @@ if __name__ == '__main__':
     reload(ModelFactory)
     reload(LossFactory)
     reload(IndicatorFactory)
-    reload(StatisticIndicatorFactory)
+    reload(IndicatorStatisticFactory)
     reload(OptimizationFactory)
     reload(EncodeFactory)
     reload(DecodeFactory)
@@ -587,7 +589,8 @@ if __name__ == '__main__':
         evaluate_indicator = {property_type: IndicatorFactory.indicator_factory(args, args.indicator_sources[property_type], args.indicator_names[property_type], fit_to_indicator_input=fit_to_indicator_input)() for property_type in args.indicator_names.keys()} if args.evaluate_off is not True else None
         evaluate_indicator = util.get_module(evaluate_indicator) if args.evaluate_off is not True else None
         # : build the statistic indicator
-        statistic_indicator = StatisticIndicatorFactory.statistic_indicator_factory(args)()
+        indicator_statistic = {property_type: IndicatorStatisticFactory.indicator_statistic_factory(args, args.indicator_statistic_sources[property_type], args.indicator_statistic_names[property_type], property_type=property_type)() for property_type in args.indicator_statistic_names.keys()}
+        indicator_statistic = util.get_module(indicator_statistic)
         ##TODO: build the optimization, the optimization_source
         # 通过environ指定了几种属性类型的optimization，使用在哪些参数需要自己定制
         # 如果出现参数调整，则需要另外使用key，否则在load_checkpointed的时候会出现错误，可以查看load_checkpointed的代码
@@ -621,7 +624,7 @@ if __name__ == '__main__':
             loss.cuda() if is_cudable(loss) else None
             train_indicator.cuda() if is_cudable(train_indicator) else None
             evaluate_indicator.cuda() if args.evaluate_off is not True else None
-            statistic_indicator.cuda() if is_cudable(statistic_indicator) else None
+            indicator_statistic.cuda() if is_cudable(indicator_statistic) else None
             if args.hvd_reduce_mode and hvd.nccl_built():
                 lr_scaler = hvd.local_size()
                 pass

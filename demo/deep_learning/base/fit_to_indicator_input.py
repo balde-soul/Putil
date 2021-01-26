@@ -1,4 +1,5 @@
 # coding=utf-8
+from importlib import reload
 import copy
 from abc import abstractmethod, ABCMeta
 import Putil.base.logger as plog
@@ -8,6 +9,7 @@ logger = plog.PutilLogConfig('fit_data_to_input').logger()
 logger.setLevel(plog.DEBUG)
 
 from Putil.demo.deep_learning.base import util
+reload(util)
 
 
 ##@brief the FitToIndicatorInput 提供一个方法，接收datas和output，

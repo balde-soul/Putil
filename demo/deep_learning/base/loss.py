@@ -19,7 +19,7 @@ class Loss(metaclass=ABCMeta):
     def __init__(self, args, property_type='', **kwargs):
         self._loss_name = args.loss_name
         self._loss_source = args.loss_source
-        self._fit_to_loss = kwargs.get('fit_to_loss', None)
+        self._fit_to_loss_input = kwargs.get('fit_to_loss_input', None)
 
     @abstractmethod
     def total_loss_name(self):
@@ -29,7 +29,7 @@ class Loss(metaclass=ABCMeta):
         pass
 
     def __call__(self, datas, output, **kwargs):
-        kargs = self._fit_to_loss(datas, output) if self._fit_to_loss is not None else (datas, output)
+        kargs = self._fit_to_loss_input(datas, output) if self._fit_to_loss_input is not None else (datas, output)
         return self._call_impl(*kargs, **kwargs)
 
     @abstractmethod
