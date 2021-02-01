@@ -76,5 +76,13 @@
                 }
             ]
         },
+        {
+            "name": "fix_doxygen",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/fix_doxygen_config_file.py",
+            "console": "integratedTerminal",
+            "args": ["--source_config", "./test/result/DoxyfileOriginal.public", "--target_config", "./test/result/Doxyfile.public"]
+        },
     ]
 }

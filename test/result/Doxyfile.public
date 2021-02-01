@@ -314,7 +314,7 @@ BRIEF_MEMBER_DESC      = YES
 OUTPUT_LANGUAGE        = English
 ALLOW_UNICODE_NAMES    = NO
 CREATE_SUBDIRS         = NO
-OUTPUT_DIRECTORY       = /doc/protect
+OUTPUT_DIRECTORY       = ./doc/public
 PROJECT_LOGO           =
 PROJECT_BRIEF          =
 PROJECT_NUMBER         =
@@ -353,7 +353,7 @@ DOXYFILE_ENCODING      = UTF-8
 # title of most generated pages and in a few other places.
 # The default value is: My Project.
 
-#PROJECT_NAME           = "My Project"
+#PROJECT_NAME           = "Putil"
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. This
 # could be handy for archiving the generated documentation or if some version
@@ -379,7 +379,7 @@ DOXYFILE_ENCODING      = UTF-8
 # entered, it will be relative to the location where doxygen was started. If
 # left blank the current directory will be used.
 
-#OUTPUT_DIRECTORY       =
+#OUTPUT_DIRECTORY       = ./doc/public
 
 # If the CREATE_SUBDIRS tag is set to YES then doxygen will create 4096 sub-
 # directories (in 2 levels) under the output directory of each output format and
@@ -439,7 +439,17 @@ DOXYFILE_ENCODING      = UTF-8
 # the entity):The $name class, The $name widget, The $name file, is, provides,
 # specifies, contains, represents, a, an and the.
 
-#ABBREVIATE_BRIEF       =
+#ABBREVIATE_BRIEF       = "The $name class" \
+#                         "The $name widget" \
+#                         "The $name file" \
+#                         is \
+#                         provides \
+#                         specifies \
+#                         contains \
+#                         represents \
+#                         a \
+#                         an \
+#                         the
 
 # If the ALWAYS_DETAILED_SEC and REPEAT_BRIEF tags are both set to YES then
 # doxygen will generate a detailed section even if there is only a brief
@@ -613,6 +623,15 @@ DOXYFILE_ENCODING      = UTF-8
 # The default value is: YES.
 
 #MARKDOWN_SUPPORT       = YES
+
+# When the TOC_INCLUDE_HEADINGS tag is set to a non-zero value, all headings up
+# to that level are automatically included in the table of contents, even if
+# they do not have an id attribute.
+# Note: This feature currently applies only to Markdown headings.
+# Minimum value: 0, maximum value: 99, default value: 0.
+# This tag requires that the tag MARKDOWN_SUPPORT is set to YES.
+
+#TOC_INCLUDE_HEADINGS   = 0
 
 # When enabled doxygen tries to link words that correspond to documented
 # classes, or namespaces to their corresponding documentation. Such a link can
@@ -1092,7 +1111,7 @@ DOXYFILE_ENCODING      = UTF-8
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-#INPUT                  =
+#INPUT                  = ./
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1114,16 +1133,59 @@ DOXYFILE_ENCODING      = UTF-8
 # If left blank the following patterns are tested:*.c, *.cc, *.cxx, *.cpp,
 # *.c++, *.java, *.ii, *.ixx, *.ipp, *.i++, *.inl, *.idl, *.ddl, *.odl, *.h,
 # *.hh, *.hxx, *.hpp, *.h++, *.cs, *.d, *.php, *.php4, *.php5, *.phtml, *.inc,
-# *.m, *.markdown, *.md, *.mm, *.dox, *.py, *.pyw, *.f90, *.f, *.for, *.tcl,
-# *.vhd, *.vhdl, *.ucf, *.qsf, *.as and *.js.
+# *.m, *.markdown, *.md, *.mm, *.dox, *.py, *.pyw, *.f90, *.f95, *.f03, *.f08,
+# *.f, *.for, *.tcl, *.vhd, *.vhdl, *.ucf and *.qsf.
 
-#FILE_PATTERNS          =
+#FILE_PATTERNS          = *.c \
+#                         *.cc \
+#                         *.cxx \
+#                         *.cpp \
+#                         *.c++ \
+#                         *.java \
+#                         *.ii \
+#                         *.ixx \
+#                         *.ipp \
+#                         *.i++ \
+#                         *.inl \
+#                         *.idl \
+#                         *.ddl \
+#                         *.odl \
+#                         *.h \
+#                         *.hh \
+#                         *.hxx \
+#                         *.hpp \
+#                         *.h++ \
+#                         *.cs \
+#                         *.d \
+#                         *.php \
+#                         *.php4 \
+#                         *.php5 \
+#                         *.phtml \
+#                         *.inc \
+#                         *.m \
+#                         *.markdown \
+#                         *.md \
+#                         *.mm \
+#                         *.dox \
+#                         *.py \
+#                         *.pyw \
+#                         *.f90 \
+#                         *.f95 \
+#                         *.f03 \
+#                         *.f08 \
+#                         *.f \
+#                         *.for \
+#                         *.tcl \
+#                         *.vhd \
+#                         *.vhdl \
+#                         *.ucf \
+#                         *.qsf
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
 # The default value is: NO.
 
-#RECURSIVE              = NO
+#RECURSIVE              = YES
 
 # The EXCLUDE tag can be used to specify files and/or directories that should be
 # excluded from the INPUT source files. This way you can easily exclude a
@@ -1172,7 +1234,7 @@ DOXYFILE_ENCODING      = UTF-8
 # *.h) to filter out the source-files in the directories. If left blank all
 # files are included.
 
-#EXAMPLE_PATTERNS       =
+#EXAMPLE_PATTERNS       = *
 
 # If the EXAMPLE_RECURSIVE tag is set to YES then subdirectories will be
 # searched for input files to be used with the \include or \dontinclude commands
@@ -2682,6 +2744,11 @@ DOXYFILE_ENCODING      = UTF-8
 
 #PLANTUML_JAR_PATH      =
 
+# When using plantuml, the PLANTUML_CFG_FILE tag can be used to specify a
+# configuration file for plantuml.
+
+#PLANTUML_CFG_FILE      =
+
 # When using plantuml, the specified paths are searched for files specified by
 # the !include statement in a plantuml block.
 
@@ -2746,5 +2813,3 @@ DOXYFILE_ENCODING      = UTF-8
 # This tag requires that the tag HAVE_DOT is set to YES.
 
 #DOT_CLEANUP            = YES
-
-
