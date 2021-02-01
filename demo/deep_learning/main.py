@@ -16,6 +16,8 @@ base_optimization_source_property_type = 'optimization_source'
 base_optimization_name_property_type = 'optimization_name'
 base_backbone_source_property_type = 'backbone_source'
 base_backbone_name_property_type = 'backbone_name'
+base_backend_source_property_type = 'backend_source'
+base_backend_name_property_type = 'backend_name'
 base_dataset_source_property_type = 'dataset_source'
 base_dataset_name_property_type = 'dataset_name'
 base_aug_source_property_type = 'aug_source'
@@ -40,6 +42,8 @@ base_fit_to_decode_input_source_property_type = 'fit_to_decode_input_source'
 base_fit_to_decode_input_name_property_type = 'fit_to_decode_input_name'
 base_decode_source_property_type = 'decode_source'
 base_decode_name_property_type = 'decode_name'
+base_loss_source_property_type = 'loss_source'
+base_loss_name_property_type = 'loss_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -257,9 +261,9 @@ if __name__ == '__main__':
     data_sampler_sources = util.get_relatived_environ(base_data_sampler_source_property_type)
     encode_sources = util.get_relatived_environ(base_encode_source_property_type)
     backbone_sources = util.get_relatived_environ(base_backbone_source_property_type)
-    backend_source = os.environ.get('backend_source', 'standard')
+    backend_sources = util.get_relatived_environ(base_backend_source_property_type)
     decode_sources = util.get_relatived_environ(base_decode_source_property_type)
-    loss_source = os.environ.get('loss_source', 'standard')
+    loss_sources = util.get_relatived_environ(base_loss_source_property_type)
     indicator_sources = util.get_relatived_environ(base_indicator_source_property_type)
     indicator_statistic_sources = util.get_relatived_environ(base_indicator_statistic_source_property_type)
     ## optimization可以支持多个类型，是为了多中optimization进行优化的需求，key表示功能定向(空key表示默认功能)，name与source构成optimization的类型
@@ -287,10 +291,12 @@ if __name__ == '__main__':
     util.complete_environ(encode_names, encode_sources, 'standard')
     backbone_names = util.get_relatived_environ(base_backbone_name_property_type)
     util.complete_environ(backbone_names, backbone_sources, 'standard')
-    backend_name = os.environ.get('backend_name', 'DefaultBackend')
+    backend_names = util.get_relatived_environ(base_backend_name_property_type)
+    util.complete_environ(backend_names, backend_sources, 'standard')
     decode_names = util.get_relatived_environ(base_decode_name_property_type)
     util.complete_environ(decode_names, decode_sources, 'standard')
-    loss_name = os.environ.get('loss_name', 'DefaultLoss')
+    loss_names = util.get_relatived_environ(base_loss_name_property_type)
+    util.complete_environ(loss_names, loss_sources, 'standard')
     indicator_names = util.get_relatived_environ(base_indicator_name_property_type)
     util.complete_environ(indicator_names, indicator_sources, 'standard')
     indicator_statistic_names = util.get_relatived_environ(base_indicator_statistic_name_property_type)
@@ -320,8 +326,8 @@ if __name__ == '__main__':
     [DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_sources[property_type], data_sampler_names[property_type], property_type) for property_type in data_sampler_names.keys()]
     [EncodeFactory.encode_arg_factory(ppa.parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
     [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
-    BackendFactory.backend_arg_factory(ppa.parser, backend_source, backend_name)
-    LossFactory.loss_arg_factory(ppa.parser, loss_source, loss_name)
+    [BackendFactory.backend_arg_factory(ppa.parser, backend_sources[property_type], backend_names[property_type], property_type) for property_type in backend_names.keys()]
+    [LossFactory.loss_arg_factory(ppa.parser, loss_sources[property_type], loss_names[property_type], property_type) for property_type in loss_names.keys()]
     [IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_sources[property_type], indicator_names[property_type], property_type) for property_type in indicator_names.keys()]
     [IndicatorStatisticFactory.indicator_statistic_arg_factory(ppa.parser, indicator_statistic_sources[property_type], indicator_statistic_names[property_type]) for property_type in indicator_statistic_names.keys()]
     [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
@@ -411,12 +417,11 @@ if __name__ == '__main__':
     args.data_loader_sources = data_loader_sources
     args.data_sampler_sources = data_sampler_sources
     args.encode_sources = encode_sources
-    #args.backbone_source = backbone_source
     args.backbone_sources = backbone_sources
-    args.backend_source = backend_source
+    args.backend_sources = backend_sources
     args.decode_sources = decode_sources
     args.fit_to_decode_input_sources = fit_to_decode_input_sources
-    args.loss_source = loss_source
+    args.loss_sources = loss_sources
     args.indicator_sources = indicator_sources
     args.indicator_statistic_sources = indicator_statistic_sources
     args.optimization_sources = optimization_sources
@@ -438,10 +443,10 @@ if __name__ == '__main__':
     args.encode_names = encode_names
     #args.backbone_name = backbone_name
     args.backbone_names = backbone_names
-    args.backend_name = backend_name
+    args.backend_names = backend_names
     args.decode_names = decode_names
     args.fit_to_decode_input_names = fit_to_decode_input_names
-    args.loss_name = loss_name
+    args.loss_names = loss_names
     args.indicator_names = indicator_names
     args.indicator_statistic_names = indicator_statistic_names
     args.optimization_names = optimization_names
@@ -590,14 +595,17 @@ if __name__ == '__main__':
     fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
     if util.train_stage(args):
         # : build the backbone
-        backbone = BackboneFactory.backbone_factory(args)()
+        backbone = {property_type: BackboneFactory.backbone_factory(args, args.backbone_sources[property_type], args.backbone_names[property_type], property_type)() for property_type in args.backbone_names.keys()}
+        backbone = util.get_module(backbone)
         # : build backend
-        backend = BackendFactory.backend_factory(args)()
+        backend = {property_type: BackendFactory.backend_factory(args, args.backend_sources[property_type], args.backend_names[property_type], property_type)() for property_type in args.backend_names.keys()}
+        backend = util.get_module(backend)
         # : build decode
         decode = {property_type: DecodeFactory.decode_factory(args, args.decode_sources[property_type], args.decode_names[property_type], property_type=property_type)() for property_type in args.decode_names.keys()}
         decode = util.get_module(decode)
         # : build the loss
-        loss = LossFactory.loss_factory(args, fit_to_loss_input=fit_to_loss_input)()
+        loss = {property_type: LossFactory.loss_factory(args, args.loss_sources[property_type], args.loss_names[property_type], property_type, fit_to_loss_input=fit_to_loss_input)() for property_type in args.loss_names.keys()}
+        loss = util.get_module(loss)
         # : build the indicator
         train_indicator = {property_type: IndicatorFactory.indicator_factory(args, args.indicator_sources[property_type], args.indicator_names[property_type], fit_to_indicator_input=fit_to_indicator_input)() for property_type in args.indicator_names.keys()}
         train_indicator = util.get_module(train_indicator)
