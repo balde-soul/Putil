@@ -164,6 +164,7 @@ sources_names=(
 [fit_data_to_input_source]=standard [fit_data_to_input_name]=DefaultFitDataToInput
 [fit_to_loss_input_source]=standard [fit_to_loss_input_name]=DefaultFitToLossInput
 [fit_to_indicator_input_source]=standard [fit_to_indicator_input_name]=DefaultFitToIndicatorInput
+[fit_to_decode_input_source]=standard [fit_to_decode_input_name]=DefaultFitToDecodeInput
 [fit_decode_to_result_source]=standard [fit_decode_to_result_name]=DefaultFitDecodeToResult
 [recorder_source]=standard [recorder_name]=DefaultRecorder
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt

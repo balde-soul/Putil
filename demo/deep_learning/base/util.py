@@ -325,7 +325,7 @@ def clean_train_result(path, train_time):
 def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
     logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, recorder.epoch, recorder.step if epoch_step_amount is not None else '', \
         data_index if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
-            ['{}:{} '.format(k, v) for k, v in indicators.items()]))
+            ''.join(['{}:{}||'.format(k, v) for k, v in indicators.items()])))
 
 class nothing():
     '''this is use in with ...:'''

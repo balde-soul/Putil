@@ -100,8 +100,9 @@ logger):
                 reduced_loss_current = {util.ScalarCollection.generate_current_reduce_name(k): util.all_reduce(v, util.ScalarCollection.generate_current_reduce_name(k), hvd) \
                     for k, v in indicator_scalar_collection.current_indicators.items()}
                 pass
-            util.scalar_log(logger, prefix, reduced_indicator_current.update(reduced_loss_current), recorder, int(accumulation_fix(batch_idx)), \
-                int(accumulation_fix(len(data_loader)))) if recorder.step % args.log_interval == 0 and hvd.rank() == 0 and stage == util.Stage.Train else None
+                reduced_indicator_current.update(reduced_loss_current)
+                util.scalar_log(logger, prefix, reduced_indicator_current, recorder, int(accumulation_fix(batch_idx)), \
+                    int(accumulation_fix(len(data_loader)))) if recorder.step % args.log_interval == 0 and hvd.rank() == 0 and stage == util.Stage.Train else None
             if recorder.step % args.summary_interval == 0 and stage == util.Stage.Train:
                 #gt_obj_ft = gt_obj.sum(1).gt(0.)
                 ## reduce the target_indicator
@@ -131,8 +132,9 @@ logger):
             for k, v in loss_scalar_collection.epoch_average.items()}
         # : do the log of this epoch
         if hvd.rank() == 0:
-            util.scalar_log(logger, prefix, reduced_indicator_epoch_average.update(reduced_loss_epoch_average), recorder, None, None)
+            reduced_indicator_epoch_average.update(reduced_loss_epoch_average)
+            util.scalar_log(logger, prefix, reduced_indicator_epoch_average, recorder, None, None)
             [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step)) for k, v in reduced_indicator_epoch_average.items()]
             [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step)) for k, v in reduced_loss_epoch_average.items()]
         pass
-    return reduced_indicator_epoch_average.update(reduced_loss_epoch_average)
+    return reduced_indicator_epoch_average
