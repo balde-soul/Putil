@@ -134,7 +134,7 @@ logger):
         if hvd.rank() == 0:
             reduced_indicator_epoch_average.update(reduced_loss_epoch_average)
             util.scalar_log(logger, prefix, reduced_indicator_epoch_average, recorder, None, None)
-            [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step)) for k, v in reduced_indicator_epoch_average.items()]
-            [writer.add_scalar('{}/{}'.format(prefix, k, v, global_step=recorder.step)) for k, v in reduced_loss_epoch_average.items()]
+            [writer.add_scalar('{}/{}'.format(prefix, k), v, global_step=recorder.step) for k, v in reduced_indicator_epoch_average.items()]
+            [writer.add_scalar('{}/{}'.format(prefix, k), v, global_step=recorder.step) for k, v in reduced_loss_epoch_average.items()]
         pass
     return reduced_indicator_epoch_average

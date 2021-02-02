@@ -102,7 +102,7 @@ def train(epoch):
         return False,
 
 def evaluate(epoch):
-    ret = util.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
+    ret = run_train_stage.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             evaluate_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if util.train_stage(args):
@@ -148,7 +148,8 @@ def run_evaluate(model, data_loader, fit_data_to_input, fit_decode_to_result):
         for index, datas in data_loader:
             data_input = fit_data_to_input(datas)
             output = model(data_input, args)
-            result = fit_decode_to_result(output)
+            decode = decode(datas, output)
+            result = fit_decode_to_result(decode)
             data_loader.dataset.save_result(prefix='evaluate', save=False if index != len(data_loader) else True)
             pass
         pass

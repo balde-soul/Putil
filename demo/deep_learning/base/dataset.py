@@ -143,7 +143,7 @@ def COCOArg(parser, property_type='', **kwargs):
 class _DefaultDataset(Dataset):
     def __init__(self, args, property_type='', **kwargs):
         Dataset.__init__(self, args)
-        self._data_field = list(range(0, 10000))
+        self._data_field = list(range(0, 1000))
         pass
 
     def _restart_process(self, restart_param):

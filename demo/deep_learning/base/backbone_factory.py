@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def backbone_factory(args, property_type='', **kwargs):
+def backbone_factory(args, source, name, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -25,7 +25,7 @@ def backbone_factory(args, property_type='', **kwargs):
         pass
     else:
         raise NotImplementedError('backbone of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.backbone_sources[property_type], args.backbone_names[property_type])
+    model = '{0}.{1}'.format(source, name)
     logger.info('backbone model: {}, arch: {}|'.format(model, args.backbone_arch, property_type))
     return eval('{}(args, property_type, **kwargs)'.format(model))
     

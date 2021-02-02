@@ -17,8 +17,6 @@ class Loss(metaclass=ABCMeta):
      @note 传入输入数据与模型输出，计算losses
     '''
     def __init__(self, args, property_type='', **kwargs):
-        self._loss_name = args.loss_name
-        self._loss_source = args.loss_source
         self._fit_to_loss_input = kwargs.get('fit_to_loss_input', None)
 
     @abstractmethod
@@ -66,5 +64,5 @@ def DefaultLoss(args, property_type='', **kwargs):
     return generate_default_loss
 
 
-def DefaultLossArg(parser):
+def DefaultLossArg(parser, property_type='', **kwargs):
     pass

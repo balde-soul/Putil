@@ -34,6 +34,6 @@ def DefaultBackend(args, property_type='', **kwargs):
     return generate_default_backend
 
 
-def DefaultBackendArg(parser, property_type='', **kwags):
+def DefaultBackendArg(parser, property_type='', **kwargs):
     common_backend_arg(parser, property_type, **kwargs)
     pass

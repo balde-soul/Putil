@@ -368,7 +368,7 @@ class ScalarCollection:
 
     @property
     def epoch_average(self):
-        return {k: v.mean() for k, v in self._epoch_indicator.items()}
+        return {k: list_mean_method(v) for k, v in self._epoch_indicator.items()}
 
     @property
     def current_indicators(self):
@@ -456,3 +456,22 @@ def Torchis_cudable(object):
     is_cudable = isinstance(object, Module)
     TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
     return is_cudable
+
+def ndarray_mean(ndarray_list):
+    return np.mean(np.stack(ndarray_mean, axis=0), axis=0)
+
+def tensor_mean(tensor_list):
+    return torch.mean(torch.stack(tensor_list, dim=0), dim=0)
+
+def list_mean_method(value_list):
+    if isinstance(value_list[0], torch.Tensor):
+        return torch.mean(torch.stack(value_list, dim=0), dim=0)
+    elif isinstance(value_list[0], np.ndarray):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    elif isinstance(value_list[0], (float, int)):
+        return np.mean(value_list)
+    elif isinstance(value_list[0], (tuple, list)):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    else:
+        raise NotImplementedError('mean method for {} is not defined'.format(value_list[0].__class__.__name__))
+    pass

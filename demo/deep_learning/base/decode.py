@@ -12,7 +12,7 @@ class Decode:
      @note 解码模型输出，生成直接通用结果
     '''
     def __init__(self, args, property_type='', **kwargs):
-        self._fit_to_decode = kwargs.get('fit_to_indicator_input', None)
+        self._fit_to_decode_input = kwargs.get('fit_to_indicator_input', None)
         pass
 
     ##@brief decode the data
