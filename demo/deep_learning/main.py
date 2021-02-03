@@ -254,7 +254,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
     horovod.horovod_arg(ppa.parser)
-    auto_save_source = os.environ.get('auto_save_source', 'standard')
+    auto_save_sources = os.environ.get('auto_save_source', 'standard')
     auto_stop_source = os.environ.get('auto_stop_source', 'standard')
     lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
     dataset_sources = util.get_relatived_environ(base_dataset_source_property_type)
@@ -279,7 +279,8 @@ if __name__ == '__main__':
     model_source = os.environ.get('model_source', 'standard')
     recorder_source = os.environ.get('recorder_source', 'standard')
     accumulated_opt_source = os.environ.get('accumulated_opt', 'standard')
-    auto_save_name = os.environ.get('auto_save_name', 'DefaultAutoSave')
+    auto_save_names = util.get_relatived_environ(base_auto_save_name_property_type)
+    util.complete_environ(auto_save_names, auto_save_sources, 'standard')
     auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
     lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
     dataset_names = util.get_relatived_environ(base_dataset_name_property_type)
@@ -320,7 +321,7 @@ if __name__ == '__main__':
     model_name = os.environ.get('model_name', 'DefaultModel')
     recorder_name = os.environ.get('recorder_name', 'DefaultRecorder')
     accumulated_opt_name = os.environ.get('accumulated_opt_name', 'DefaultAccumulatedOpt')
-    AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_source, auto_save_name)
+    [AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_sources[property_type], auto_save_name[property_type], property_type) for property_type in auto_save_names.keys()]
     AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
     LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
     [DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_sources[property_type], data_loader_names[property_type], property_type) for property_type in data_loader_names.keys()]
@@ -410,8 +411,7 @@ if __name__ == '__main__':
         help='reset train while this is set and the weight_path, weight_epoch is specified, ' \
             'the lr_reduce, auto_save, auto_stop would not be load')
     args = ppa.parser.parse_args()
-    args.auto_save_name = auto_save_name
-    args.auto_save_source = auto_save_source
+    args.auto_save_sources = auto_save_sources
     args.lr_reduce_source = lr_reduce_source
     args.auto_stop_source = auto_stop_source
     args.dataset_sources = dataset_sources
@@ -435,7 +435,7 @@ if __name__ == '__main__':
     args.model_source = model_source
     args.recorder_source = recorder_source
     args.accumulated_opt_source = accumulated_opt_source
-    args.auto_save_name = auto_save_name
+    args.auto_save_names = auto_save_names
     args.auto_stop_name = auto_stop_name
     args.lr_reduce_name = lr_reduce_name
     args.dataset_names = dataset_names
@@ -636,7 +636,8 @@ if __name__ == '__main__':
                 for k, (module, optimization) in optimizations.items()}
         optimization=combine_optimization(optimizations)
         #  : the auto save
-        auto_save = AutoSaveFactory.auto_save_factory(args)()
+        auto_save = {property_type: AutoSaveFactory.auto_save_factory(args, args.auto_save_sources[property_type], args.auto_save_names[property_type], property_type)() for property_type in args.auto_save_names.keys()}
+        auto_save = util.get_module(auto_save)
         #  : the auto stop
         auto_stop = AutoStopFactory.auto_stop_factory(args)()
         #  : the lr reduce
