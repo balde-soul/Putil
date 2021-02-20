@@ -44,6 +44,10 @@ base_decode_source_property_type = 'decode_source'
 base_decode_name_property_type = 'decode_name'
 base_loss_source_property_type = 'loss_source'
 base_loss_name_property_type = 'loss_name'
+base_auto_stop_source_property_type = 'auto_stop_source'
+base_auto_stop_name_property_type = 'auto_stop_name'
+base_lr_reduce_source_property_type = 'lr_reduce_source'
+base_lr_reduce_name_property_type = 'lr_reduce_name'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -255,8 +259,8 @@ if __name__ == '__main__':
     #======================================这些是需要reload的=============================================>
     horovod.horovod_arg(ppa.parser)
     auto_save_sources = os.environ.get('auto_save_source', 'standard')
-    auto_stop_source = os.environ.get('auto_stop_source', 'standard')
-    lr_reduce_source = os.environ.get('lr_reduce_source', 'standard')
+    auto_stop_sources = util.get_relatived_environ(base_auto_stop_source_property_type)
+    lr_reduce_sources = util.get_relatived_environ(base_lr_reduce_source_property_type)
     dataset_sources = util.get_relatived_environ(base_dataset_source_property_type)
     data_loader_sources = util.get_relatived_environ(base_data_loader_source_property_type)
     data_sampler_sources = util.get_relatived_environ(base_data_sampler_source_property_type)
@@ -281,8 +285,10 @@ if __name__ == '__main__':
     accumulated_opt_source = os.environ.get('accumulated_opt', 'standard')
     auto_save_names = util.get_relatived_environ(base_auto_save_name_property_type)
     util.complete_environ(auto_save_names, auto_save_sources, 'standard')
-    auto_stop_name = os.environ.get('auto_stop_name', 'DefaultAutoStop')
-    lr_reduce_name = os.environ.get('lr_reduce_name', 'DefaultLrReduce')
+    auto_stop_names = util.get_relatived_environ(base_auto_stop_name_property_type)
+    util.complete_environ(auto_stop_names, auto_stop_sources, 'standard')
+    lr_reduce_names = util.get_relatived_environ(base_lr_reduce_name_property_type)
+    util.complete_environ(lr_reduce_names, lr_reduce_sources, 'standard')
     dataset_names = util.get_relatived_environ(base_dataset_name_property_type)
     util.complete_environ(dataset_names, dataset_sources, 'standard')
     data_loader_names = util.get_relatived_environ(base_data_loader_name_property_type)
@@ -321,9 +327,9 @@ if __name__ == '__main__':
     model_name = os.environ.get('model_name', 'DefaultModel')
     recorder_name = os.environ.get('recorder_name', 'DefaultRecorder')
     accumulated_opt_name = os.environ.get('accumulated_opt_name', 'DefaultAccumulatedOpt')
-    [AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_sources[property_type], auto_save_name[property_type], property_type) for property_type in auto_save_names.keys()]
-    AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_source, auto_stop_name)
-    LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_source, lr_reduce_name)
+    [AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_sources[property_type], auto_save_names[property_type], property_type) for property_type in auto_save_names.keys()]
+    [AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_sources[property_type], auto_stop_names[property_type], property_type) for property_type in auto_stop_names.keys()]
+    [LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_sources[property_type], lr_reduce_names[property_type], property_type) for property_type in lr_reduce_names.keys()]
     [DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_sources[property_type], data_loader_names[property_type], property_type) for property_type in data_loader_names.keys()]
     [DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_sources[property_type], data_sampler_names[property_type], property_type) for property_type in data_sampler_names.keys()]
     [EncodeFactory.encode_arg_factory(ppa.parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
@@ -412,8 +418,8 @@ if __name__ == '__main__':
             'the lr_reduce, auto_save, auto_stop would not be load')
     args = ppa.parser.parse_args()
     args.auto_save_sources = auto_save_sources
-    args.lr_reduce_source = lr_reduce_source
-    args.auto_stop_source = auto_stop_source
+    args.lr_reduce_sources = lr_reduce_sources
+    args.auto_stop_sources = auto_stop_sources
     args.dataset_sources = dataset_sources
     args.data_loader_sources = data_loader_sources
     args.data_sampler_sources = data_sampler_sources
@@ -436,8 +442,8 @@ if __name__ == '__main__':
     args.recorder_source = recorder_source
     args.accumulated_opt_source = accumulated_opt_source
     args.auto_save_names = auto_save_names
-    args.auto_stop_name = auto_stop_name
-    args.lr_reduce_name = lr_reduce_name
+    args.auto_stop_names = auto_stop_names
+    args.lr_reduce_names = lr_reduce_names
     args.dataset_names = dataset_names
     args.data_loader_names = data_loader_names
     args.data_sampler_names = data_sampler_names
@@ -639,9 +645,11 @@ if __name__ == '__main__':
         auto_save = {property_type: AutoSaveFactory.auto_save_factory(args, args.auto_save_sources[property_type], args.auto_save_names[property_type], property_type)() for property_type in args.auto_save_names.keys()}
         auto_save = util.get_module(auto_save)
         #  : the auto stop
-        auto_stop = AutoStopFactory.auto_stop_factory(args)()
+        auto_stop = {property_type: AutoStopFactory.auto_stop_factory(args, args.auto_stop_sources[property_type], args.auto_stop_names[property_type], property_type)() for property_type in args.auto_stop_names.keys()}
+        auto_stop = util.get_module(auto_stop)
         #  : the lr reduce
-        lr_reduce = LrReduceFactory.lr_reduce_factory(args)()
+        lr_reduce = {property_type: LrReduceFactory.lr_reduce_factory(args, args.lr_reduce_sources[property_type], args.lr_reduce_names[property_type], property_type)() for property_type in args.lr_reduce_names.keys()}
+        lr_reduce = util.get_module(lr_reduce)
         if util.iscuda(args):
             backbone.cuda() if is_cudable(backbone) else None
             backend.cuda() if is_cudable(backend) else None

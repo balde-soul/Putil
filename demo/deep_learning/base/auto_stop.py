@@ -10,11 +10,11 @@ from Putil.trainer.auto_stop import auto_stop as AutoStop
 from Putil.trainer.auto_stop import AutoStop as _DefaultAutoStop
 
 
-def common_auto_stop_arg(parser):
+def common_auto_stop_arg(parser, property_type='', **kwargs):
     pass
 
 
-def DefaultAutoStop(args):
+def DefaultAutoStop(args, property_type='', **kwargs):
     '''
      @param[in] args
       args.auto_stop_patience
@@ -25,5 +25,5 @@ def DefaultAutoStop(args):
     return generate_default_auto_stop
 
 
-def DefaultAutoStopArg(parser):
+def DefaultAutoStopArg(parser, property_type='', **kwargs):
     _DefaultAutoStop.generate_args(parser)
