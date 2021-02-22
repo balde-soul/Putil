@@ -48,6 +48,8 @@ base_auto_stop_source_property_type = 'auto_stop_source'
 base_auto_stop_name_property_type = 'auto_stop_name'
 base_lr_reduce_source_property_type = 'lr_reduce_source'
 base_lr_reduce_name_property_type = 'lr_reduce_name'
+base_auto_save_name_property_type = 'auto_save_name'
+base_auto_save_source_property_type = 'auto_save_source'
 
 def do_save():
     MainLogger.info('run checkpoint') if args.debug else None
@@ -258,7 +260,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
     horovod.horovod_arg(ppa.parser)
-    auto_save_sources = os.environ.get('auto_save_source', 'standard')
+    auto_save_sources = util.get_relatived_environ(base_auto_save_source_property_type)
     auto_stop_sources = util.get_relatived_environ(base_auto_stop_source_property_type)
     lr_reduce_sources = util.get_relatived_environ(base_lr_reduce_source_property_type)
     dataset_sources = util.get_relatived_environ(base_dataset_source_property_type)

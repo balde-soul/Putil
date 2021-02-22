@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def auto_save_factory(args):
+def auto_save_factory(args, source, name, property_type):
     '''
      @brief
      @note
@@ -25,11 +25,11 @@ def auto_save_factory(args):
         pass
     else:
         raise NotImplementedError('auto_save of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.auto_save_source, args.auto_save_name)
+    model = '{0}.{1}'.format(source, name)
     logger.info('auto_save: {}'.format(model))
-    return eval('{}(args)'.format(model))
+    return eval('{}(args, property_type)'.format(model))
 
-def auto_save_arg_factory(parser, source, name):
+def auto_save_arg_factory(parser, source, name, property_type):
     auto_save_arg = '{0}.{1}Arg'.format(source, name)
     logger.info('auto_save_arg: {}'.format(name))
-    return eval('{}(parser)'.format(auto_save_arg)) 
+    return eval('{}(parser, property_type)'.format(auto_save_arg)) 
