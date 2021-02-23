@@ -1,3 +1,5 @@
+# coding=utf-8
+import re
 import numpy as np
 import shutil
 from importlib import reload
@@ -7,6 +9,7 @@ from colorama import Fore
 from enum import Enum
 import torch
 from torch.nn import Module
+from torch import optim
 import Putil.base.save_fold_base as psfb
 import Putil.base.logger as plog
 logger = plog.PutilLogConfig('util').logger()
@@ -15,9 +18,15 @@ MakeSureTheSaveDirLogger = logger.getChild('MakeSureTheSaveDir')
 MakeSureTheSaveDirLogger.setLevel(plog.DEBUG)
 TorchLoadCheckpointedLogger = logger.getChild('TorchLoadCheckpoited')
 TorchLoadCheckpointedLogger.setLevel(plog.DEBUG)
+TorchIsCudableLogger = logger.getChild('IsCudable')
+TorchIsCudableLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
+from Putil.trainer import util
+Stage = util.Stage
+reload(util)
+Stage = util.Stage
 
 # tensor operation
 def torch_generate_empty_tensor():
@@ -168,11 +177,11 @@ def torch_load_deploy(epoch, full_path):
     raise NotImplementedError('this should not called in python')
 
 
-class Stage(Enum):
-    Train=0
-    TrainEvaluate=1
-    Evaluate=2
-    Test=3
+#class Stage(Enum):
+#    Train=0
+#    TrainEvaluate=1
+#    Evaluate=2
+#    Test=3
 
 
 def evaluate_stage(args):
@@ -215,7 +224,7 @@ def make_sure_the_save_dir(args):
                 use_date=True if not args.debug else False, \
                     use_git=True if not args.debug else False, \
                         should_be_new=True if not args.debug else False, \
-                            base_name='{}{}{}'.format(args.backbone_name, args.name, '-debug' if args.debug else ''))
+                            base_name='{}{}'.format(args.name if args.name is not '' else 'Unnamed', '-debug' if args.debug else ''))
             bsf.mkdir(args.save_dir)
             args.save_dir = bsf.FullPath
             code = 'utf-16'
@@ -314,9 +323,9 @@ def clean_train_result(path, train_time):
     pass
 
 def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
-    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, epoch, recorder.step if epoch_step_amount is not None else '', \
+    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, recorder.epoch, recorder.step if epoch_step_amount is not None else '', \
         data_index if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
-            ['{}:{} '.format(k, v) for k, v in indicators.items()]))
+            ''.join(['{}:{}||'.format(k, v) for k, v in indicators.items()])))
 
 class nothing():
     '''this is use in with ...:'''
@@ -359,7 +368,7 @@ class ScalarCollection:
 
     @property
     def epoch_average(self):
-        return {k: v.mean() for k, v in self._epoch_indicator.items()}
+        return {k: list_mean_method(v) for k, v in self._epoch_indicator.items()}
 
     @property
     def current_indicators(self):
@@ -379,8 +388,90 @@ class ScalarCollection:
     pass
 
 
-def all_reduce(value, name):
+def all_reduce(val, name, hvd):
     if type(val).__name__ != 'Tensor':
         val = torch.tensor(val)
     avg_tensor = hvd.allreduce(val, name=name)
-    return avg_tensor.item()
+    return avg_tensor
+
+
+def iscuda(args):
+    return len(args.gpus) != 0
+
+
+class CombineObj:
+    def __init__(self, objs):
+        pass
+    pass
+
+
+class TorchCombineOptimization(optim.Optimizer):
+    def __init__(self, optimizations):
+        self._optimizations = optimizations
+        optim.Optimizer.__init__(self, [param for k, optimization in self._optimizations.items() for param in optimization.param_groups for param in param['params']], {})
+        pass
+
+    def step(self):
+        for k, optimization in self._optimizations.items():
+            optimization.step()
+            pass
+        pass
+
+    def zero_grad(self):
+        for k, optimization in self._optimizations.items():
+            optimization.zero_grad()
+            pass
+        pass
+
+    def state_dict(self):
+        return {k: optimization.state_dict() for k, optimization in self._optimizations.items()}
+    
+    @property
+    def optimizations(self):
+        return self._optimizations
+    pass
+
+
+def find_repeatable_environ(base_name):
+    temp = set([k if re.search(base_name, k) is not None else None for k in os.environ.keys()])
+    temp.remove(None)
+    return temp
+
+
+def get_relatived_environ(base_name):
+    return {property_type.replace(base_name, ''): os.environ[property_type] for property_type in find_repeatable_environ(base_name)}
+
+
+def complete_environ(source_dict, target_dict, default_content):
+    # 完善target_dict中缺少而source_dict中存在的类型
+    [None if property_type in target_dict.keys() else target_dict.update({property_type: default_content}) \
+        for property_type, name in source_dict.items()]
+    pass
+
+def get_module(module_dict, target=''):
+    return module_dict[target]
+
+
+def Torchis_cudable(object):
+    is_cudable = isinstance(object, Module)
+    TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
+    return is_cudable
+
+def ndarray_mean(ndarray_list):
+    return np.mean(np.stack(ndarray_mean, axis=0), axis=0)
+
+def tensor_mean(tensor_list):
+    return torch.mean(torch.stack(tensor_list, dim=0), dim=0)
+
+def list_mean_method(value_list):
+    if isinstance(value_list[0], torch.Tensor):
+        return torch.mean(torch.stack(value_list, dim=0), dim=0)
+    elif isinstance(value_list[0], np.ndarray):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    elif isinstance(value_list[0], (float, int)):
+        return np.mean(value_list)
+    elif isinstance(value_list[0], (tuple, list)):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    else:
+        raise NotImplementedError('mean method for {} is not defined'.format(value_list[0].__class__.__name__))
+    pass

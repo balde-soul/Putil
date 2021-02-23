@@ -6,6 +6,7 @@
 # coding=utf-8
 from abc import abstractmethod
 from torch.nn import Module
+import torch
 import copy
 
 
@@ -14,37 +15,49 @@ class Indicator:
      @brief
      @note 每个epoch一个轮回，接收train阶段evaluate的decode输出，生成代表性指标，指导lr_reduce、auto_save、auto_stop等
     '''
-    def __init__(self, args):
-        self._indicator_name = args.indicator_name
-        self._indicator_source = args.indicator_source
+    def __init__(self, args, property_type='', **kwargs):
+        self._fit_to_indicator_input = kwargs.get('fit_to_indicator_input', None)
         pass
 
-    @abstractmethod
-    def __call__(self, input):
+    def __call__(self, datas, output):
         '''
          @brief
          @note
          @param[in] input contain the ground truth and the prediction
-         @ret return a dict,{str: value}, the value can be reduce
+         @ret return a dict, {str: value}, the value can be reduce
         '''
+        kargs = self._fit_to_indicator_input(datas, output) if self._fit_to_indicator_input is not None else (datas, output)
+        return self._call_impl(*kargs)
+
+    @abstractmethod
+    def _call_impl(self, *args, **kwargs):
         pass
+
+    @property
+    def fit_to_indicator(self):
+        return self._fit_to_indicator
     pass
 
 
 class _DefaultIndicator(Indicator, Module):
-    def __init__(self, args):
-        Indicator.__init__(self, args)
+    def __init__(self, args, property_type='', **kwargs):
+        Indicator.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         pass
+    
+    def _call_impl(self, *args, **kwargs):
+        label = args[0]
+        output = args[1]
+        return {'dist': torch.mean((torch.squeeze(label) - torch.squeeze(output)) ** 2)}
     pass
 
 
-def DefaultIndicator(args):
+def DefaultIndicator(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_default_indicator():
-        return _DefaultIndicator(temp_args)
+        return _DefaultIndicator(temp_args, property_type, **kwargs)
     return generate_default_indicator
 
 
-def DefaultIndicatorArg(parser):
+def DefaultIndicatorArg(parser, property_type='', **kwargs):
     pass

@@ -81,3 +81,25 @@ def empty_tensor_factory(args):
             raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
         pass
     return generate_empty_tensor_factory_func
+
+def combine_optimization_factory(args):
+    temp_args = copy.deepcopy(args)
+    def generate_combine_optimization_factory_func():
+        if temp_args.framework == 'torch':
+            return standard.TorchCombineOptimization
+        else:
+            raise NotImplementedError('combine_optimization in framework: {} is Not Implemented'.format(args.framework))
+        pass
+    return generate_combine_optimization_factory_func
+    pass
+
+def is_cudable_factory(args):
+    temp_args = copy.deepcopy(args)
+    def generate_is_cudable_factory_func():
+        if args.framework == 'torch':
+            return standard.Torchis_cudable
+        else:
+            raise NotImplementedError('is_cudable in framework: {} is Not Implemented'.format(args.framework))
+        pass
+    return generate_is_cudable_factory_func
+    pass

@@ -1,6 +1,7 @@
 # coding=utf-8
 from abc import ABCMeta, abstractmethod
 from enum import Enum
+from torch.utils.data.distributed import DistributedSampler as data_sampler
 
 import Putil.base.logger as plog
 
@@ -11,7 +12,7 @@ torch_DataSampler_logger.setLevel(plog.DEBUG)
 
 
 class DataSampler(metaclass=ABCMeta):
-    def __init__(self, args):
+    def __init__(self, args, property_type='', **kwargs):
         self._args = args
         pass
 
@@ -28,16 +29,15 @@ class DataSampler(metaclass=ABCMeta):
 
 
 class DefaultDataSampler(DataSampler):
-    def __init__(self, args):
+    def __init__(self, args, property_type='', **kwargs):
         torch_DataSampler_logger.info('use torch DataSampler')
-        DataSampler.__init__(self, args)
-        from torch.utils.data.distributed import DistributedSampler as data_sampler
+        DataSampler.__init__(self, args, property_type, **kwargs)
         pass
 
     def __call__(self, dataset, rank_amount, rank):
-        return data_sampler(dataset, num_replicas=hvd.size(), rank=hvd.rank())
+        return data_sampler(dataset, num_replicas=rank_amount, rank=rank)
     pass
 
 
-def DefaultDataSamplerArg(parser):
+def DefaultDataSamplerArg(parser, property_type='', **kwargs):
     pass

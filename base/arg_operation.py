@@ -4,10 +4,13 @@ import json
 import argparse
 
 
+##@brief save the arg(type: Namespace) to a file
+# @note save \'unserized_obj\' while unserized object exist in the arg
+# @param[in] args the namespace
+# @param[in] file the full path of the target file
 def args_save(args, file):
-    print(args)
     with open(file, 'w') as fp:
-        json.dump(args.__dict__, fp, indent=4)
+        json.dump(args.__dict__, fp, indent=4, default=lambda unserized_obj: 'unserized_obj')
     pass
 
 

@@ -26,7 +26,7 @@ def lr_reduce_factory(args):
     else:
         raise NotImplementedError('lr_reduce of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.lr_reduce_source, args.lr_reduce_name)
-    logger.info('lr_reduce model: {}, arch: {}'.format(model, args.lr_reduce_arch))
+    logger.info('lr_reduce: {}'.format(model))
     return eval('{}(args)'.format(model))
 
 

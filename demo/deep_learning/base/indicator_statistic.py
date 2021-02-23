@@ -8,14 +8,12 @@ from torch.nn import Module
 import copy
 
 
-class StatisticIndicator:
+class IndicatorStatistic:
     '''
      @brief
      @note 接收训练阶段的train或者evaluate每个step的decode输出，再最后一个step输出统计指标
     '''
-    def __init__(self, args):
-        self._statistic_indicator_name = args.statistic_indicator_name
-        self._statistic_indicator_source = args.statistic_indicator_source
+    def __init__(self, args, property_type='', **kwargs):
         pass
 
     @abstractmethod
@@ -36,19 +34,19 @@ class StatisticIndicator:
     pass
 
 
-class _DefaultStatisticIndicator(StatisticIndicator):
-    def __init__(self, args):
-        StatisticIndicator.__init__(self, args)
+class _DefaultIndicatorStatistic(IndicatorStatistic):
+    def __init__(self, args, property_type='', **kwargs):
+        IndicatorStatistic.__init__(self, args, property_type, **kwargs)
         pass
     pass
 
 
-def DefaultStatisticIndicator(args):
+def DefaultIndicatorStatistic(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
-    def generate_default_statistic_indicator():
-        return _DefaultStatisticIndicator(temp_args)
-    return generate_default_statistic_indicator
+    def generate_default_indicator_statistic():
+        return _DefaultIndicatorStatistic(temp_args, property_type, **kwargs)
+    return generate_default_indicator_statistic
 
 
-def DefaultStatisticIndicatorArg(parser):
+def DefaultIndicatorStatisticArg(parser, property_type='', **kwargs):
     pass

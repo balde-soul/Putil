@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def backend_factory(args):
+def backend_factory(args, source, name, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -25,12 +25,12 @@ def backend_factory(args):
         pass
     else:
         raise NotImplementedError('backend of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.backend_source, args.backend_name)
+    model = '{0}.{1}'.format(source, name)
     logger.info('backend model: {}, arch: {}'.format(model, args.backend_arch))
-    return eval('{}(args)'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
 
-def backend_arg_factory(parser, source, name):
+def backend_arg_factory(parser, source, name, property_type='', **kwargs):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('backend_arg: {}'.format(arg))
-    return eval('{}(parser)'.format(arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(arg)) 

@@ -8,3 +8,4 @@ class DefaultLoss(Loss):
 
     def forward(self, *input):
         raise NotImplementedError('DefaultLoss is not implemented')
+    pass

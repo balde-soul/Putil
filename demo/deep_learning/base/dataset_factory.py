@@ -11,7 +11,7 @@ reload(standard)
 reload(project)
 
 
-def dataset_factory(args):
+def dataset_factory(args, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -20,16 +20,12 @@ def dataset_factory(args):
        data_name: the main type of the data
        data_source: from standard or project
     '''
-    def _combine(source, name, target):
-        target = '{} {}.{}'.format(target, source, name)
-        return True
-    dataset = ''
-    [_combine(source, name, target) for source, name in zip(args.dataset_sources, args.dataset_names)]
-    logger.info('augs: {}'.format(target))
-    return [eval('{}.{}(args)'.format(aug_source, aug_name)) for aug_source, aug_name in zip(args.aug_sources, args.aug_names)]
+    model = '{}.{}'.format(args.dataset_sources[property_type], args.dataset_names[property_type])
+    logger.info('dataset: {}'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
 
-def dataset_arg_factory(parser, source, name):
+def dataset_arg_factory(parser, source, name, property_type='', **kwargs):
     arg = '{}.{}Arg'.format(source, name)
     logger.info('dataset_arg: {}'.format(arg))
-    return eval('{}(parser)'.format(arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(arg)) 
