@@ -177,9 +177,13 @@ def get_the_saved_epoch(train_time, path):
     pass
 
 if __name__ == '__main__':
+    import os
     import Putil.base.arg_base as pab
     import Putil.base.save_fold_base as psfb
-    import os
+    from Putil.demo.deep_learning.base import horovod
+    framework = os.environ.get('framework')
+    hvd = horovod.horovod(framework)
+    hvd.init()
     ppa = pab.ProjectArg(save_dir='./result', log_level='Info', debug_mode=True, config='')
     #ppa.parser.add_argument('--data_name', action='store', type=str, default='DefaultData', \
     #    help='the name of the data, used in the data_factory, see the util.data_factory')
@@ -255,7 +259,6 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
     from Putil.demo.deep_learning.base import recorder_factory as RecorderFactory
     from Putil.demo.deep_learning.base import util
-    from Putil.demo.deep_learning.base import horovod
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
@@ -358,8 +361,6 @@ if __name__ == '__main__':
     # : the base information set
     ppa.parser.add_argument('--seed', action='store', type=int, default=66, \
         help='the seed for the random')
-    ppa.parser.add_argument('--framework', action='store', type=str, default='torch', \
-        help='specify the framework used')
     # debug
     ppa.parser.add_argument('--remote_debug', action='store_true', default=False, \
         help='setup with remote debug(blocked while not attached) or not')
@@ -469,12 +470,11 @@ if __name__ == '__main__':
     args.recorder_name = recorder_name
     args.accumulated_opt_name = accumulated_opt_name
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in args.gpus]
+    args.framework = framework
 
     import Putil.base.logger as plog
     reload(plog)
 
-    hvd = horovod.horovod(args)
-    hvd.init()
     empty_tensor = BaseOperationFactory.empty_tensor_factory(args)()
     # the method for remote debug
     if args.remote_debug and hvd.rank() == 0:

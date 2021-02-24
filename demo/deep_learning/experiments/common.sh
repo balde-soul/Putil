@@ -145,6 +145,7 @@ fi
 
 declare -A sources_names
 sources_names=(
+[framework]=torch []
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce

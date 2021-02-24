@@ -1,11 +1,11 @@
 # coding=utf-8
 
 
-def horovod(args):
-    if args.framework == 'torch':
+def horovod(framework):
+    if framework == 'torch':
         import horovod.torch as hvd
         return hvd
-    elif args.framework == 'tf':
+    elif framework == 'tf':
         import horovod.tensorflow as hvd
         return hvd
     pass

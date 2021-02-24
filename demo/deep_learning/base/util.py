@@ -449,7 +449,6 @@ def complete_environ(source_dict, target_dict, default_content):
 def get_module(module_dict, target=''):
     return module_dict[target]
 
-
 def Torchis_cudable(object):
     is_cudable = isinstance(object, Module)
     TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
