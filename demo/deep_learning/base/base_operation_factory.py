@@ -72,15 +72,6 @@ def load_deployed(args):
 def generate_model_element_factory(args):
     return eval('{}_generate_model_element'.format(args.framework))
 
-def empty_tensor_factory(framework, **kwargs):
-    def generate_empty_tensor_factory_func():
-        if framework == 'torch':
-            return standard.torch_generate_empty_tensor
-        else:
-            raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
-        pass
-    return generate_empty_tensor_factory_func
-
 def combine_optimization_factory(args):
     temp_args = copy.deepcopy(args)
     def generate_combine_optimization_factory_func():

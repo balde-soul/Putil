@@ -26,7 +26,6 @@ export K_decode_name=DefaultDecode
 source ./experiments/common.sh
 horovodrun -np $horovod_np_arg -H $horovod_H_arg --start-timeout=100 python main.py \
 --gpus $gpus_arg \
-$remote_debug_arg \
 $log_level_arg \
 $clean_train_time_arg \
 $train_name_arg \

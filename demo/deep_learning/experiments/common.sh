@@ -108,13 +108,13 @@ for (( i=0;i<${#gpus[@]};i++ )); do
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
 
-# remote_debug 相关解析
-if [ $remote_debug ] && ([ $remote_debug == 'true' ] || [ $remote_debug == 'True' ]); then
-    echo "set remote_debug mode"
-    remote_debug_arg=--remote_debug
-else
-    remote_debug_arg=
-fi
+## remote_debug 相关解析
+#if [ $remote_debug ] && ([ $remote_debug == 'true' ] || [ $remote_debug == 'True' ]); then
+#    echo "set remote_debug mode"
+#    remote_debug_arg=--remote_debug
+#else
+#    remote_debug_arg=
+#fi
 
 # log_level 相关解析
 if [ $log_level ]; then
@@ -145,7 +145,8 @@ fi
 
 declare -A sources_names
 sources_names=(
-[framework]=torch []
+[framework]=torch [name]='' [remote_debug]=False [save_dir]='./result' 
+[weight_path]=None [weight_epoch]=None [debug]=False [stage]=Train
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce

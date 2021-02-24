@@ -111,7 +111,7 @@ def evaluate(epoch):
     ret = run_train_stage.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             evaluate_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
-    if util.train_stage(args):
+    if util_with_args.train_stage(args):
         if args.debug:
             if epoch == 0:
                 # 当在all_process_test时，第二个epoch返回stop为True
@@ -181,9 +181,26 @@ if __name__ == '__main__':
     import Putil.base.arg_base as pab
     import Putil.base.save_fold_base as psfb
     from Putil.demo.deep_learning.base import horovod
+    from Putil.demo.deep_learning.base import util
+    from Putil.demo.deep_learning.base import util_with_env
     framework = os.environ.get('framework')
+    remote_debug = os.environ.get('remote_debug', False)
     hvd = horovod.horovod(framework)
     hvd.init()
+    empty_tensor = BaseOperationFactory.empty_tensor_factory(framework)()
+    # the method for remote debug
+    if remote_debug and hvd.rank() == 0:
+        import ptvsd
+        host = '127.0.0.1'
+        port = 12345
+        ptvsd.enable_attach(address=(host, port), redirect_output=True)
+        if __name__ == '__main__':
+            print('waiting for remote attach')
+            ptvsd.wait_for_attach()
+            pass
+        pass
+    if remote_debug:
+        hvd.broadcast_object(empty_tensor(), 0, 'sync_waiting_for_the_attach')
     ppa = pab.ProjectArg(save_dir='./result', log_level='Info', debug_mode=True, config='')
     #ppa.parser.add_argument('--data_name', action='store', type=str, default='DefaultData', \
     #    help='the name of the data, used in the data_factory, see the util.data_factory')
@@ -258,7 +275,7 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import fit_to_decode_input_factory as FitToDecodeInputFactory
     from Putil.demo.deep_learning.base import model_factory as ModelFactory
     from Putil.demo.deep_learning.base import recorder_factory as RecorderFactory
-    from Putil.demo.deep_learning.base import util
+    from Putil.demo.deep_learning.base import util_with_args
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
     #======================================这些是需要reload的=============================================>
@@ -471,24 +488,11 @@ if __name__ == '__main__':
     args.accumulated_opt_name = accumulated_opt_name
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in args.gpus]
     args.framework = framework
+    args.remote_debug = remote_debug
 
     import Putil.base.logger as plog
     reload(plog)
 
-    empty_tensor = BaseOperationFactory.empty_tensor_factory(args)()
-    # the method for remote debug
-    if args.remote_debug and hvd.rank() == 0:
-        import ptvsd
-        host = '127.0.0.1'
-        port = 12345
-        ptvsd.enable_attach(address=(host, port), redirect_output=True)
-        if __name__ == '__main__':
-            print('waiting for remote attach')
-            ptvsd.wait_for_attach()
-            pass
-        pass
-    if args.remote_debug:
-        hvd.broadcast_object(empty_tensor(), 0, 'sync_waiting_for_the_attach')
     # 生成存储位置，更新args.save_dir, 让server与worker都在同一save_dir
     util.make_sure_the_save_dir(args)
     # 删除clear_train指定的train_time结果
@@ -513,7 +517,7 @@ if __name__ == '__main__':
     plog.PutilLogConfig.config_format(plog.FormatRecommend)
     plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
     plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
-        'train.log' if util.train_stage(args) else 'evaluate.log' if util.evaluate_stage(args) else 'test.log'), mode='a')
+        'train.log' if util_with_args.train_stage(args) else 'evaluate.log' if util_with_args.evaluate_stage(args) else 'test.log'), mode='a')
     plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
     root_logger = plog.PutilLogConfig('train').logger()
     root_logger.setLevel(log_level)
@@ -555,9 +559,9 @@ if __name__ == '__main__':
         pass
     args.dataloader_deterministic_work_init_fn = _init_fn
     # : set the args item
-    checkpoint = BaseOperationFactory.checkpoint_factory(args)() if util.train_stage(args) else None
-    save = BaseOperationFactory.save_factory(args)() if util.train_stage(args) else None
-    deploy = BaseOperationFactory.deploy_factory(args)() if util.train_stage else None
+    checkpoint = BaseOperationFactory.checkpoint_factory(args)() if util_with_args.train_stage(args) else None
+    save = BaseOperationFactory.save_factory(args)() if util_with_args.train_stage(args) else None
+    deploy = BaseOperationFactory.deploy_factory(args)() if util_with_args.train_stage(args) else None
     load_saved = BaseOperationFactory.load_saved_factory(args)()
     load_checkpointed = BaseOperationFactory.load_checkpointed_factory(args)()
     is_cudable = BaseOperationFactory.is_cudable_factory(args)()
@@ -568,7 +572,7 @@ if __name__ == '__main__':
     if hvd.rank() == 0:
         writer = SummaryWriter(args.save_dir, filename_suffix='-{}'.format(args.train_time))
     # prepare the GPU
-    if util.iscuda(args):
+    if util_with_args.iscuda(args):
         # Horovod: pin GPU to local rank. TODO: rank is the global process index, local_rank is the local process index in a machine
         # such as -np 6 -H *.1:1 *.2:2 *.3:3 would get the rank: 0, 1, 2, 3, 4, 5 and the local rank: {[0], [0, 1], [0, 1, 2]}
         gpu_accumualation = [len(gs) for gs in args.gpus]
@@ -602,7 +606,7 @@ if __name__ == '__main__':
     fit_to_decode_input = {property_type: FitToDecodeInputFactory.fit_to_decode_input_factory(args, args.fit_to_decode_input_sources[property_type], args.fit_to_decode_input_names[property_type], property_type)() for property_type in args.fit_to_decode_input_names.keys()}
     fit_to_decode_input = util.get_module(fit_to_decode_input)
     fit_decode_to_result = FitDecodeToResultFactory.fit_decode_to_result_factory(args)() # 从decode的结果生成通用的result格式，可供dataset直接保存
-    if util.train_stage(args):
+    if util_with_args.train_stage(args):
         # : build the backbone
         backbone = {property_type: BackboneFactory.backbone_factory(args, args.backbone_sources[property_type], args.backbone_names[property_type], property_type)() for property_type in args.backbone_names.keys()}
         backbone = util.get_module(backbone)
@@ -738,7 +742,7 @@ if __name__ == '__main__':
         test_loader = util.get_module(test_loader)
     test_stage() if util.test_stage(args) else None # 如果train_off为True 同时test_off为False，则为util.test_stage，util.evaluate_stage与util.test_stage可以同时存在
     evaluate_stage() if util.evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为util.evaluate_stage，util.evaluate_stage与util.test_stage可以同时存在
-    if util.train_stage(args):
+    if util_with_args.train_stage(args):
         # 如果train_off不为True，就是util.train_stage，只是util.train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:
             assert np.sum([args.retrain_mode_continue_train, args.retrain_mode_reset_train])
