@@ -1,4 +1,5 @@
 # conding=utf-8
+from importlib import reload
 import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('data_sampler_factory').logger()
@@ -6,7 +7,6 @@ logger.setLevel(plog.DEBUG)
 
 from Putil.demo.deep_learning.base import data_sampler as standard
 from util import data_sampler as project
-from importlib import reload
 reload(standard)
 reload(project)
 

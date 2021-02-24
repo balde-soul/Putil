@@ -1,4 +1,5 @@
 # coding=utf-8
+from importlib import reload
 import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('auto_stop_factory').logger()
@@ -6,7 +7,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.auto_stop as standard
 from util import auto_stop as project
-from importlib import reload
 reload(standard)
 reload(project)
 

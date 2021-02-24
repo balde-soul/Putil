@@ -1,7 +1,6 @@
 # coding=utf-8
 import copy
 from colorama import Fore
-#from pycocotools.cocoeval import COCOeval
 import matplotlib.pyplot as plt
 import skimage.io as io
 import pylab
@@ -37,16 +36,10 @@ COCOBaseLogger.setLevel(plog.DEBUG)
 
 from Putil.data import cocoeval
 reload(cocoeval)
-COCOeval = cocoeval.CustomCOCOeval
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
 reload(bbox_convertor)
-from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
 from Putil.data.util.vision_util import detection_util
-rect_angle_over_border = detection_util.rect_angle_over_border
-clip_box = detection_util.clip_box_using_image
 reload(detection_util)
-rect_angle_over_border = detection_util.rect_angle_over_border
-clip_box = detection_util.clip_box_using_image
 import Putil.data.common_data as pcd
 reload(pcd)
 
@@ -531,7 +524,7 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
         
             sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
             #result_image_ids = sub_detection_result_coco.getImgIds()
-            cocoEval = COCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
+            cocoEval = cocoeval.CustomCOCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
             cocoEval.params.imgIds  = image_ids if image_ids is not None else cocoEval.params.imgIds
             cocoEval.params.catIds = cat_ids if cat_ids is not None else cocoEval.params.catIds
             cocoEval.params.iouThrs = ious if ious is not None else cocoEval.params.iouThrs
@@ -726,11 +719,11 @@ class COCOData(COCOBase):
                 pass
             #for box in bboxes:
             #    cv2.rectangle(image, (box[0] - box[])
-            #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
+            #assert detection_util.rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
             #if index == 823:
             #    pass
             if len(bboxes) != 0:
-                bboxes = clip_box(bboxes, image)
+                bboxes = detection_util.clip_box_using_image(bboxes, image)
                 classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
                 bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
             datas[COCOBase.base_information_index] = base_information

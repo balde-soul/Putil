@@ -1,4 +1,5 @@
 # coding=utf-8
+from enum import Enum
 from importlib import reload
 import copy
 import cv2
@@ -6,9 +7,8 @@ import numpy as np
 import Putil.base.logger as plog
 import Putil.data.convert_to_input as convert_to_input
 reload(convert_to_input)
-IOConvertor = convert_to_input.IOConvertor
 import Putil.function.gaussian as Gaussion
-from enum import Enum
+reload(Gaussion)
 
 bbox_convertor_logger = plog.PutilLogConfig('bbox_convertor').logger()
 bbox_convertor_logger.setLevel(plog.DEBUG)
@@ -59,11 +59,11 @@ class BBoxToBBoxTranslator:
         return self._translate_func(*args)
     pass
 
-class BBoxConvertToInputMethod(IOConvertor):
+class BBoxConvertToInputMethod(convert_to_input.IOConvertor):
     def __init__(self, format):
         '''
         '''
-        IOConvertor.__init__(self, IOConvertor.IODirection.Unknow)
+        convert_to_input.IOConvertor.__init__(self, convert_to_input.IOConvertor.IODirection.Unknow)
         pass
 
     def __call__(self, *args):
@@ -71,7 +71,7 @@ class BBoxConvertToInputMethod(IOConvertor):
     pass
 
 
-class CenterNerIOConvertor(IOConvertor):
+class CenterNerIOConvertor(convert_to_input.IOConvertor):
     def __init__(
         self, 
         sample_rate, 
@@ -90,13 +90,13 @@ class CenterNerIOConvertor(IOConvertor):
          the downsample rate of the CenterNet, the label
          @param[in] class_amount
          @param[in] io
-         take a look at IOConvertor.__init__.param{io}
+         take a look at convert_to_input.IOConvertor.__init__.param{io}
          @param[in] input_bbox_format default: BBoxToBBox.BBoxFormat.LTWHCR
          @param[in] sigma default: [[0.5, 0.0], [0.0, 0.5]]
          @param[in] mu default: [[0.0], [0.0]]
          @param[in] resolution default: 0.05
         '''
-        IOConvertor.__init__(self, io)
+        convert_to_input.IOConvertor.__init__(self, io)
         self._sample_rate = sample_rate
         self._class_amount = class_amount
         self._weight_func = Gaussion.Gaussian()
@@ -107,14 +107,14 @@ class CenterNerIOConvertor(IOConvertor):
 
         self._format_translator = BBoxToBBoxTranslator(input_bbox_format, BBoxToBBoxTranslator.BBoxFormat.LTWHCR)
 
-        assert self._io != IOConvertor.IODirection.Unknow
+        assert self._io != convert_to_input.IOConvertor.IODirection.Unknow
         pass
 
     def __call__(self, *args):
         '''
          @brief generate the box_label from the input
          @param[in] args
-         [0] image[IOConvertor.IODirection.InputConvertor]
+         [0] image[convert_to_input.IOConvertor.IODirection.InputConvertor]
          image with shape [height, width, channel] in numpy
          [1] boxes
          [[top_left_col_i, top_left_row_i, width, height], ...]
@@ -125,7 +125,7 @@ class CenterNerIOConvertor(IOConvertor):
          @ret 
          [0]
         '''
-        if self._io == IOConvertor.IODirection.InputConvertion:
+        if self._io == convert_to_input.IOConvertor.IODirection.InputConvertion:
             image = args[0]
             boxes = args[1]
             classes = args[2]
@@ -220,7 +220,7 @@ class CenterNerIOConvertor(IOConvertor):
 BBoxConvertToCenterBox = CenterNerIOConvertor
 
 
-class CenterNerIOConvertor(IOConvertor):
+class CenterNerIOConvertor(convert_to_input.IOConvertor):
     def __init__(
         self, 
         sample_rate, 
@@ -239,13 +239,13 @@ class CenterNerIOConvertor(IOConvertor):
          the downsample rate of the CenterNet, the label
          @param[in] class_amount
          @param[in] io
-         take a look at IOConvertor.__init__.param{io}
+         take a look at convert_to_input.IOConvertor.__init__.param{io}
          @param[in] input_bbox_format default: BBoxToBBox.BBoxFormat.LTWHCR
          @param[in] sigma default: [[0.5, 0.0], [0.0, 0.5]]
          @param[in] mu default: [[0.0], [0.0]]
          @param[in] resolution default: 0.05
         '''
-        IOConvertor.__init__(self, io)
+        convert_to_input.IOConvertor.__init__(self, io)
         self._sample_rate = sample_rate
         self._class_amount = class_amount
         self._weight_func = Gaussion.Gaussian()
@@ -256,14 +256,14 @@ class CenterNerIOConvertor(IOConvertor):
 
         self._format_translator = BBoxToBBoxTranslator(input_bbox_format, BBoxToBBoxTranslator.BBoxFormat.LTWHCR)
 
-        assert self._io != IOConvertor.IODirection.Unknow
+        assert self._io != convert_to_input.IOConvertor.IODirection.Unknow
         pass
 
     def __call__(self, *args):
         '''
          @brief generate the box_label from the input
          @param[in] args
-         [0] image[IOConvertor.IODirection.InputConvertor]
+         [0] image[convert_to_input.IOConvertor.IODirection.InputConvertor]
          image with shape [height, width, channel] in numpy
          [1] boxes
          [[top_left_col_i, top_left_row_i, width, height], ...]
@@ -274,7 +274,7 @@ class CenterNerIOConvertor(IOConvertor):
          @ret 
          [0]
         '''
-        if self._io == IOConvertor.IODirection.InputConvertion:
+        if self._io == convert_to_input.IOConvertor.IODirection.InputConvertion:
             image = args[0]
             boxes = args[1]
             classes = args[2]

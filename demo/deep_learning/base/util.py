@@ -24,9 +24,7 @@ TorchIsCudableLogger.setLevel(plog.DEBUG)
 import Putil.demo.deep_learning.base.horovod as horovod
 reload(horovod)
 from Putil.trainer import util
-Stage = util.Stage
 reload(util)
-Stage = util.Stage
 
 # tensor operation
 def torch_generate_empty_tensor():
