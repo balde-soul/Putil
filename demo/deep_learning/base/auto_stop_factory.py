@@ -34,4 +34,4 @@ def auto_stop_arg_factory(parser, source, name, property_type='', **kwargs):
     auto_stop_arg = '{0}.{1}Arg'.format(source, name)
     logger.info('auto_stop_arg: {}|{}'.format(auto_stop_arg, property_type))
     #import pdb; pdb.set_trace()
-    return eval('{}(parser, property_type, **kwargs)'.format(auto_stop_arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(auto_stop_arg))

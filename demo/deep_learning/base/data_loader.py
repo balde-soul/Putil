@@ -11,7 +11,7 @@ logger.setLevel(plog.DEBUG)
 torch_DataLoader_logger = logger.getChild('torch_DataLoader')
 torch_DataLoader_logger.setLevel(plog.DEBUG)
 
-from Putil.demo.deep_learning.base import util
+from Putil.trainer import util
 reload(util)
 
 

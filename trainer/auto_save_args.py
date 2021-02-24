@@ -4,6 +4,7 @@ import argparse
 
 
 def generate_args(parser, property_type=''):
+    #import pdb; pdb.set_trace()
     parser.add_argument('--{}auto_save_mode'.format(property_type), type=str, action='store', default='max', help='the AutoSaverImprove, default: True')
     parser.add_argument('--{}auto_save_delta'.format(property_type), type=float, action='store', default=0.001, help='the AutoSaverDelta, default: 0.001')
     parser.add_argument('--{}auto_save_keep_save_range'.format(property_type), type=list, action='store', default=[], help='the AutoSaverKeepSaveRange, default: []')

@@ -26,4 +26,4 @@ def DefaultAutoStop(args, property_type='', **kwargs):
 
 
 def DefaultAutoStopArg(parser, property_type='', **kwargs):
-    _DefaultAutoStop.generate_args(parser)
+    _DefaultAutoStop.generate_args(parser, property_type)

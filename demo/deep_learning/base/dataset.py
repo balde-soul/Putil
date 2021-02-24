@@ -10,7 +10,7 @@ logger.setLevel(plog.DEBUG)
 COCOLogger = logger.getChild('COCO')
 COCOLogger.setLevel(plog.DEBUG)
 import Putil.data.coco as coco
-from Putil.demo.deep_learning.base.util import Stage
+from Putil.trainer.util import Stage
 
 
 def common_dataset_arg(parser, property_type='', **kwargs):

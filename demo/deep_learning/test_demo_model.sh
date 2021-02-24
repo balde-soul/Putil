@@ -7,6 +7,8 @@
 export K_backbone_name=DefaultBackbone
 export K_backend_name=DefaultBackend
 export k_optimization_name=DefaultOptimization
+export K_auto_save_name=DefaultAutoSave
+export K_auto_stop_name=DefaultAutoStop
 export K_lr_reduce_name=DefaultLrReduce
 export K_aug_name=DefaultAug 
 export K_loss_name=DefaultLoss

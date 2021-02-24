@@ -38,8 +38,8 @@ class LrReduceProvideReduceMethod(lr_reduce):
 
 class LrReduceWithoutLrInit(lr_reduce):
     @staticmethod 
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod
@@ -232,8 +232,8 @@ class LrReduceWithoutLrInit(lr_reduce):
 # once the reduce worked, the reducer would coll down for lr_cool_down epoch, which not
 class LrReduce(lr_reduce):
     @staticmethod 
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod

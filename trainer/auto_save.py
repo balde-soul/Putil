@@ -46,8 +46,8 @@ class AutoSave(auto_save):
         return 'delta : {0}'.format(delta)
 
     @staticmethod
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod

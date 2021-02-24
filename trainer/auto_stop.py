@@ -43,8 +43,8 @@ class auto_stop(ABC):
 
 class AutoStop:
     @staticmethod
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod
