@@ -1,9 +1,12 @@
 # coding=utf-8
+from importlib import reload
 import copy
 import cv2
 import numpy as np
 import Putil.base.logger as plog
-from Putil.data.io_convertor import IOConvertor
+import Putil.data.convert_to_input as convert_to_input
+reload(convert_to_input)
+IOConvertor = convert_to_input.IOConvertor
 import Putil.function.gaussian as Gaussion
 from enum import Enum
 

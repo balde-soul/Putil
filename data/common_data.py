@@ -2,6 +2,9 @@
 ##@package common_data
 #提供Dataset基本类与功能
 #
+
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
 from importlib import reload
 from enum import Enum
 import random
@@ -34,11 +37,14 @@ GeneratedDataLogger.setLevel(plog.DEBUG)
 import Putil.data.convert_to_input as convert_to_input
 reload(convert_to_input)
 import Putil.data.data_type_adapter as data_type_adapter
-reload(convert_to_input)
+reload(data_type_adapter)
 import Putil.data.fit_all_common_data as fit_all_common_data
 reload(fit_all_common_data)
 import Putil.trainer.util as util
 reload(util)
+import Putil.data.aug as Aug
+reload(Aug)
+
 
 
 class CommonDataManager(BaseManager):
@@ -116,9 +122,6 @@ class ConvertPostOperation:
     @abstractmethod
     def __call__(self, *args):
         return args
-
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 
 
 class CommonData(metaclass=ABCMeta):
@@ -385,8 +388,6 @@ class CommonData(metaclass=ABCMeta):
     def __len__(self):
         return len(self._data_field)
     pass
-
-import Putil.data.aug as Aug
 
 ##该类提供保存数据集单元数据的结构，比如一个固化数据集有一个单一标记表示每一个数据单元，而DatasetField表示了该数据单元的扩展
 #为什么要用一个DatasetField来表示呢，这是为了方便以后的扩展，注意DatasetField与CommonData中的data_field的区别

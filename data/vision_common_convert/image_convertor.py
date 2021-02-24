@@ -1,11 +1,14 @@
 # coding=utf-8
-
+from importlib import reload
+from enum import Enum
 import cv2
 import numpy as np
 import Putil.base.logger as plog
+reload(plog)
 import Putil.data.convert_to_input as convert_to_input
+reload(convert_to_input)
 import Putil.function.gaussian as Gaussion
-from enum import Enum
+reload(Gaussion)
 
 bbox_convertor_logger = plog.PutilLogConfig('bbox_convertor').logger()
 bbox_convertor_logger.setLevel(plog.DEBUG)
