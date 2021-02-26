@@ -1,6 +1,5 @@
 # coding=utf-8
 from colorama import Fore
-from importlib import reload
 from torch.utils.data import DataLoader as data_loader
 import Putil.base.logger as plog
 from abc import abstractmethod, ABCMeta
@@ -12,7 +11,6 @@ torch_DataLoader_logger = logger.getChild('torch_DataLoader')
 torch_DataLoader_logger.setLevel(plog.DEBUG)
 
 from Putil.trainer import util
-reload(util)
 
 
 class DataLoader(metaclass=ABCMeta):

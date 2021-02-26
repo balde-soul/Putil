@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.encode as standard
 from util import encode as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def encode_factory(args, property_type='', **kwargs):

@@ -8,9 +8,6 @@ IndicatorStatisticFactoryLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.indicator_statistic as standard
 from util import indicator_statistic as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def indicator_statistic_factory(args, source, name, property_type='', **kwargs):

@@ -4,9 +4,6 @@ logger = plog.PutilLogConfig('optimization_factory').logger()
 logger.setLevel(plog.DEBUG)
 from Putil.demo.deep_learning.base import optimization as standard
 from util import optimization as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def optimization_factory(args, property_type='', **kwargs):

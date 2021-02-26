@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
+from colorama import Fore
 import numpy as np
-from importlib import reload
 import re
 from colorama import Fore
 import sys
@@ -91,7 +91,7 @@ def do_epoch_end_process(epoch_result):
     return stop, lr_reduce.LrNow, save
 
 def train(epoch):
-    ret = run_train_stage.train_stage_common(args, util.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
+    ret = run_train_stage.train_stage_common(args, util_with_args.Stage.Train, epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, \
          loss, optimization, train_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if args.evaluate_off:
         if args.debug:
@@ -108,7 +108,7 @@ def train(epoch):
         return False,
 
 def evaluate(epoch):
-    ret = run_train_stage.train_stage_common(args, util.Stage.TrainEvaluate if util.evaluate_stage(args) else util.Stage.Evaluate, \
+    ret = run_train_stage.train_stage_common(args, util_with_args.Stage.TrainEvaluate if util.evaluate_stage(args) else util_with_args.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             evaluate_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if util_with_args.train_stage(args):
@@ -177,17 +177,21 @@ def get_the_saved_epoch(train_time, path):
     pass
 
 if __name__ == '__main__':
+    import argparse
     import os
     import Putil.base.arg_base as pab
     import Putil.base.save_fold_base as psfb
     from Putil.demo.deep_learning.base import horovod
     from Putil.demo.deep_learning.base import util
     from Putil.demo.deep_learning.base import util_with_env
-    framework = os.environ.get('framework')
-    remote_debug = os.environ.get('remote_debug', False)
+    import Putil.base.logger as plog
+    remote_debug = util.fix_env_param(os.environ['remote_debug'])
+    framework = util.fix_env_param(os.environ['framework'])
+    util.print_env_param(remote_debug, 'remote_debug')
+    util.print_env_param(framework, 'framework')
     hvd = horovod.horovod(framework)
     hvd.init()
-    empty_tensor = BaseOperationFactory.empty_tensor_factory(framework)()
+    empty_tensor = util.empty_tensor_factory(framework)()
     # the method for remote debug
     if remote_debug and hvd.rank() == 0:
         import ptvsd
@@ -201,57 +205,52 @@ if __name__ == '__main__':
         pass
     if remote_debug:
         hvd.broadcast_object(empty_tensor(), 0, 'sync_waiting_for_the_attach')
-    ppa = pab.ProjectArg(save_dir='./result', log_level='Info', debug_mode=True, config='')
-    #ppa.parser.add_argument('--data_name', action='store', type=str, default='DefaultData', \
-    #    help='the name of the data, used in the data_factory, see the util.data_factory')
-    #ppa.parser.add_argument('--data_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.data; project: from this project')
-    #ppa.parser.add_argument('--encode_name', action='store', type=str, default='DefalutEncode', \
-    #    help='the name of the encode in the encode_factory, see the util.encode_factory')
-    #ppa.parser.add_argument('--encode_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.encode; project: from this project')
-    #ppa.parser.add_argument('--decode_name', action='store', type=str, default='DefaultDecode', \
-    #    help='the name of the decode in the decode_factory, see the util.decode_factory')
-    #ppa.parser.add_argument('--decode_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.decode; project: from this project')
-    #ppa.parser.add_argument('--auto_save_name', type=str, action='store', default='', \
-    #    help='the name of the auto saver')
-    #ppa.parser.add_argument('--auto_save_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.auto_save; project: from this project')
-    #ppa.parser.add_argument('--auto_stop_name', type=str, action='store', default='', \
-    #    help='the name of the auto stoper')
-    #ppa.parser.add_argument('--auto_stop_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.auto_stop; project: from this project')
-    #ppa.parser.add_argument('--lr_reduce_name', type=str, action='store', default='', \
-    #    help='the name of the lr reducer')
-    #ppa.parser.add_argument('--lr_reduce_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.lr_reduce; project: from this project')
-    #ppa.parser.add_argument('--optimization_name', type=str, action='store', default=None, \
-    #    help='the name of the optimization')
-    #ppa.parser.add_argument('--optimization_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.optimization; project: from this project')
-    # setting from the environment
-    #ppa.parser.add_argument('--backbone_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.backbones; project: from this project')
-    #ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
-    #    help='specify the backbone name')
-    #ppa.parser.add_argument('--backbone_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.backbones; project: from this project')
-    #ppa.parser.add_argument('--backbone_name', type=str, default='', action='store', \
-    #    help='specify the backbone name')
-    #ppa.parser.add_argument('--loss_name', type=str, default='DefaultLoss', action='store', \
-    #    help='the name of the loss in the loss_factory, see the util.loss_factory')
-    #ppa.parser.add_argument('--loss_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.loss; project: from this project')
-    #ppa.parser.add_argument('--indicator_name', type=str, default='DefaultIndicator', action='store', \
-    #    help='the name of the indicator in the indicator_factory, see the util.indicator_factory')
-    #ppa.parser.add_argument('--indicator_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.indicator; project: from this project')
-    #ppa.parser.add_argument('--indicator_statistic_name', type=str, default='', action='store', \
-    #    help='the name of the indicator_statistic in the indicator_statistic_factory, see the util.indicator_statistic_factory')
-    #ppa.parser.add_argument('--indicator_statistic_source', type=str, default='standard', action='store', \
-    #    help='standard: from the Putil.demo.base.deep_learning.indicator_statistic; project: from this project')
-    #<tag=====================================这些是需要reload的==============================================
+    name = util.fix_env_param(os.environ['name'])
+    run_stage = util.fix_env_param(os.environ['run_stage'])
+    save_dir = util.fix_env_param(os.environ['save_dir'])
+    save_dir = '.'.join(save_dir)
+    weight_path = util.fix_env_param(os.environ['weight_path'])
+    weight_epoch = util.fix_env_param(os.environ['weight_epoch'])
+    train_name = util.fix_env_param(os.environ['train_name'])
+    debug = util.fix_env_param(os.environ['debug'])
+    clean_train = util.fix_env_param(os.environ['clean_train'])
+    # 生成存储位置，更新args.save_dir, 让server与worker都在同一save_dir
+    save_dir = util.make_sure_the_save_dir(name, run_stage, save_dir, weight_path, weight_epoch, debug, framework)
+    log_level = util.fix_env_param(os.environ['log_level'])
+    # 删除clear_train指定的train_time结果
+    if clean_train is not None:
+        for _train_time in clean_train:
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_before_checking_clean')
+            make_sure_clean_the_train_result = input(Fore.RED + 'clean the train time {} in {} (y/n):'.format(_train_time, save_dir) + Fore.RESET) if hvd.rank() == 0 else False
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_checking_clean')
+            util.clean_train_result(save_dir, _train_time) if make_sure_clean_the_train_result and hvd.rank() == 0 else None
+            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_clean')
+            pass
+        pass
+    # 确定当前的train_time, 需要args.save_dir，生成args.train_time
+    train_time = util.make_sure_the_train_time(run_stage, save_dir, framework)
+    save_dir = util.subdir_base_on_train_time(save_dir, train_time, train_name)
+    hvd.broadcast_object(empty_tensor(), 0, 'sync_before_make_save_dir')
+    assert not os.path.exists(save_dir) if hvd.rank() == 0 else True
+    os.mkdir(save_dir) if hvd.rank() == 0 else None
+    hvd.broadcast_object(empty_tensor(), 0, 'sync_after_make_save_dir')
+    print('rank {} train time {} save to {}'.format(hvd.rank(), train_time, save_dir))
+    log_level = plog.LogReflect(log_level).Level
+    plog.PutilLogConfig.config_format(plog.FormatRecommend)
+    plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
+    plog.PutilLogConfig.config_file_handler(filename=os.path.join(save_dir, \
+        'train.log' if run_stage == util.RunStage.Train else 'evaluate.log' if stage == util.RunStage.Evaluate else 'test.log'), mode='a')
+    plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
+    root_logger = plog.PutilLogConfig('train').logger()
+    root_logger.setLevel(log_level)
+    MainLogger = root_logger.getChild('Trainer')
+    MainLogger.setLevel(log_level)
+    from Putil.base.arg_operation import args_save as ArgsSave
+    from util.run_train_stage import train_stage_common 
+    from Putil.data import aug as pAug
+    from util import run_train_stage
+    # 确定性设置
+    from Putil.base import base_setting
     from Putil.demo.deep_learning.base import auto_save_factory as AutoSaveFactory
     from Putil.demo.deep_learning.base import auto_stop_factory as AutoStopFactory
     from Putil.demo.deep_learning.base import lr_reduce_factory as LrReduceFactory
@@ -278,8 +277,8 @@ if __name__ == '__main__':
     from Putil.demo.deep_learning.base import util_with_args
     from Putil.demo.deep_learning.base import base_operation_factory as BaseOperationFactory
     from Putil.demo.deep_learning.base import accumulated_opt_factory as AccumulatedOptFactory
-    #======================================这些是需要reload的=============================================>
-    horovod.horovod_arg(ppa.parser)
+    parser = argparse.ArgumentParser()
+    horovod.horovod_arg(parser)
     auto_save_sources = util.get_relatived_environ(base_auto_save_source_property_type)
     auto_stop_sources = util.get_relatived_environ(base_auto_stop_source_property_type)
     lr_reduce_sources = util.get_relatived_environ(base_lr_reduce_source_property_type)
@@ -349,94 +348,79 @@ if __name__ == '__main__':
     model_name = os.environ.get('model_name', 'DefaultModel')
     recorder_name = os.environ.get('recorder_name', 'DefaultRecorder')
     accumulated_opt_name = os.environ.get('accumulated_opt_name', 'DefaultAccumulatedOpt')
-    [AutoSaveFactory.auto_save_arg_factory(ppa.parser, auto_save_sources[property_type], auto_save_names[property_type], property_type) for property_type in auto_save_names.keys()]
-    [AutoStopFactory.auto_stop_arg_factory(ppa.parser, auto_stop_sources[property_type], auto_stop_names[property_type], property_type) for property_type in auto_stop_names.keys()]
-    [LrReduceFactory.lr_reduce_arg_factory(ppa.parser, lr_reduce_sources[property_type], lr_reduce_names[property_type], property_type) for property_type in lr_reduce_names.keys()]
-    [DataLoaderFactory.data_loader_arg_factory(ppa.parser, data_loader_sources[property_type], data_loader_names[property_type], property_type) for property_type in data_loader_names.keys()]
-    [DataSamplerFactory.data_sampler_arg_factory(ppa.parser, data_sampler_sources[property_type], data_sampler_names[property_type], property_type) for property_type in data_sampler_names.keys()]
-    [EncodeFactory.encode_arg_factory(ppa.parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
-    [BackboneFactory.backbone_arg_factory(ppa.parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
-    [BackendFactory.backend_arg_factory(ppa.parser, backend_sources[property_type], backend_names[property_type], property_type) for property_type in backend_names.keys()]
-    [LossFactory.loss_arg_factory(ppa.parser, loss_sources[property_type], loss_names[property_type], property_type) for property_type in loss_names.keys()]
-    [IndicatorFactory.indicator_arg_factory(ppa.parser, indicator_sources[property_type], indicator_names[property_type], property_type) for property_type in indicator_names.keys()]
-    [IndicatorStatisticFactory.indicator_statistic_arg_factory(ppa.parser, indicator_statistic_sources[property_type], indicator_statistic_names[property_type]) for property_type in indicator_statistic_names.keys()]
-    [OptimizationFactory.optimization_arg_factory(ppa.parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
-    [AugFactory.aug_arg_factory(ppa.parser, aug_sources[property_type], aug_names[property_type], property_type) for property_type in aug_names.keys()]
-    [DataTypeAdapterFactory.data_type_adapter_arg_factory(ppa.parser, data_type_adapter_sources[property_type], data_type_adapter_names[property_type]) for property_type in data_type_adapter_names.keys()]
-    FitDataToInputFactory.fit_data_to_input_arg_factory(ppa.parser, fit_data_to_input_source, fit_data_to_input_name)
-    [FitToLossInputFactory.fit_to_loss_input_arg_factory(ppa.parser, fit_to_loss_input_sources[property_type], fit_to_loss_input_names[property_type], property_type) for property_type in fit_to_loss_input_names.keys()]
-    [FitToIndicatorInputFactory.fit_to_indicator_input_arg_factory(ppa.parser, fit_to_indicator_input_sources[property_type], fit_to_indicator_input_names[property_type], property_type) for property_type in fit_to_indicator_input_names.keys()]
-    [FitToDecodeInputFactory.fit_to_decode_input_arg_factory(ppa.parser, fit_to_decode_input_sources[property_type], fit_to_decode_input_names[property_type], property_type) for property_type in fit_to_decode_input_names.keys()]
-    FitDecodeToResultFactory.fit_decode_to_result_arg_factory(ppa.parser, fit_decode_to_result_source, fit_decode_to_result_name)
-    ModelFactory.model_arg_factory(ppa.parser, model_source, model_name)
+    [AutoSaveFactory.auto_save_arg_factory(parser, auto_save_sources[property_type], auto_save_names[property_type], property_type) for property_type in auto_save_names.keys()]
+    [AutoStopFactory.auto_stop_arg_factory(parser, auto_stop_sources[property_type], auto_stop_names[property_type], property_type) for property_type in auto_stop_names.keys()]
+    [LrReduceFactory.lr_reduce_arg_factory(parser, lr_reduce_sources[property_type], lr_reduce_names[property_type], property_type) for property_type in lr_reduce_names.keys()]
+    [DataLoaderFactory.data_loader_arg_factory(parser, data_loader_sources[property_type], data_loader_names[property_type], property_type) for property_type in data_loader_names.keys()]
+    [DataSamplerFactory.data_sampler_arg_factory(parser, data_sampler_sources[property_type], data_sampler_names[property_type], property_type) for property_type in data_sampler_names.keys()]
+    [EncodeFactory.encode_arg_factory(parser, encode_sources[property_type], encode_names[property_type], property_type) for property_type in encode_names.keys()]
+    [BackboneFactory.backbone_arg_factory(parser, backbone_sources[property_type], backbone_names[property_type], property_type) for property_type in backbone_names.keys()]
+    [BackendFactory.backend_arg_factory(parser, backend_sources[property_type], backend_names[property_type], property_type) for property_type in backend_names.keys()]
+    [LossFactory.loss_arg_factory(parser, loss_sources[property_type], loss_names[property_type], property_type) for property_type in loss_names.keys()]
+    [IndicatorFactory.indicator_arg_factory(parser, indicator_sources[property_type], indicator_names[property_type], property_type) for property_type in indicator_names.keys()]
+    [IndicatorStatisticFactory.indicator_statistic_arg_factory(parser, indicator_statistic_sources[property_type], indicator_statistic_names[property_type]) for property_type in indicator_statistic_names.keys()]
+    [OptimizationFactory.optimization_arg_factory(parser, optimization_sources[property_type], optimization_names[property_type], property_type) for property_type in optimization_names.keys()]
+    [AugFactory.aug_arg_factory(parser, aug_sources[property_type], aug_names[property_type], property_type) for property_type in aug_names.keys()]
+    [DataTypeAdapterFactory.data_type_adapter_arg_factory(parser, data_type_adapter_sources[property_type], data_type_adapter_names[property_type]) for property_type in data_type_adapter_names.keys()]
+    FitDataToInputFactory.fit_data_to_input_arg_factory(parser, fit_data_to_input_source, fit_data_to_input_name)
+    [FitToLossInputFactory.fit_to_loss_input_arg_factory(parser, fit_to_loss_input_sources[property_type], fit_to_loss_input_names[property_type], property_type) for property_type in fit_to_loss_input_names.keys()]
+    [FitToIndicatorInputFactory.fit_to_indicator_input_arg_factory(parser, fit_to_indicator_input_sources[property_type], fit_to_indicator_input_names[property_type], property_type) for property_type in fit_to_indicator_input_names.keys()]
+    [FitToDecodeInputFactory.fit_to_decode_input_arg_factory(parser, fit_to_decode_input_sources[property_type], fit_to_decode_input_names[property_type], property_type) for property_type in fit_to_decode_input_names.keys()]
+    FitDecodeToResultFactory.fit_decode_to_result_arg_factory(parser, fit_decode_to_result_source, fit_decode_to_result_name)
+    ModelFactory.model_arg_factory(parser, model_source, model_name)
     # data setting
-    [DatasetFactory.dataset_arg_factory(ppa.parser, dataset_sources[property_type], dataset_names[property_type], property_type) for property_type in dataset_names.keys()]
+    [DatasetFactory.dataset_arg_factory(parser, dataset_sources[property_type], dataset_names[property_type], property_type) for property_type in dataset_names.keys()]
     ## decode setting
-    [DecodeFactory.decode_arg_factory(ppa.parser, decode_sources[property_type], decode_names[property_type], property_type) for property_type in decode_names.keys()]
-    RecorderFactory.recorder_arg_factory(ppa.parser, recorder_source, recorder_name)
-    AccumulatedOptFactory.accumulated_opt_arg_factory(ppa.parser, accumulated_opt_source, accumulated_opt_name)
+    [DecodeFactory.decode_arg_factory(parser, decode_sources[property_type], decode_names[property_type], property_type) for property_type in decode_names.keys()]
+    RecorderFactory.recorder_arg_factory(parser, recorder_source, recorder_name)
+    AccumulatedOptFactory.accumulated_opt_arg_factory(parser, accumulated_opt_source, accumulated_opt_name)
     # : the base information set
-    ppa.parser.add_argument('--seed', action='store', type=int, default=66, \
+    parser.add_argument('--seed', action='store', type=int, default=66, \
         help='the seed for the random')
-    # debug
-    ppa.parser.add_argument('--remote_debug', action='store_true', default=False, \
-        help='setup with remote debug(blocked while not attached) or not')
-    ppa.parser.add_argument('--debug', action='store_true', default=False, \
-        help='run all the process in two epoch with tiny data')
-    ppa.parser.add_argument('--clean_train', type=int, nargs='+', default=None, \
-        help='if not None, the result in specified train time would be clean, need args.weight_path')
     # train evaluate test setting
     ### ~train_off and ~evaluate_off: run train stage with evaluate
     ### ~train_off and evaluate_off: run train stage without evaluate
     ### train_off and ~evaluate_off: run evaluate stage
     ### ~test_off: run test stage
-    ppa.parser.add_argument('--train_off', action='store_true', default=False, \
+    parser.add_argument('--train_off', action='store_true', default=False, \
         help='do not run train if set')
-    ppa.parser.add_argument('--evaluate_off', action='store_true', default=False, \
+    parser.add_argument('--evaluate_off', action='store_true', default=False, \
         help='do not run evaluate if set')
-    ppa.parser.add_argument('--test_off', action='store_true', default=False, \
+    parser.add_argument('--test_off', action='store_true', default=False, \
         help='do not run test if set')
     ## train set
-    ppa.parser.add_argument('--weight_decay', type=float, action='store', default=1e-4, \
+    parser.add_argument('--weight_decay', type=float, action='store', default=1e-4, \
         help='the weight decay, default is 1e-4')
-    ppa.parser.add_argument('--gpus', type=str, nargs='+', default=None, \
+    parser.add_argument('--gpus', type=str, nargs='+', default=None, \
         help='specify the gpu, this would influence the gpu set in the code')
-    ppa.parser.add_argument('--epochs', type=int, default=10, metavar='N', \
+    parser.add_argument('--epochs', type=int, default=10, metavar='N', \
         help='number of epochs to train (default: 10)')
-    ppa.parser.add_argument('--batch_size', type=int, default=64, metavar='N', \
+    parser.add_argument('--batch_size', type=int, default=64, metavar='N', \
         help='input batch size for training (default: 64)')
-    ppa.parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
+    parser.add_argument('--summary_interval', type=int, default=100, metavar='N', \
         help='how many batchees to wait before save the summary(default: 100)')
-    ppa.parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
+    parser.add_argument('--evaluate_interval', type=int, default=1, metavar='N', \
         help='how many epoch to wait before evaluate the backbone(default: 1), '\
             'test the mode while the backbone is savd, would not run evaluate while -1')
-    ppa.parser.add_argument('--evaluate_batch_size', type=int, default=64, metavar='N', \
+    parser.add_argument('--evaluate_batch_size', type=int, default=64, metavar='N', \
         help='input batch size for evaluate (default: 64)')
-    ppa.parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', \
+    parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', \
         help='input batch size for testing (default: 1000)')
-    ppa.parser.add_argument('--log_interval', type=int, default=10, metavar='N', \
+    parser.add_argument('--log_interval', type=int, default=10, metavar='N', \
         help='how many batches to wait before logging training status(default: 10)')
-    ppa.parser.add_argument('--compute_efficiency', action='store_true', default=False, \
+    parser.add_argument('--compute_efficiency', action='store_true', default=False, \
         help='evaluate the efficiency in the test or not')
-    ppa.parser.add_argument('--data_rate_in_compute_efficiency', type=int, default=200, metavar='N', \
+    parser.add_argument('--data_rate_in_compute_efficiency', type=int, default=200, metavar='N', \
         help='how many sample used in test to evaluate the efficiency(default: 200)')
     # continue train setting
-    ppa.parser.add_argument('--weight_path', type=str, default=None, action='store', \
-        help='the path where the trained backbone saved')
-    ppa.parser.add_argument('--weight_epoch', type=int, default=None, action='store', \
-        help='the epoch when saved backbone which had been trained')
-    ppa.parser.add_argument('--name', type=str, action='store', default='', \
-        help='the ${backbone_name}${name} would be the name of the fold to save the result')
-    ppa.parser.add_argument('--train_name', type=str, action='store', default='', \
-        help='specify the name as the prefix for the continue train fold name')
     retrain_mode_header = 'retrain_mode'
-    ppa.parser.add_argument('--{}_continue'.format(retrain_mode_header), default=False, action='store_true', \
+    parser.add_argument('--{}_continue'.format(retrain_mode_header), default=False, action='store_true', \
         help='continue train while this is set and the weight_path, weight_epoch is specified, ' \
             'the lr_reduce, auto_save, auto_stop would be load')
-    ppa.parser.add_argument('--{}_reset'.format(retrain_mode_header), default=False, action='store_true', \
+    parser.add_argument('--{}_reset'.format(retrain_mode_header), default=False, action='store_true', \
         help='reset train while this is set and the weight_path, weight_epoch is specified, ' \
             'the lr_reduce, auto_save, auto_stop would not be load')
-    args = ppa.parser.parse_args()
+    args = parser.parse_args()
     args.auto_save_sources = auto_save_sources
     args.lr_reduce_sources = lr_reduce_sources
     args.auto_stop_sources = auto_stop_sources
@@ -487,73 +471,18 @@ if __name__ == '__main__':
     args.recorder_name = recorder_name
     args.accumulated_opt_name = accumulated_opt_name
     args.gpus = [[int(g) for g in gpu.split('.')] for gpu in args.gpus]
-    args.framework = framework
+    args.name = name
     args.remote_debug = remote_debug
-
-    import Putil.base.logger as plog
-    reload(plog)
-
-    # 生成存储位置，更新args.save_dir, 让server与worker都在同一save_dir
-    util.make_sure_the_save_dir(args)
-    # 删除clear_train指定的train_time结果
-    if args.clean_train is not None:
-        for _train_time in args.clean_train:
-            hvd.broadcast_object(empty_tensor(), 0, 'sync_before_checking_clean')
-            make_sure_clean_the_train_result = input(Fore.RED + 'clean the train time {} in {} (y/n):'.format(_train_time, args.save_dir) + Fore.RESET) if hvd.rank() == 0 else False
-            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_checking_clean')
-            util.clean_train_result(_train_time, args.save_dir) if make_sure_clean_the_train_result and hvd.rank() == 0 else None
-            hvd.broadcast_object(empty_tensor(), 0, 'sync_after_clean')
-            pass
-        pass
-    # 确定当前的train_time, 需要args.save_dir，生成args.train_time
-    util.make_sure_the_train_time(args)
-    args.save_dir = util.subdir_base_on_train_time(args.save_dir, args.train_time, args.train_name)
-    hvd.broadcast_object(empty_tensor(), 0, 'sync_before_make_save_dir')
-    assert not os.path.exists(args.save_dir) if hvd.rank() == 0 else True
-    os.mkdir(args.save_dir) if hvd.rank() == 0 else None
-    hvd.broadcast_object(empty_tensor(), 0, 'sync_after_make_save_dir')
-    print('rank {} train time {} save to {}'.format(hvd.rank(), args.train_time, args.save_dir))
-    log_level = plog.LogReflect(args.log_level).Level
-    plog.PutilLogConfig.config_format(plog.FormatRecommend)
-    plog.PutilLogConfig.config_log_level(stream=log_level, file=log_level)
-    plog.PutilLogConfig.config_file_handler(filename=os.path.join(args.save_dir, \
-        'train.log' if util_with_args.train_stage(args) else 'evaluate.log' if util_with_args.evaluate_stage(args) else 'test.log'), mode='a')
-    plog.PutilLogConfig.config_handler(plog.stream_method | plog.file_method)
-    root_logger = plog.PutilLogConfig('train').logger()
-    root_logger.setLevel(log_level)
-    MainLogger = root_logger.getChild('Trainer')
-    MainLogger.setLevel(log_level)
-    #<tag========================================reload 部分=====================================
-    reload(AutoSaveFactory)
-    reload(AutoStopFactory)
-    reload(LrReduceFactory)
-    reload(DatasetFactory)
-    reload(DataLoaderFactory)
-    reload(DataSamplerFactory)
-    reload(ModelFactory)
-    reload(LossFactory)
-    reload(IndicatorFactory)
-    reload(IndicatorStatisticFactory)
-    reload(OptimizationFactory)
-    reload(EncodeFactory)
-    reload(DecodeFactory)
-    reload(FitDataToInputFactory)
-    reload(FitToLossInputFactory)
-    reload(FitToIndicatorInputFactory)
-    reload(FitDecodeToResultFactory)
-    reload(RecorderFactory)
-    reload(util)
-    reload(horovod)
-    reload(BaseOperationFactory)
-    reload(AccumulatedOptFactory)
-    #========================================reload 部分=====================================>
-    from Putil.base.arg_operation import args_save as ArgsSave
-    from util.run_train_stage import train_stage_common 
-    from Putil.data import aug as pAug
-    from util import run_train_stage
-    # 确定性设置
-    from Putil.base import base_setting
-    ## BaseOperationFactory
+    args.run_stage = run_stage
+    args.save_dir = save_dir
+    args.weight_path = weight_path
+    args.weight_epoch = weight_epoch
+    args.train_name = train_name
+    args.train_time = train_time
+    args.clean_train = clean_train
+    args.debug = debug
+    args.framework = framework
+    args.log_level = log_level
     def _init_fn(worker_id):
         np.random.seed(int(args.seed) + worker_id)
         pass
@@ -656,7 +585,7 @@ if __name__ == '__main__':
         #  : the lr reduce
         lr_reduce = {property_type: LrReduceFactory.lr_reduce_factory(args, args.lr_reduce_sources[property_type], args.lr_reduce_names[property_type], property_type)() for property_type in args.lr_reduce_names.keys()}
         lr_reduce = util.get_module(lr_reduce)
-        if util.iscuda(args):
+        if util_with_args.iscuda(args):
             backbone.cuda() if is_cudable(backbone) else None
             backend.cuda() if is_cudable(backend) else None
             decode.cuda() if is_cudable(decode) else None
@@ -681,7 +610,7 @@ if __name__ == '__main__':
     dataset_train = None; train_sampler = None; evaluate_loader = None
     if args.train_off is not True:
         MainLogger.info('start to generate the train dataset data_sampler data_loader')
-        dataset_train = {property_type: DatasetFactory.dataset_factory(args, property_type, stage=util.Stage.Train)() for property_type, name in args.dataset_names.items()}
+        dataset_train = {property_type: DatasetFactory.dataset_factory(args, property_type, stage=util_with_args.Stage.Train)() for property_type, name in args.dataset_names.items()}
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
         dataset_train = util.get_module(dataset_train)
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
@@ -699,14 +628,14 @@ if __name__ == '__main__':
             dataset_train, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()}  if dataset_train is not None else None
         train_sampler = util.get_module(train_sampler)
         train_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
-            dataset=dataset_train, data_sampler=train_sampler, stage=util.Stage.Train) for property_type in args.data_loader_names.keys()} if dataset_train is not None else None
+            dataset=dataset_train, data_sampler=train_sampler, stage=util_with_args.Stage.Train) for property_type in args.data_loader_names.keys()} if dataset_train is not None else None
         train_loader = util.get_module(train_loader)
         MainLogger.info('generate adataset train successful: {} sample'.format(len(dataset_train)))
     # : build the evaluate dataset
     dataset_evaluate = None; evaluate_sampler = None; evaluate_loader = None
     if args.evaluate_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_evaluate = {property_type: DatasetFactory.dataset_factory(args, stage=util.Stage.Evaluate)() for property_type, name in args.dataset_names.items()}
+        dataset_evaluate = {property_type: DatasetFactory.dataset_factory(args, stage=util_with_args.Stage.Evaluate)() for property_type, name in args.dataset_names.items()}
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
         dataset_evaluate = util.get_module(dataset_evaluate)
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
@@ -719,13 +648,13 @@ if __name__ == '__main__':
             dataset=dataset_evaluate, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()} if dataset_evaluate is not None else None
         evaluate_sampler = util.get_module(evaluate_sampler)
         evaluate_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
-            dataset=dataset_evaluate, data_sampler=evaluate_sampler, stage=util.Stage.Evaluate) for property_type in args.data_loader_names.keys()} if dataset_evaluate is not None else None
+            dataset=dataset_evaluate, data_sampler=evaluate_sampler, stage=util_with_args.Stage.Evaluate) for property_type in args.data_loader_names.keys()} if dataset_evaluate is not None else None
         evaluate_loader = util.get_module(evaluate_loader)
     # : build the test dataset
     dataset_test = None; test_sampler = None; test_loader = None
     if args.test_off is not True:
         MainLogger.info('start to generate the evaluate dataset data_sampler data_loader')
-        dataset_test = {property_type: DatasetFactory.dataset_factory(args, stage=util.Stage.Test)() for property_type, name in args.dataset_names.items()} if args.test_off is not True else None
+        dataset_test = {property_type: DatasetFactory.dataset_factory(args, stage=util_with_args.Stage.Test)() for property_type, name in args.dataset_names.items()} if args.test_off is not True else None
         ##TODO: 根据实际需求，指定使用的dataset，但一般有多种性质的dataset的情况都是要进行combine，CombineDataset框架还不完善
         dataset_test = util.get_module(dataset_test)
         root_node = pAug.AugNode(pAug.AugFuncNoOp())
@@ -738,10 +667,10 @@ if __name__ == '__main__':
             dataset_test, rank_amount=hvd.size(), rank=hvd.rank()) for property_type in args.data_sampler_names.keys()} if dataset_test is not None else None
         test_sampler = util.get_module(test_sampler)
         test_loader = {property_type: DataLoaderFactory.data_loader_factory(args, args.data_loader_sources[property_type], args.data_loader_names[property_type], property_type)( \
-            dataset_test, data_sampler=test_sampler, stage=util.Stage.Test) for property_type in args.data_loader_names.keys()} if dataset_test is not None else None
+            dataset_test, data_sampler=test_sampler, stage=util_with_args.Stage.Test) for property_type in args.data_loader_names.keys()} if dataset_test is not None else None
         test_loader = util.get_module(test_loader)
-    test_stage() if util.test_stage(args) else None # 如果train_off为True 同时test_off为False，则为util.test_stage，util.evaluate_stage与util.test_stage可以同时存在
-    evaluate_stage() if util.evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为util.evaluate_stage，util.evaluate_stage与util.test_stage可以同时存在
+    test_stage() if util_with_args.test_stage(args) else None # 如果train_off为True 同时test_off为False，则为util.test_stage，util.evaluate_stage与util.test_stage可以同时存在
+    evaluate_stage() if util_with_args.evaluate_stage(args) else None # 如果train_off为True 同时evaluate_off为False，则为util.evaluate_stage，util.evaluate_stage与util.test_stage可以同时存在
     if util_with_args.train_stage(args):
         # 如果train_off不为True，就是util.train_stage，只是util.train_stage中可以设定进不进行evaluate与test
         if args.weight_path != '' and args.weight_epoch is not None:

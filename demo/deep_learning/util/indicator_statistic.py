@@ -1,7 +1,5 @@
 # coding=utf-8
-from importlib import reload
 from Putil.demo.deep_learning.base import indicator_statistic
-reload(indicator_statistic)
 
 
 class DefaultIndicatorStatistic(indicator_statistic.IndicatorStatistic):

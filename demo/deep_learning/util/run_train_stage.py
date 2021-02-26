@@ -1,12 +1,9 @@
 # coding=utf-8
 import numpy as np
-from importlib import reload
 import torch
 import time
 from Putil.demo.deep_learning.base import util
-reload(util)
 from Putil.demo.deep_learning.base import horovod
-reload(horovod)
 
 
 def train_stage_common(args, 

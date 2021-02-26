@@ -79,15 +79,15 @@ class AutoSave(auto_save):
         return args.auto_save_history_amount
 
     @staticmethod
-    def generate_AutoSave_from_args(args):
+    def generate_AutoSave_from_args(args, property_type='', **kwargs):
         params = dict()
-        params['mode'] = args.auto_save_mode
-        params['delta'] = args.auto_save_delta
-        params['keep_save_range'] = args.auto_save_keep_save_range
-        params['abandon_range'] = args.auto_save_abandon_range
-        params['base_line'] = args.auto_save_base_line
-        params['limit_line'] = args.auto_save_limit_line
-        params['history_amount'] = args.auto_save_history_amount
+        params['mode'] = eval('args.{}auto_save_mode'.format(property_type))
+        params['delta'] = eval('args.{}auto_save_delta'.format(property_type))
+        params['keep_save_range'] = eval('args.{}auto_save_keep_save_range'.format(property_type))
+        params['abandon_range'] = eval('args.{}auto_save_abandon_range'.format(property_type))
+        params['base_line'] = eval('args.{}auto_save_base_line'.format(property_type))
+        params['limit_line'] = eval('args.{}auto_save_limit_line'.format(property_type))
+        params['history_amount'] = eval('args.{}auto_save_history_amount'.format(property_type))
         return AutoSave(**params)
 
     # pylint: disable=too-many-instance-attributes

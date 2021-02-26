@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.loss as standard
 from util import loss as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def loss_factory(args, source, name, property_type='', **kwargs):

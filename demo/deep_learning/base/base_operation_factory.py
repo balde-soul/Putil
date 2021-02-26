@@ -1,10 +1,7 @@
 # coding=utf-8
-from importlib import reload
 import copy
 import Putil.demo.deep_learning.base.base_operation as standard
 import util.base_operation as project
-reload(standard)
-reload(project)
 
 
 def checkpoint_factory(args):

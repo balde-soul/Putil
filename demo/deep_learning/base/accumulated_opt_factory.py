@@ -1,10 +1,7 @@
 # coding=utf-8
-from importlib import reload
 import copy
 from Putil.demo.deep_learning.base import accumulated_opt as standard
 from util import accumulated_opt as project
-reload(standard)
-reload(project)
 
 
 def accumulated_opt_factory(args):

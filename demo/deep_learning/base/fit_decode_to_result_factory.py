@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.fit_decode_to_result as standard
 from util import fit_decode_to_result as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def fit_decode_to_result_factory(args, property_type='', **kwargs):

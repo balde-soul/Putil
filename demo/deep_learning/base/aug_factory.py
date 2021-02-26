@@ -1,5 +1,4 @@
 # coding=utf-8
-from importlib import reload
 import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('aug_factory').logger()
@@ -7,8 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.aug as standard
 from util import aug as project
-reload(standard)
-reload(project)
 
 
 def aug_factory(args, property_type='', **kwargs):

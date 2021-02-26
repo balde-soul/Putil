@@ -21,9 +21,9 @@ def DefaultAutoStop(args, property_type='', **kwargs):
       args.auto_stop_mode
     '''
     def generate_default_auto_stop():
-        return _DefaultAutoStop.generate_AutoStop_from_args(args)
+        return _DefaultAutoStop.generate_AutoStop_from_args(args, property_type, **kwargs)
     return generate_default_auto_stop
 
 
 def DefaultAutoStopArg(parser, property_type='', **kwargs):
-    _DefaultAutoStop.generate_args(parser, property_type)
+    _DefaultAutoStop.generate_args(parser, property_type, **kwargs)

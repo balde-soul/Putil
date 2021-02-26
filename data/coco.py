@@ -16,7 +16,6 @@ import random
 import json
 from skimage import io
 #import matplotlib.pyplot as plt
-from importlib import reload
 import cv2
 import time
 from enum import Enum
@@ -35,13 +34,9 @@ COCOBaseLogger = logger.getChild('COCOBase')
 COCOBaseLogger.setLevel(plog.DEBUG)
 
 from Putil.data import cocoeval
-reload(cocoeval)
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
-reload(bbox_convertor)
 from Putil.data.util.vision_util import detection_util
-reload(detection_util)
 import Putil.data.common_data as pcd
-reload(pcd)
 
 
 class COCOBase(pcd.CommonDataForTrainEvalTest):

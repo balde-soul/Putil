@@ -6,10 +6,57 @@ cat << EOF
     environ data:
         环境变量，所有同等地位的变量需要以'.'分隔，因为环境变量不接受空格，比如aug_sources与aug_names就存在多种并列的情况，
         需要使用aug_sources=source1.source2.source3与aug_names=name1.name2.name3的形式
-        remote_debug: 使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
-        log_level: 使用log_level=Info等设定log等级
-        del_train_time: 使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
-        train_name: 使用train_name=*name*，设置训练代表性目的以及影响训练子目录的名称
+        log_level: 
+            使用log_level=Info等设定log等级
+        del_train_time: 
+            使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
+        train_name: 
+            使用train_name=*name*，设置训练代表性目的以及影响训练子目录的名称
+
+        name: 
+            the ${backbone_name}${name} would be the name of the fold to save the result
+            默认Unnamed
+        remote_debug: 
+            使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
+            setup with remote debug(blocked while not attached) or not'
+            默认False
+        run_stage: 
+            代表着本次运行的RunStage，默认是Train
+            Train/train-->train_off=False，evaluate_off=*，test_off=*
+            Evaluate/evaluate-->train_off=True，evaluate_off=False
+            Test/test-->train_off=True，evaluate_off=True，test_off=False
+        save_dir:
+            最基础的保存结果的根目录
+            默认为./result
+        weight_path: 
+            可以指定权重文件存放位置,
+            加上weight_epoch的指定，可以生成继续训练所继承的weight
+            help=the path where the trained model saved
+            默认为None，代表None，那么本次运行将不会是继续训练
+        weight_epoch: 
+            作用查看weight_path
+            help=the epoch when saved model which had been trained
+            默认为'None'代表None，那么本次运行将不会是继续训练
+        train_name:
+            继续训练的文件夹主名称
+            help=specify the name as the prefix for the continue train fold name
+            默认为''
+        debug:
+            help='run all the process in two epoch with tiny data')
+            默认为False
+        clean_train:
+            使用A.B.C的模式设置的一个列表，表示即将被清理的train_time文件夹
+            help=if not None, the result in specified train time would be clean, need args.weight_path
+            默认为
+        framework:
+            指定使用框架：
+            Torch/torch-->torch
+            tf/tensorflow-->tf
+        log_level:
+            指定log等级
+            Debug、Info、Warning、Error、Fatal
+            默认Info
+
     OPTIONS:
         -g      （指定gpus，使用逗号分隔）ip0:gpu0.gpu1,ip1:gpu0.gpu1 example: 127.0.0.1:0.1.2,127.0.0.2:0,127.0.0.3:0.1
         -w       specify the number of worker for every dataset,（指定数据进程数）
@@ -116,37 +163,58 @@ echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod
 #    remote_debug_arg=
 #fi
 
-# log_level 相关解析
-if [ $log_level ]; then
-    log_level_arg=--log_level=$log_level
-    echo 'set log_level:' $(echo $log_level) $log_level_arg
-else
-    # Default: log_level
-    log_level_arg=--log_level=Info
-fi
+## log_level 相关解析
+#if [ $log_level ]; then
+#    log_level_arg=--log_level=$log_level
+#    echo 'set log_level:' $(echo $log_level) $log_level_arg
+#else
+#    # Default: log_level
+#    log_level_arg=--log_level=Info
+#fi
 
-# del_train_time 相关解析
-if [ $del_train_time ]; then
-    clean_train_arg=--clean_train' '${del_train_time//./ }
-    echo 'set del train time:' ${del_train_time//./ } $clean_train_arg
-else
-    # Default: clean_train
-    clean_train_arg=
-fi
+## del_train_time 相关解析
+#if [ $del_train_time ]; then
+#    clean_train_arg=--clean_train' '${del_train_time//./ }
+#    echo 'set del train time:' ${del_train_time//./ } $clean_train_arg
+#else
+#    # Default: clean_train
+#    clean_train_arg=
+#fi
 
-# train_name 相关解析
-if [ $train_name ]; then
-    train_name_arg=--train_name=$(echo $train_name)
-    echo 'set train name:' $(echo $train_name) $train_name_arg
-else
-    # Default: train_name
-    train_name_arg=
-fi
+## train_name 相关解析
+#if [ $train_name ]; then
+#    train_name_arg=--train_name=$(echo $train_name)
+#    echo 'set train name:' $(echo $train_name) $train_name_arg
+#else
+#    # Default: train_name
+#    train_name_arg=
+#fi
+
+declare -A env_params
+env_params=(
+[name]= [remote_deubg]=Falase [run_stage]=Train [save_dir]=./result
+[weight_path]=None [weight_epoch]=None [train_name]=
+[clean_train]= [debug]=False [framework]=torch [log_level]=Info
+)
+## 从脚本外获取手动设置的环境变量
+for key in $(echo ${!env_params[*]}); do
+    if [ $(eval echo '$'$key) ]; then
+        echo 'manual set' $key 'from' ${env_params[$key]}'(default)-->' $(eval echo '$'$key)
+        env_params[$key]=$(eval echo '$'$key)
+    else
+        env_params[$key]=${env_params[$key]}
+    fi
+done
+# 生成环境变量语句
+env_params_command=
+for key in $(echo ${!env_params[*]}); do
+    env_params_command=$(echo $env_params_command $key=${env_params[$key]})
+done
+echo env_params_command: $env_params_command
+export $env_params_command
 
 declare -A sources_names
 sources_names=(
-[framework]=torch [name]='' [remote_debug]=False [save_dir]='./result' 
-[weight_path]=None [weight_epoch]=None [debug]=False [stage]=Train
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce

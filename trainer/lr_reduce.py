@@ -265,15 +265,15 @@ class LrReduce(lr_reduce):
         return args.lr_reduce_mode
 
     @staticmethod
-    def generate_LrReduce_from_args(args):
+    def generate_LrReduce_from_args(args, property_type='', **kwargs):
         params = dict()
-        params['init_lr'] = args.lr_reduce_init_lr
-        params['lr_factor'] = args.lr_reduce_lr_factor
-        params['lr_epsilon'] = args.lr_reduce_lr_epsilon
-        params['lr_patience'] = args.lr_reduce_lr_patience
-        params['lr_cool_down'] = args.lr_reduce_cool_down
-        params['lr_min'] = args.lr_reduce_lr_min
-        params['mode'] = args.lr_reduce_mode
+        params['init_lr'] = eval('args.{}lr_reduce_init_lr'.format(property_type))
+        params['lr_factor'] = eval('args.{}lr_reduce_lr_factor'.format(property_type))
+        params['lr_epsilon'] = eval('args.{}lr_reduce_lr_epsilon'.format(property_type))
+        params['lr_patience'] = eval('args.{}lr_reduce_lr_patience'.format(property_type))
+        params['lr_cool_down'] = eval('args.{}lr_reduce_lr_cool_down'.format(property_type))
+        params['lr_min'] = eval('args.{}lr_reduce_lr_min'.format(property_type))
+        params['mode'] = eval('args.{}lr_reduce_mode'.format(property_type))
         return LrReduce(**params)
         pass
 

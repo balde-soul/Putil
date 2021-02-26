@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.model as standard
 from util import model as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def model_factory(args):

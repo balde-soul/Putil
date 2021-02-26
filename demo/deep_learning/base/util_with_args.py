@@ -2,7 +2,6 @@
 import re
 import numpy as np
 import shutil
-from importlib import reload
 import os 
 import torch
 from colorama import Fore
@@ -22,9 +21,8 @@ TorchIsCudableLogger = logger.getChild('IsCudable')
 TorchIsCudableLogger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.horovod as horovod
-reload(horovod)
 from Putil.trainer import util
-reload(util)
+Stage = util.Stage
 
 class TemplateModelDecodeCombine(Module):
     '''
@@ -197,76 +195,6 @@ def train_stage(args):
     '''
     return not args.train_off
 
-def get_np_dtype_from_code(code):
-    return np.int16 if code == 'utf-16' else np.int8 if code == 'utf-8' else None
-
-def get_code_from_np_dtype(np_dtype):
-    return ('utf-16', np.uint16) if np_dtype == np.int16 else ('utf-8', np.uint8) if np_dtype == np.int8 else None
-
-def make_sure_the_train_time(args):
-    hvd = horovod.horovod(args)
-    if train_stage(args):
-        #if hvd.rank() == 0 and args.weight_epoch is None and args.weight_epoch is None: 
-        #    print(Fore.GREEN + 'get the untrained train time is 0' + Fore.RESET)
-        #    args.train_time = 0
-        #    train_time_tensor = torch.IntTensor([args.train_time])
-        #    train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
-        #elif hvd.rank() == 0 and (args.weight_path != '') and (args.weight_epoch is not None):
-        if hvd.rank() == 0:# and (args.weight_path != '') and (args.weight_epoch is not None):
-            item_list = os.listdir(args.save_dir)
-            max_time = 0
-            for _item in item_list:
-                if os.path.isdir(os.path.join(args.save_dir, _item)):
-                    name_part = _item.split('-')
-                    if name_part[-2] == 'train_time':
-                        max_time = max(max_time, int(name_part[-1]))
-            train_time = max_time + 1
-            print(Fore.GREEN + 'get the trained train time is {}'.format(train_time) + Fore.RESET)
-            train_time_tensor = torch.IntTensor([train_time])
-            train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
-            args.train_time = train_time
-        elif hvd.rank() != 0:
-            print(Fore.GREEN + 'wait for the root rank share the train_time' + Fore.RESET)
-            train_time_tensor = torch.IntTensor([-1])
-            train_time_tensor = hvd.broadcast_object(train_time_tensor, 0, 'train_time')
-            args.train_time = train_time_tensor.item()
-        else:
-            raise RuntimeError('this should not happend')
-            pass
-        print(Fore.GREEN + 'rank {} final get train time: {}'.format(hvd.rank(), args.train_time) + Fore.RESET)
-        pass
-    pass
-
-def _tensorboard_event_and_the_train_time(file_name):
-    _split_by_point = file_name.split('.')
-    is_event = _split_by_point[0] == 'events' and _split_by_point[1] == 'out' and _split_by_point[2] == 'tfevents'
-    train_time = int(file_name.split('-')[-1]) if is_event else None
-    return is_event, train_time
-
-def _get_trained_result(path, train_time):
-    '''
-     @brief 依据提供的train_time与根目录获取相关与train_time次训练的结果内容，提供给clean_train_result等进行处理
-    '''
-    files = []
-    dirs = []
-    # 
-    dirs.append(os.path.join(path, subdir_base_on_train_time(path, train_time)))
-    # 
-    _contents = os.listdir(path)
-    for _content in _contents:
-        is_event, _train_time = _tensorboard_event_and_the_train_time(_content)
-        files.append(os.path.join(path, _content)) if is_event and _train_time == train_time else None
-        pass
-    return dirs, files
-
-def clean_train_result(path, train_time):
-    dirs, files = _get_trained_result(path, train_time)
-    #sync = hvd.broadcast_object(torch.BoolTensor([True]), 0, 'sync_before_checking_remove_file')
-    _remove = input(Fore.RED + 'remove the files: {} dir: {} (y/n):'.format(files, dirs))
-    [os.remove(_file) for _file in files] if _remove in ['y', 'Y'] else None
-    [shutil.rmtree(_dir) for _dir in dirs] if _remove in ['Y', 'y'] else None
-    pass
-
 def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
     logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, recorder.epoch, recorder.step if epoch_step_amount is not None else '', \
         data_index if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
@@ -375,15 +303,6 @@ class TorchCombineOptimization(optim.Optimizer):
     def optimizations(self):
         return self._optimizations
     pass
-
-
-def find_repeatable_environ(base_name):
-    temp = set([k if re.search(base_name, k) is not None else None for k in os.environ.keys()])
-    temp.remove(None)
-    return temp
-
-def get_module(module_dict, target=''):
-    return module_dict[target]
 
 def Torchis_cudable(object):
     is_cudable = isinstance(object, Module)

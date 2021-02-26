@@ -1,5 +1,4 @@
 # coding=utf-8
-from importlib import reload
 import Putil.base.logger as plog
 
 logger = plog.PutilLogConfig('backbone_factory').logger()
@@ -7,8 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.backbone as standard
 from util import backbone as project
-reload(standard)
-reload(project)
 
 
 def backbone_factory(args, source, name, property_type='', **kwargs):

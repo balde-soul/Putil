@@ -1,9 +1,6 @@
 # coding=utf-8
 import Putil.demo.deep_learning.base.recorder as standard
 import util.recorder as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def recorder_factory(args):

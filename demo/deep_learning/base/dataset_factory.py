@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.dataset as standard
 from util import dataset as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def dataset_factory(args, property_type='', **kwargs):
