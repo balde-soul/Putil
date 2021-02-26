@@ -520,9 +520,9 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
             #result_image_ids = sub_detection_result_coco.getImgIds()
             cocoEval = cocoeval.CustomCOCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
-            cocoEval.params.imgIds  = image_ids if image_ids is not None else cocoEval.params.imgIds
-            cocoEval.params.catIds = cat_ids if cat_ids is not None else cocoEval.params.catIds
-            cocoEval.params.iouThrs = ious if ious is not None else cocoEval.params.iouThrs
+            cocoEval.params.imgIds  = np.array(image_ids) if image_ids is not None else cocoEval.params.imgIds
+            cocoEval.params.catIds = np.array(cat_ids) if cat_ids is not None else cocoEval.params.catIds
+            cocoEval.params.iouThrs = np.array(ious) if ious is not None else cocoEval.params.iouThrs
             cocoEval.evaluate()
             cocoEval.accumulate()
             cocoEval.summarize()
