@@ -11,6 +11,10 @@ parser.add_argument('--target_epochs', type=int, nargs='+', default=None, \
 parser.add_argument('--gpu', type=list, nargs='+', default=[], help='specify the gpus')
 parser.add_argument('--remain_strategy', type=str, default=None, action='store', \
     help='specify the remain data strategy')
+parser.add_argument('--run_net', action='store_true', default=False, \
+    help='would run the model prediction while set')
+parser.add_argument('--do_visual', action='store_true', default=False, \
+    help='would do the result visual part while set')
 args = parser.parse_args()
 import Putil.base.logger as plog
 
