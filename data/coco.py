@@ -15,7 +15,6 @@ from abc import ABCMeta, abstractmethod
 import random
 import json
 from skimage import io
-#import matplotlib.pyplot as plt
 import cv2
 import time
 from enum import Enum
@@ -33,6 +32,7 @@ COCODataLogger.setLevel(plog.DEBUG)
 COCOBaseLogger = logger.getChild('COCOBase')
 COCOBaseLogger.setLevel(plog.DEBUG)
 
+from Putil.base import putil_status
 from Putil.data import cocoeval
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
 from Putil.data.util.vision_util import detection_util
@@ -727,7 +727,7 @@ class COCOData(COCOBase):
             datas[COCOBase.detection_box_index] = bboxes
             datas[COCOBase.detection_class_index] = classes
             #ret = self._aug_check(*ret)
-            COCODataLogger.warning('original data generate no obj') if len(datas[COCOBase.detection_box_index]) == 0 else None
+            COCODataLogger.warning('original data generate no obj') if len(datas[COCOBase.detection_box_index]) == 0 and putil_status.putil_is_debug() else None
             return tuple(datas)
         else:
             raise NotImplementedError('unimplemented')
@@ -740,7 +740,7 @@ class COCOData(COCOBase):
                 bboxes = args[COCOBase.detection_box_index]
                 classes = args[COCOBase.detection_class_index]
                 assert len(bboxes) == len(classes)
-                COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
+                COCODataLogger.warning('zero obj occur') if len(bboxes) == 0 and putil_status.putil_is_debug() else None
                 if len(bboxes) == 0:
                     pass
                 assert np.argwhere(np.isnan(np.array(bboxes))).size == 0
