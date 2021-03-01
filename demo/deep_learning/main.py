@@ -1,5 +1,6 @@
 # coding=utf-8
 from __future__ import absolute_import
+from collections import Iterable
 from colorama import Fore
 import numpy as np
 import re
@@ -64,9 +65,9 @@ def do_save():
     checkpoint(epoch, args.save_dir, backbone=backbone, lr_reduce=lr_reduce, auto_save=auto_save, \
         auto_stop=auto_stop, optimization=optimization)
     MainLogger.info('run save') if args.debug else None
-    save(util.TemplateModelDecodeCombine, epoch, args.save_dir, backbone, backend, decode)
+    save(util_with_args.TemplateModelDecodeCombine, epoch, args.save_dir, backbone, backend, decode)
     MainLogger.info('run deploy') if args.debug else None
-    deploy(util.TemplateModelDecodeCombine, \
+    deploy(util_with_args.TemplateModelDecodeCombine, \
         torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda(), \
             recorder.epoch, args.save_dir, backbone, backend, decode)
 
@@ -208,9 +209,9 @@ if __name__ == '__main__':
     name = util.fix_env_param(os.environ['name'])
     run_stage = util.fix_env_param(os.environ['run_stage'])
     save_dir = util.fix_env_param(os.environ['save_dir'])
-    save_dir = '.'.join(save_dir)
+    save_dir = '.'.join(save_dir) if isinstance(save_dir, Iterable) else weight_path
     weight_path = util.fix_env_param(os.environ['weight_path'])
-    weight_path = '.'.join(weight_path)
+    weight_path = '.'.join(weight_path) if isinstance(weight_path, Iterable) else weight_path
     weight_epoch = util.fix_env_param(os.environ['weight_epoch'])
     train_name = util.fix_env_param(os.environ['train_name'])
     debug = util.fix_env_param(os.environ['debug'])
@@ -696,6 +697,7 @@ if __name__ == '__main__':
                 raise NotImplementedError('continue_train_mode {} is not implemented'.format(args.continue_train_mode))
             #target_dict.update({'': }) if args.
             load_checkpointed(args.weight_epoch, args.weight_path, target_dict, map_location=torch.device(args.gpu))
+            do_save if util_with_args.is_continue_train(args) else None
         for epoch in range(recorder.epoch + 1, recorder.epoch + args.epochs + 1):
             train_ret = train(epoch)
             if train_ret[0] is True:

@@ -24,6 +24,156 @@ import Putil.demo.deep_learning.base.horovod as horovod
 from Putil.trainer import util
 Stage = util.Stage
 
+def evaluate_stage(args):
+    '''
+     @brief off_train is True and off_evaluate is False
+    '''
+    return args.train_off and not args.evaluate_off
+
+
+def test_stage(args):
+    '''
+     @brief only run test
+    '''
+    return not args.test_off and args.train_off
+
+def train_stage(args):
+    '''
+     @brief if off_train is False, it is in train_stage, and if the off_evaluate is False, it means the TrainEvaluate
+    '''
+    return not args.train_off
+
+def iscuda(args):
+    return len(args.gpus) != 0
+
+class CombineObj:
+    def __init__(self, objs):
+        pass
+    pass
+
+
+class TorchCombineOptimization(optim.Optimizer):
+    def __init__(self, optimizations):
+        self._optimizations = optimizations
+        optim.Optimizer.__init__(self, [param for k, optimization in self._optimizations.items() for param in optimization.param_groups for param in param['params']], {})
+        pass
+
+    def step(self):
+        for k, optimization in self._optimizations.items():
+            optimization.step()
+            pass
+        pass
+
+    def zero_grad(self):
+        for k, optimization in self._optimizations.items():
+            optimization.zero_grad()
+            pass
+        pass
+
+    def state_dict(self):
+        return {k: optimization.state_dict() for k, optimization in self._optimizations.items()}
+    
+    @property
+    def optimizations(self):
+        return self._optimizations
+    pass
+
+def Torchis_cudable(object):
+    is_cudable = isinstance(object, Module)
+    TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
+    return is_cudable
+
+def ndarray_mean(ndarray_list):
+    return np.mean(np.stack(ndarray_mean, axis=0), axis=0)
+
+def tensor_mean(tensor_list):
+    return torch.mean(torch.stack(tensor_list, dim=0), dim=0)
+
+def list_mean_method(value_list):
+    if isinstance(value_list[0], torch.Tensor):
+        return torch.mean(torch.stack(value_list, dim=0), dim=0)
+    elif isinstance(value_list[0], np.ndarray):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    elif isinstance(value_list[0], (float, int)):
+        return np.mean(value_list)
+    elif isinstance(value_list[0], (tuple, list)):
+        return np.mean(np.stack(value_list, axis=0), axis=0)
+    else:
+        raise NotImplementedError('mean method for {} is not defined'.format(value_list[0].__class__.__name__))
+    pass
+
+def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
+    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, recorder.epoch, recorder.step if epoch_step_amount is not None else '', \
+        data_index if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
+            ''.join(['{}:{}||'.format(k, v) for k, v in indicators.items()])))
+
+class nothing():
+    '''this is use in with ...:'''
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+    pass
+
+class ScalarCollection:
+    def __init__(self, moving_epsilon=0.1):
+        self._moving_average = dict()
+        self._epoch_indicator = dict()
+        self._current_indicator = dict()
+        self._moving_epsilon = moving_epsilon
+        pass
+
+    def batch_update(self, indicators):
+        if len(self._moving_average.keys()) == 0:
+            self._moving_average.clear()
+            self._epoch_indicator.clear()
+            self._current_indicator.clear()
+            for k, v in indicators.items():
+                self._moving_average[k] = 0.
+                self._epoch_indicator[k] = list()
+                self._current_indicator[k] = 0.
+                pass
+            pass
+        for k, v in indicators.items():
+            self._current_indicator[k] = v
+            self._epoch_indicator[k].append(v)
+            self._moving_average[k] = self._moving_average[k] * self._moving_epsilon + (1 - self._moving_epsilon) * v
+            pass
+        pass
+
+    @property
+    def moving_average(self):
+        return self._moving_average
+
+    @property
+    def epoch_average(self):
+        return {k: list_mean_method(v) for k, v in self._epoch_indicator.items()}
+
+    @property
+    def current_indicators(self):
+        return self._current_indicator
+
+    @staticmethod
+    def generate_epoch_average_reduce_name(base_name):
+        return 'epoch_mean_{}'.format(base_name)
+
+    @staticmethod
+    def generate_current_reduce_name(base_name):
+        return 'current_{}'.format(base_name)
+
+    @staticmethod
+    def generate_moving_reduce_name(base_name):
+        return 'moving_'.format(base_name)
+    pass
+
+
+def all_reduce(val, name, hvd):
+    if type(val).__name__ != 'Tensor':
+        val = torch.tensor(val)
+    avg_tensor = hvd.allreduce(val, name=name)
+    return avg_tensor
+
 class TemplateModelDecodeCombine(Module):
     '''
      @brief the template model use in save
@@ -174,156 +324,3 @@ def torch_load_deploy(epoch, full_path):
 #    TrainEvaluate=1
 #    Evaluate=2
 #    Test=3
-
-
-def evaluate_stage(args):
-    '''
-     @brief off_train is True and off_evaluate is False
-    '''
-    return args.train_off and not args.evaluate_off
-
-
-def test_stage(args):
-    '''
-     @brief only run test
-    '''
-    return not args.test_off and args.train_off
-
-def train_stage(args):
-    '''
-     @brief if off_train is False, it is in train_stage, and if the off_evaluate is False, it means the TrainEvaluate
-    '''
-    return not args.train_off
-
-def scalar_log(logger, prefix, indicators, recorder, data_index=None, epoch_step_amount=None):
-    logger.info('{0} epoch: {1}|{2} [{3}/{4}]: {5}'.format(prefix, recorder.epoch, recorder.step if epoch_step_amount is not None else '', \
-        data_index if epoch_step_amount is not None else '', epoch_step_amount if epoch_step_amount is not None else '', \
-            ''.join(['{}:{}||'.format(k, v) for k, v in indicators.items()])))
-
-class nothing():
-    '''this is use in with ...:'''
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-    pass
-
-class ScalarCollection:
-    def __init__(self, moving_epsilon=0.1):
-        self._moving_average = dict()
-        self._epoch_indicator = dict()
-        self._current_indicator = dict()
-        self._moving_epsilon = moving_epsilon
-        pass
-
-    def batch_update(self, indicators):
-        if len(self._moving_average.keys()) == 0:
-            self._moving_average.clear()
-            self._epoch_indicator.clear()
-            self._current_indicator.clear()
-            for k, v in indicators.items():
-                self._moving_average[k] = 0.
-                self._epoch_indicator[k] = list()
-                self._current_indicator[k] = 0.
-                pass
-            pass
-        for k, v in indicators.items():
-            self._current_indicator[k] = v
-            self._epoch_indicator[k].append(v)
-            self._moving_average[k] = self._moving_average[k] * self._moving_epsilon + (1 - self._moving_epsilon) * v
-            pass
-        pass
-
-    @property
-    def moving_average(self):
-        return self._moving_average
-
-    @property
-    def epoch_average(self):
-        return {k: list_mean_method(v) for k, v in self._epoch_indicator.items()}
-
-    @property
-    def current_indicators(self):
-        return self._current_indicator
-
-    @staticmethod
-    def generate_epoch_average_reduce_name(base_name):
-        return 'epoch_mean_{}'.format(base_name)
-
-    @staticmethod
-    def generate_current_reduce_name(base_name):
-        return 'current_{}'.format(base_name)
-
-    @staticmethod
-    def generate_moving_reduce_name(base_name):
-        return 'moving_'.format(base_name)
-    pass
-
-
-def all_reduce(val, name, hvd):
-    if type(val).__name__ != 'Tensor':
-        val = torch.tensor(val)
-    avg_tensor = hvd.allreduce(val, name=name)
-    return avg_tensor
-
-
-def iscuda(args):
-    return len(args.gpus) != 0
-
-
-class CombineObj:
-    def __init__(self, objs):
-        pass
-    pass
-
-
-class TorchCombineOptimization(optim.Optimizer):
-    def __init__(self, optimizations):
-        self._optimizations = optimizations
-        optim.Optimizer.__init__(self, [param for k, optimization in self._optimizations.items() for param in optimization.param_groups for param in param['params']], {})
-        pass
-
-    def step(self):
-        for k, optimization in self._optimizations.items():
-            optimization.step()
-            pass
-        pass
-
-    def zero_grad(self):
-        for k, optimization in self._optimizations.items():
-            optimization.zero_grad()
-            pass
-        pass
-
-    def state_dict(self):
-        return {k: optimization.state_dict() for k, optimization in self._optimizations.items()}
-    
-    @property
-    def optimizations(self):
-        return self._optimizations
-    pass
-
-def Torchis_cudable(object):
-    is_cudable = isinstance(object, Module)
-    TorchIsCudableLogger.info(Fore.YELLOW + 'object: {} is cudable: {}'.format(object.__module__, is_cudable) + Fore.RESET)
-    return is_cudable
-
-def ndarray_mean(ndarray_list):
-    return np.mean(np.stack(ndarray_mean, axis=0), axis=0)
-
-def tensor_mean(tensor_list):
-    return torch.mean(torch.stack(tensor_list, dim=0), dim=0)
-
-def list_mean_method(value_list):
-    if isinstance(value_list[0], torch.Tensor):
-        return torch.mean(torch.stack(value_list, dim=0), dim=0)
-    elif isinstance(value_list[0], np.ndarray):
-        return np.mean(np.stack(value_list, axis=0), axis=0)
-    elif isinstance(value_list[0], (float, int)):
-        return np.mean(value_list)
-    elif isinstance(value_list[0], (tuple, list)):
-        return np.mean(np.stack(value_list, axis=0), axis=0)
-    else:
-        raise NotImplementedError('mean method for {} is not defined'.format(value_list[0].__class__.__name__))
-    pass

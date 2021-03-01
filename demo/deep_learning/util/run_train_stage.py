@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import time
 from Putil.demo.deep_learning.base import util
+from Putil.demo.deep_learning.base import util_with_args
 from Putil.demo.deep_learning.base import horovod
 
 
@@ -31,11 +32,11 @@ logger):
       关于summary： Train阶段会根据summary_interval进行summary，Train与TrainEvaluate阶段epoch之后都会对相关数据的mean allreduce进行summary，step都为recorder.step
     '''
     hvd = horovod.horovod(args)
-    assert util.train_stage(args)
+    assert util_with_args.train_stage(args)
     recorder.epoch = epoch if stage == util.Stage.Train else recorder.epoch
     prefix = 'train' if stage == util.Stage.Train else 'evaluate'
-    loss_scalar_collection = util.ScalarCollection() if util.train_stage(args) else None
-    indicator_scalar_collection = util.ScalarCollection() if util.train_stage(args) else None
+    loss_scalar_collection = util.ScalarCollection() if util_with_args.train_stage(args) else None
+    indicator_scalar_collection = util.ScalarCollection() if util_with_args.train_stage(args) else None
     def accumulation_fix(index):
         return np.ceil(index / args.accumulation_time)
     with torch.no_grad() if stage == util.Stage.Evaluate else util.nothing() as t:
@@ -86,8 +87,8 @@ logger):
             ## : do the optimize
             #optimizer.step() if stage == util.Stage.Train else None
             ## do the training
-            #logger.debug('zero grad') if util.train_stage(args) else None
-            #optimizer.zero_grad() if util.train_stage(args) else None
+            #logger.debug('zero grad') if util_with_args.train_stage(args) else None
+            #optimizer.zero_grad() if util_with_args.train_stage(args) else None
             # time
             batch_time = time.time() - batch_start
             # while in util.Stage.Train or util.Stage.TrainEvaluate

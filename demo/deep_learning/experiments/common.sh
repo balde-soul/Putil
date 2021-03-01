@@ -156,32 +156,15 @@ for (( i=0;i<${#gpus[@]};i++ )); do
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
 
-declare -A env_params
-env_params=(
+declare -A env_dict 
+env_dict=(
 [name]= [remote_debug]=False [run_stage]=Train [save_dir]=./result
 [weight_path]=None [weight_epoch]=None [train_name]=
 [clean_train]= [debug]=False [framework]=torch [log_level]=Info
 )
-### 从脚本外获取手动设置的环境变量
-#for key in $(echo ${!env_params[*]}); do
-#    if [ $(eval echo '$'$key) ]; then
-#        echo 'manual set' $key 'from' ${env_params[$key]}'(default)-->' $(eval echo '$'$key)
-#        env_params[$key]=$(eval echo '$'$key)
-#    else
-#        env_params[$key]=${env_params[$key]}
-#    fi
-#done
-extract_env_param 
-# 生成环境变量语句
-env_params_command=
-for key in $(echo ${!env_params[*]}); do
-    env_params_command=$(echo $env_params_command $key=${env_params[$key]})
-done
-echo env_params_command: $env_params_command
-export $env_params_command
+set_env
 
-#declare -A env_params
-env_params=(
+env_dict=(
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce
@@ -206,23 +189,7 @@ env_params=(
 [recorder_source]=standard [recorder_name]=DefaultRecorder
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt
 )
-### 从脚本外获取手动设置的环境变量
-#for key in $(echo ${!sources_names[*]}); do
-#    if [ $(eval echo '$'$key) ]; then
-#        echo 'manual set' $key 'from' ${sources_names[$key]}'(default)-->' $(eval echo '$'$key)
-#        sources_names[$key]=$(eval echo '$'$key)
-#    else
-#        sources_names[$key]=${sources_names[$key]}
-#    fi
-#done
-extract_env_param
-# 生成环境变量语句
-env_set_command=
-for key in $(echo ${!env_params[*]}); do
-    env_set_command=$(echo $env_set_command $key=${env_params[$key]})
-done
-echo env_command: $env_set_command
-export $env_set_command
+set_env
 #################################env_set_command 如何使用######################################
 #当运行一个.sh文件或者是shell命令，shell会把当前的环境变量都复制过来，也就是子类和父类的关系。通过以下几个场景解释这个概念。
 #证明父能影响子
