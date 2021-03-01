@@ -465,7 +465,7 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             t = lambda x, score: x != None
         scores = [None] if scores is None else scores
         for score in scores:
-            # 
+            COCODataLogger.info('evaluate with score: {}'.format(score))
             json_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_formated_sub_detection_result.json'.format(prefix, score))
             evaluate_detection_result_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_result.json'.format(prefix, score))
             sub_detection_result = detection_result[t(detection_result['score'], score)]
