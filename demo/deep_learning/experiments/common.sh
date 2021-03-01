@@ -128,6 +128,7 @@ while getopts "g:b:w:l:" OPT; do
     esac
 done
 
+source ./experiments/base.sh
 # 获取horovod中的H,np与main中的gpus参数
 gpus_arg=
 horovod_np_arg=0
@@ -155,56 +156,22 @@ for (( i=0;i<${#gpus[@]};i++ )); do
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
 
-## remote_debug 相关解析
-#if [ $remote_debug ] && ([ $remote_debug == 'true' ] || [ $remote_debug == 'True' ]); then
-#    echo "set remote_debug mode"
-#    remote_debug_arg=--remote_debug
-#else
-#    remote_debug_arg=
-#fi
-
-## log_level 相关解析
-#if [ $log_level ]; then
-#    log_level_arg=--log_level=$log_level
-#    echo 'set log_level:' $(echo $log_level) $log_level_arg
-#else
-#    # Default: log_level
-#    log_level_arg=--log_level=Info
-#fi
-
-## del_train_time 相关解析
-#if [ $del_train_time ]; then
-#    clean_train_arg=--clean_train' '${del_train_time//./ }
-#    echo 'set del train time:' ${del_train_time//./ } $clean_train_arg
-#else
-#    # Default: clean_train
-#    clean_train_arg=
-#fi
-
-## train_name 相关解析
-#if [ $train_name ]; then
-#    train_name_arg=--train_name=$(echo $train_name)
-#    echo 'set train name:' $(echo $train_name) $train_name_arg
-#else
-#    # Default: train_name
-#    train_name_arg=
-#fi
-
 declare -A env_params
 env_params=(
-[name]= [remote_deubg]=Falase [run_stage]=Train [save_dir]=./result
+[name]= [remote_debug]=False [run_stage]=Train [save_dir]=./result
 [weight_path]=None [weight_epoch]=None [train_name]=
 [clean_train]= [debug]=False [framework]=torch [log_level]=Info
 )
-## 从脚本外获取手动设置的环境变量
-for key in $(echo ${!env_params[*]}); do
-    if [ $(eval echo '$'$key) ]; then
-        echo 'manual set' $key 'from' ${env_params[$key]}'(default)-->' $(eval echo '$'$key)
-        env_params[$key]=$(eval echo '$'$key)
-    else
-        env_params[$key]=${env_params[$key]}
-    fi
-done
+### 从脚本外获取手动设置的环境变量
+#for key in $(echo ${!env_params[*]}); do
+#    if [ $(eval echo '$'$key) ]; then
+#        echo 'manual set' $key 'from' ${env_params[$key]}'(default)-->' $(eval echo '$'$key)
+#        env_params[$key]=$(eval echo '$'$key)
+#    else
+#        env_params[$key]=${env_params[$key]}
+#    fi
+#done
+extract_env_param 
 # 生成环境变量语句
 env_params_command=
 for key in $(echo ${!env_params[*]}); do
@@ -213,8 +180,8 @@ done
 echo env_params_command: $env_params_command
 export $env_params_command
 
-declare -A sources_names
-sources_names=(
+#declare -A env_params
+env_params=(
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce
@@ -239,19 +206,20 @@ sources_names=(
 [recorder_source]=standard [recorder_name]=DefaultRecorder
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt
 )
-## 从脚本外获取手动设置的环境变量
-for key in $(echo ${!sources_names[*]}); do
-    if [ $(eval echo '$'$key) ]; then
-        echo 'manual set' $key 'from' ${sources_names[$key]}'(default)-->' $(eval echo '$'$key)
-        sources_names[$key]=$(eval echo '$'$key)
-    else
-        sources_names[$key]=${sources_names[$key]}
-    fi
-done
+### 从脚本外获取手动设置的环境变量
+#for key in $(echo ${!sources_names[*]}); do
+#    if [ $(eval echo '$'$key) ]; then
+#        echo 'manual set' $key 'from' ${sources_names[$key]}'(default)-->' $(eval echo '$'$key)
+#        sources_names[$key]=$(eval echo '$'$key)
+#    else
+#        sources_names[$key]=${sources_names[$key]}
+#    fi
+#done
+extract_env_param
 # 生成环境变量语句
 env_set_command=
-for key in $(echo ${!sources_names[*]}); do
-    env_set_command=$(echo $env_set_command $key=${sources_names[$key]})
+for key in $(echo ${!env_params[*]}); do
+    env_set_command=$(echo $env_set_command $key=${env_params[$key]})
 done
 echo env_command: $env_set_command
 export $env_set_command

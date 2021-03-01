@@ -210,6 +210,7 @@ if __name__ == '__main__':
     save_dir = util.fix_env_param(os.environ['save_dir'])
     save_dir = '.'.join(save_dir)
     weight_path = util.fix_env_param(os.environ['weight_path'])
+    weight_path = '.'.join(weight_path)
     weight_epoch = util.fix_env_param(os.environ['weight_epoch'])
     train_name = util.fix_env_param(os.environ['train_name'])
     debug = util.fix_env_param(os.environ['debug'])
