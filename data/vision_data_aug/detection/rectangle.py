@@ -223,22 +223,22 @@ class RandomResampleCombine(pAug.AugFunc):
         return 'Resample'
 
 
+##@brief Translate 
+# @note 平移加之后放大到目标尺寸，结果就是截取一部分然后放大到目标尺寸，也相当于放大然后截取一部分
 class Translate(IT):
     def __init__(self):
         IT.__init__(self)
  
 
+    ##@brief
+    # @note before calling this function, you should set the IT.translate_factor_x and the IT.translate_factor_y
+    # @warning translate can not guarantee object remain after translating
+    # @param[in] args, tuple
+    # [0] image ndarray with shape [height, width[, channel]]
+    # [1] bboxes list of list [[x, y, widht, height]]
+    # @ret
+    # bboxes list of list [[x, y, width, height]]
     def __call__(self, *args):
-        '''
-         @brief
-         @note before calling this function, you should set the IT.translate_factor_x and the IT.translate_factor_y
-         @warning translate can not guarantee object remain after translating
-         @param[in] args, tuple
-         [0] image ndarray with shape [height, width[, channel]]
-         [1] bboxes list of list [[x, y, widht, height]]
-         @ret
-         bboxes list of list [[x, y, width, height]]
-        '''
         self.check_factor()
         image = args[0]
         bboxes = np.array(args[1])
@@ -263,13 +263,16 @@ class Translate(IT):
             min(image_shape[0], corner_y + image.shape[0]), 
             min(image_shape[1], corner_x + image.shape[1])
             ]
-
-        mask = image[max(-corner_y, 0): min(image.shape[0], -corner_y + image_shape[0]), \
-            max(-corner_x, 0): min(image.shape[1], -corner_x + image_shape[1]), :]
-        canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
-        image = canvas
-        
+#
+#        mask = image[max(-corner_y, 0): min(image.shape[0], -corner_y + image_shape[0]), \
+#            max(-corner_x, 0): min(image.shape[1], -corner_x + image_shape[1]), :]
+#        canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
+#        image = canvas
+#        
+#        bboxes[:, 0: 2] += [corner_x, corner_y]
         bboxes[:, 0: 2] += [corner_x, corner_y]
+        bboxes[:, [0, 2]] *= image.shape[1] / (image.shape[1] - np.abs(corner_x))
+        bboxes[:, [1, 3]] *= image.shape[0] / (image.shape[0] - np.abs(corner_y))
         # : 需要检查是否越界
         bboxes = np.array(clip_box(bboxes, image))
         self._aug_done()

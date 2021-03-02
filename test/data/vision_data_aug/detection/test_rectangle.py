@@ -40,7 +40,7 @@ class Data(CommonDataWithAug):
 
     def __init__(self):
         CommonDataWithAug.__init__(self)
-        self._index = [0]
+        self._data_field = [0]
     
     def _generate_from_origin_index(self, index):
         image = np.zeros(shape=[image_wh[1], image_wh[0], 3], dtype=np.uint8)
@@ -72,6 +72,10 @@ class CombineAugFuncHF(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -87,6 +91,10 @@ class CombineAugFuncVF(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -102,6 +110,10 @@ class CombineAugFuncRRC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -155,6 +167,10 @@ class CombineAugFuncRSC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -169,6 +185,10 @@ class CombineAugFuncRHC(pAug.AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
 
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))

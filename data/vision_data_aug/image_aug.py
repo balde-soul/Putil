@@ -224,11 +224,14 @@ class Translate(ImageTranslate, pAug.AugFunc):
             min(img_shape[1], corner_x + img.shape[1])
             ]
 
+        #mask = img[max(-corner_y, 0): min(img.shape[0], -corner_y + img_shape[0]), \
+        #    max(-corner_x, 0): min(img.shape[1], -corner_x + img_shape[1]), :]
+        #canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
+        #img = canvas
+
         mask = img[max(-corner_y, 0): min(img.shape[0], -corner_y + img_shape[0]), \
             max(-corner_x, 0): min(img.shape[1], -corner_x + img_shape[1]), :]
-        canvas[orig_box_cords[0]: orig_box_cords[2], orig_box_cords[1]: orig_box_cords[3], :] = mask
-        img = canvas
-        
+        img = cv2.resize(mask, img.shape[0: 2], interpolation=cv2.INTER_CUBIC)
         return img,
     
     
