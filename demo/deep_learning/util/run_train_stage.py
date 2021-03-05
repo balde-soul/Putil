@@ -39,7 +39,7 @@ logger):
     indicator_scalar_collection = util.ScalarCollection() if util_with_args.train_stage(args) else None
     def accumulation_fix(index):
         return np.ceil(index / args.accumulation_time)
-    with torch.no_grad() if stage == util.Stage.Evaluate else util.nothing() as t:
+    with torch.no_grad() if stage == util.Stage.Evaluate else torch.enable_grad() as t:
         backbone.train() if stage == util.Stage.Train else backbone.eval()
         backend.train() if stage == util.Stage.Train else backend.eval()
         decode.train() if stage == util.Stage.Train else decode.eval()
