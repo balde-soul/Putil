@@ -104,7 +104,7 @@ def train(epoch):
             else:
                 raise RuntimeError('all_process_test would only run train two epoch')
         else:
-            return do_epoch_end_process()
+            return do_epoch_end_process(ret)
     else:
         return False,
 
@@ -496,7 +496,6 @@ if __name__ == '__main__':
     load_saved = BaseOperationFactory.load_saved_factory(args)()
     load_checkpointed = BaseOperationFactory.load_checkpointed_factory(args)()
     is_cudable = BaseOperationFactory.is_cudable_factory(args)()
-    accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)()
     combine_optimization = BaseOperationFactory.combine_optimization_factory(args)()
     #empty_tensor = BaseOperationFactory.generate_model_element_factory(args)()
 
@@ -578,6 +577,7 @@ if __name__ == '__main__':
                 op=hvd.Adasum if args.hvd_reduce_mode == 'AdaSum' else hvd.Average if args.hvd_reduce_mode == 'Average' else hvd.Sum) \
                 for k, (module, optimization) in optimizations.items()}
         optimization=combine_optimization(optimizations)
+        accumulated_opt = AccumulatedOptFactory.accumulated_opt_factory(args)(optimization)
         #  : the auto save
         auto_save = {property_type: AutoSaveFactory.auto_save_factory(args, args.auto_save_sources[property_type], args.auto_save_names[property_type], property_type)() for property_type in args.auto_save_names.keys()}
         auto_save = util.get_module(auto_save)

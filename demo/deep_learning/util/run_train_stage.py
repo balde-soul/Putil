@@ -78,10 +78,11 @@ logger):
             indicator_scalar_collection.batch_update(indicators)
             # use the accumulation backward
             logger.debug('run accumulated optimization')
-            accumulated_opt.append(_loss, optimization, force_accumulation=None \
+            accumulated_opt.step(_loss, force_accumulation=None \
                 if len(data_loader) % args.accumulation_time == 0 or \
                     len(data_loader) - batch_idx - 1 > len(data_loader) % args.accumulation_time \
                         else len(data_loader) % args.accumulation_time) if stage == util.Stage.Train else None
+            accumulated_opt.zero_grad()
             ## : run the backward
             #_loss.backward() if stage == util.Stage.Train else None
             ## : do the optimize
