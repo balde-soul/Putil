@@ -18,6 +18,7 @@ from Putil.data.vision_data_aug.detection.rectangle import RandomRotateCombine a
 from Putil.data.vision_data_aug.detection.rectangle import RandomShearCombine as RSC
 from Putil.data.vision_data_aug.detection.rectangle import VerticalFlipCombine as VFC 
 from Putil.data.vision_data_aug.detection.rectangle import RandomHSVCombine as RHC
+from Putil.data.vision_data_aug.detection.rectangle import SizeFloatCombine as SFC
 from Putil.data.aug import AugFunc
 
 image_wh = (800, 800)
@@ -190,6 +191,19 @@ class CombineAugFuncRHC(pAug.AugFunc):
     def name(self):
         return self._aug.name
 
+
+class CombineAugFuncSFC(pAug.AugFunc):
+    def __init__(self):
+        self._aug = SFC((0.5, 1.0), (0.5, 1.0))
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
+
 root_node = pAug.AugNode(pAug.AugFuncNoOp())
 root_node.add_child(pAug.AugNode(pAug.AugFuncNoOp()))
 HFNode = root_node.add_child(pAug.AugNode(CombineAugFuncHF()))
@@ -203,6 +217,7 @@ RTCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 RRBNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRB()))
 RSCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
 RHCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRHC()))
+SFCNode = root_node.add_child(pAug.AugNode(CombineAugFuncSFC()))
 root_node.freeze_node()
 
 for index in range(0, len(root_node)):

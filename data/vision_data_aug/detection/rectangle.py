@@ -22,6 +22,7 @@ from Putil.data.vision_data_aug.image_aug import Shear as IS
 from Putil.data.vision_data_aug.image_aug import HSV as IHSV
 from Putil.data.vision_data_aug.image_aug import Noise as Noise
 from Putil.data.util.vision_util.detection_util import clip_box_using_image as clip_box
+from Putil.data.vision_data_aug.image_aug import SizeFloat as SF
 
 
 class HorizontalFlip(IH):
@@ -757,4 +758,29 @@ class NoiseCombine(pAug.AugFunc):
         self._noise.mu = mu
         self._noise.sigma = sigma
         image = self._noise(image)
+        return image, bboxes
+    pass
+
+
+class SizeFloatCombine(pAug.AugFunc):
+    def __init__(self, height_factor=None, width_factor=None):
+        pAug.AugFunc.__init__(self)
+        self._height_factor = height_factor if height_factor is not None else 0
+        self._width_factor = width_factor if width_factor is not None else 0
+        self._height_factor = (-self._height_factor, self._height_factor) if type(self._height_factor).__name__ != 'tuple' else self._height_factor
+        self._width_factor = (0.0, self._width_factor) if type(self._width_factor).__name__ != 'tuple' else self._width_factor
+        assert self._width_factor[0] >= 0.0 and self._width_factor[1] >= 0.0
+        self._image_size_float = SF()
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        height_size = random.uniform(*self._height_factor) * image.shape[0]
+        width_size = random.uniform(*self._width_factor) * image.shape[1]
+
+        self._image_size_float.height_size = height_size
+        self._image_size_float.width_size = width_size
+        image = self._image_size_float(image)
         return image, bboxes

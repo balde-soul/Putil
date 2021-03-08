@@ -1,4 +1,5 @@
 # coding=utf-8
+import cv2
 import copy
 import random
 import numpy as np
@@ -617,3 +618,34 @@ class Contrast(ImageContrast, pAug.AugFunc):
     def __call__(self, *args):
         image = args[0]
         return np.clip(image + (image - np.mean(image[:, :, 0] * 0.299) + np.mean(image[:, :, 1] * 0.587) + np.mean(image[:, :, 2] * 0.114)) * self._contrast / 255.0,  0, 255).astype(np.uint8)
+
+class ImageSizeFloat:
+    def __init__(self):
+        self._height_size = None
+        self._width_size = None
+        pass
+
+    def set_height_size(self, size):
+        self._height_size = size
+    
+    def get_height_size(self):
+        return self._height_size
+    height_size = property(get_height_size, set_height_size)
+
+    def set_width_size(self, size):
+        self._width_size = size
+
+    def get_width_size(self):
+        return self._width_size
+    width_size = property(get_width_size, set_width_size)
+    pass
+
+class SizeFloat(ImageSizeFloat, pAug.AugFunc):
+    def __init__(self):
+        ImageSizeFloat.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        return cv2.resize(cv2.resize(image, (int(self._width_size), int(self._height_size))), (image.shape[1], image.shape[0]))
