@@ -71,12 +71,15 @@ def do_save():
         torch.from_numpy(np.zeros(shape=(1, 3, args.input_height, args.input_width))).cuda(), \
             recorder.epoch, args.save_dir, backbone, backend, decode)
 
+def lr_update(optimization, lr_reduces):
+    pass
+
 def do_epoch_end_process(epoch_result):
     indicator = util.all_reduce(epoch_result['eloss'], 'train_indicator')
     save = auto_save.save_or_not(indicator)
     if save or args.debug:
         # :save the backbone in rank0
-        do_save(epoch, util.TemplateModelDecodeCombine) if hvd.rank() == 0 else None
+        do_save() if hvd.rank() == 0 else None
         # 此日志保存了保存模型的epoch数，为clear_train提供了依据
         MainLogger.info('save in epoch: {}'.format(recorder.epoch)) if hvd.rank() == 0 else None
     # :stop or not
@@ -85,7 +88,7 @@ def do_epoch_end_process(epoch_result):
     # :lr_reduce
     _reduce = lr_reduce.reduce_or_not(indicator)
     # TODO: change the lr
-    optimizer.__dict__['param_group'][0]['lr'] = lr_reduce.reduce(optimization.__dict__['param_groups'][0]['lr']) if _reduce \
+    optimizations.__dict__['param_group'][0]['lr'] = lr_reduce.reduce(optimization.__dict__['param_groups'][0]['lr']) if _reduce \
         else optimization.__dict__['param_groups'][0]['lr']
     if hvd.rank() == 0:
         writer.add_scalar('lr', lr_reduce.LrNow, global_step=recorder.step)
@@ -697,7 +700,7 @@ if __name__ == '__main__':
                 raise NotImplementedError('continue_train_mode {} is not implemented'.format(args.continue_train_mode))
             #target_dict.update({'': }) if args.
             load_checkpointed(args.weight_epoch, args.weight_path, target_dict, map_location=torch.device(args.gpu))
-            do_save if util_with_args.is_continue_train(args) else None
+            do_save() if util_with_args.is_continue_train(args) else None
         for epoch in range(recorder.epoch + 1, recorder.epoch + args.epochs + 1):
             train_ret = train(epoch)
             if train_ret[0] is True:

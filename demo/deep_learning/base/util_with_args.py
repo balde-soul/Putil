@@ -18,8 +18,8 @@ TorchLoadCheckpointedLogger = logger.getChild('TorchLoadCheckpoited')
 TorchLoadCheckpointedLogger.setLevel(plog.DEBUG)
 TorchIsCudableLogger = logger.getChild('IsCudable')
 TorchIsCudableLogger.setLevel(plog.DEBUG)
-CombineOptimizationLogger = logger.getChild('CombineOptimization')
-CombineOptimizationLogger.setLevel(plog.DEBUG)
+TorchCombineOptimizationLogger = logger.getChild('CombineOptimization')
+TorchCombineOptimizationLogger.setLevel(plog.DEBUG)
 GetModuleLogger = logger.getChild('get_module')
 GetModuleLogger.setLevel(plog.DEBUG)
 from Putil.base import putil_status
@@ -69,31 +69,51 @@ class TorchCombineOptimization(optim.Optimizer):
         pass
 
     def zero_grad(self):
-        for k, optimization in self._optimizations.items():
+        for _, optimization in self._optimizations.items():
             optimization.zero_grad()
             pass
         pass
 
     def state_dict(self):
         return {k: optimization.state_dict() for k, optimization in self._optimizations.items()}
+
+    def load_state_dict(self, state_dict):
+        for k, optimization in self._optimizations.items():
+            if k in state_dict.keys():
+                optimization.load_state_dict(state_dict[k])
+            else:
+                TorchCombineOptimizationLogger.warning(Fore.YELLOW + '{} is not found in state_dict'.format(k) + Fore.RESET)
+                pass
+            pass
+        pass
     
     @property
     def optimizations(self):
         return self._optimizations
 
-    def lr_update(self, update_func, indicator):
+    ##@brief 更新optimization中的lr
+    # @note 使用lr_reduces中的lr_reduce对其对应的optimization的param_groups中的每个单元进行判断是否需要lr_reduce，如果需要则reduce该param_group的lr
+    # @param[in] le_reduces 字典，当key与结合的optimization名称同时，就使用该lr_reduce，
+    #   如果不存在则使用费key为‘default’的lr_reduce（这时会有warning信息出现），如果‘default’不存在则会抛fatal信息，
+    #   lr_reduce是基于Putil.trainer.lr_reduce
+    # @param[in] indicator 作为传给lr_reduce的指标对象，lr_reduce通过该指标判断是否需要reduce lr
+    # @return None
+    def lr_update(self, lr_reduces, indicator):
+        [TorchCombineOptimizationLogger.warning(Fore.YELLOW + 'lr_reduce: {} would not be used'.format(k) + Fore.RESET) \
+            if k not in self._optimizations.keys() and k != 'default' for k in lr_reduce.keys()]
         for k, optimization in self._optimizations.items():
-            if k in update_func.keys():
-                func = update_func[k]
+            if k in lr_reduces.keys():
+                lr_reduce = lr_reduces[k]
                 pass
-            elif 'default' in update_func.keys():
-                func = update_func['default']
+            elif 'default' in lr_reduces.keys():
+                TorchCombineOptimizationLogger.warning(Fore.YELLOW + 'use the default lr_reduce for the {} optimization'.format(k) + Fore.RESET)
+                lr_reduce = lr_reduces['default']
                 pass
             else:
-                CombineOptimizationLogger.fatal(Fore.RED + '{} lr_update_func is not found and default update_func is not existed'.format(k) + Fore.RESET)
+                TorchCombineOptimizationLogger.fatal(Fore.RED + '{} lr_update_func is not found and default update_func is not existed'.format(k) + Fore.RESET)
                 pass
             for param_group in optimization.param_groups:
-                param_group['lr'] = func(param_group['lr'])
+                param_group['lr'] = lr_reduce.reduce(param_group['lr']) if lr_reduce.reduce_or_not(indicator) else param_group['lr']
                 pass
             pass
         pass
