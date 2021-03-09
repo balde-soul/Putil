@@ -6,9 +6,11 @@ import numpy as np
 from colorama import Fore
 import torch
 import os
-from Putil.base import save_fold_base as psfb
+#from Putil.base import logger as plog
+#logger = plog.PutilLogConfig('util').logger()
+#logger.setLevel(plog.DEBUG)
 from Putil.demo.deep_learning.base import horovod
-
+import Putil.base.save_fold_base as psfb
 ##@brief 代表着本次运行是在什么模式下
 # @note 这与Stage不同，Stage在一次运行中可能会有不同的阶段Stage，
 # 比如TrainEvaluate表示在RunStage.Train中的Evaluate阶段
@@ -16,9 +18,6 @@ class RunStage(Enum):
     Train=0
     Evaluate=1
     Test=2
-
-def get_module(module_dict, target=''):
-    return module_dict[target]
 
 def find_repeatable_environ(base_name):
     temp = set([k if re.search(base_name, k) is not None else None for k in os.environ.keys()])

@@ -9,7 +9,6 @@ from enum import Enum
 import torch
 from torch.nn import Module
 from torch import optim
-import Putil.base.save_fold_base as psfb
 import Putil.base.logger as plog
 logger = plog.PutilLogConfig('util').logger()
 logger.setLevel(plog.DEBUG)
@@ -19,6 +18,11 @@ TorchLoadCheckpointedLogger = logger.getChild('TorchLoadCheckpoited')
 TorchLoadCheckpointedLogger.setLevel(plog.DEBUG)
 TorchIsCudableLogger = logger.getChild('IsCudable')
 TorchIsCudableLogger.setLevel(plog.DEBUG)
+CombineOptimizationLogger = logger.getChild('CombineOptimization')
+CombineOptimizationLogger.setLevel(plog.DEBUG)
+GetModuleLogger = logger.getChild('get_module')
+GetModuleLogger.setLevel(plog.DEBUG)
+from Putil.base import putil_status
 
 import Putil.demo.deep_learning.base.horovod as horovod
 from Putil.trainer import util
@@ -76,6 +80,23 @@ class TorchCombineOptimization(optim.Optimizer):
     @property
     def optimizations(self):
         return self._optimizations
+
+    def lr_update(self, update_func, indicator):
+        for k, optimization in self._optimizations.items():
+            if k in update_func.keys():
+                func = update_func[k]
+                pass
+            elif 'default' in update_func.keys():
+                func = update_func['default']
+                pass
+            else:
+                CombineOptimizationLogger.fatal(Fore.RED + '{} lr_update_func is not found and default update_func is not existed'.format(k) + Fore.RESET)
+                pass
+            for param_group in optimization.param_groups:
+                param_group['lr'] = func(param_group['lr'])
+                pass
+            pass
+        pass
     pass
 
 def Torchis_cudable(object):
@@ -324,3 +345,13 @@ def torch_load_deploy(epoch, full_path):
 #    TrainEvaluate=1
 #    Evaluate=2
 #    Test=3
+
+
+def get_module(module_dict, target=''):
+    if putil_status.putil_is_debug():
+        if target not in module_dict.keys():
+            GetModuleLogger.fatal('')
+            pass
+        pass
+    GetModuleLogger.info(Fore.GREEN + 'use the '.format(module_dict[target].__class__.__name__) + Fore.RESET)
+    return module_dict[target]

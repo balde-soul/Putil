@@ -78,7 +78,6 @@ def combine_optimization_factory(args):
             raise NotImplementedError('combine_optimization in framework: {} is Not Implemented'.format(args.framework))
         pass
     return generate_combine_optimization_factory_func
-    pass
 
 def is_cudable_factory(args):
     temp_args = copy.deepcopy(args)
@@ -89,4 +88,3 @@ def is_cudable_factory(args):
             raise NotImplementedError('is_cudable in framework: {} is Not Implemented'.format(args.framework))
         pass
     return generate_is_cudable_factory_func
-    pass
