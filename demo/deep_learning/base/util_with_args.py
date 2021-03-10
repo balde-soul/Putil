@@ -100,7 +100,7 @@ class TorchCombineOptimization(optim.Optimizer):
     # @return None
     def lr_update(self, lr_reduces, indicator):
         [TorchCombineOptimizationLogger.warning(Fore.YELLOW + 'lr_reduce: {} would not be used'.format(k) + Fore.RESET) \
-            if k not in self._optimizations.keys() and k != 'default' for k in lr_reduce.keys()]
+            if k not in self._optimizations.keys() and k != 'default' else None for k in lr_reduces.keys()]
         for k, optimization in self._optimizations.items():
             if k in lr_reduces.keys():
                 lr_reduce = lr_reduces[k]
