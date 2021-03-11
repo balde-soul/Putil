@@ -1,5 +1,17 @@
 # coding=utf-8
 
+import torch
+
+class TorchNoOpModule(torch.nn.Module):
+    def __init__(self):
+        torch.nn.Module.__init__(self)
+        pass
+
+    def forward(self, x):
+        return x
+    pass
+
+
 def set_torch_deterministic(seed):
     import torch
     import numpy as np

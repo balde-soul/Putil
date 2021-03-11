@@ -86,7 +86,6 @@ class UNet(nn.Module):
     def __init__(self, n_channels, downsample_rate, bilinear=False):
         super(UNet, self).__init__()
         self.n_channels = n_channels
-        self.n_classes = n_classes
         self.bilinear = bilinear
 
         self.inc = DoubleConv(n_channels, 64)
@@ -122,3 +121,4 @@ class UNet(nn.Module):
     @property
     def final_out_channels(self):
         return 256 
+    pass
