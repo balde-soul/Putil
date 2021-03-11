@@ -1,10 +1,7 @@
 # coding=utf-8
-from importlib import reload
 import copy
 import Putil.demo.deep_learning.base.base_operation as standard
 import util.base_operation as project
-reload(standard)
-reload(project)
 
 
 def checkpoint_factory(args):
@@ -72,12 +69,22 @@ def load_deployed(args):
 def generate_model_element_factory(args):
     return eval('{}_generate_model_element'.format(args.framework))
 
-def empty_tensor_factory(args):
+def combine_optimization_factory(args):
     temp_args = copy.deepcopy(args)
-    def generate_empty_tensor_factory_func():
+    def generate_combine_optimization_factory_func():
         if temp_args.framework == 'torch':
-            return standard.torch_generate_empty_tensor
+            return standard.TorchCombineOptimization
         else:
-            raise NotImplementedError('empty_tensor_factory in framework: {} is Not Implemented'.format(args.framework))
+            raise NotImplementedError('combine_optimization in framework: {} is Not Implemented'.format(args.framework))
         pass
-    return generate_empty_tensor_factory_func
+    return generate_combine_optimization_factory_func
+
+def is_cudable_factory(args):
+    temp_args = copy.deepcopy(args)
+    def generate_is_cudable_factory_func():
+        if args.framework == 'torch':
+            return standard.Torchis_cudable
+        else:
+            raise NotImplementedError('is_cudable in framework: {} is Not Implemented'.format(args.framework))
+        pass
+    return generate_is_cudable_factory_func

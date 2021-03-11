@@ -3,7 +3,6 @@
 import os
 os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import numpy as np
-from importlib import reload
 import Putil.base.logger as plog
 
 plog.PutilLogConfig.config_handler(plog.stream_method)
@@ -15,7 +14,6 @@ TestCocoLogger = root_logger.getChild('TestCoco')
 TestCocoLogger.setLevel(plog.DEBUG)
 
 import Putil.data.coco as COCO
-reload(COCO)
 import Putil.data.aug as pAug
 import Putil.data.aug as pAug
 from Putil.data.data_type_adapter import DataTypeAdapterNoOp as data_type_adapter

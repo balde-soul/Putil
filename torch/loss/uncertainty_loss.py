@@ -12,7 +12,7 @@ from torch import nn
 class UncertaintyLoss(nn.Module):
     def __init__(self, v_num):
         super(UncertaintyLoss, self).__init__()
-        sigma = torch.randn(v_num)
+        sigma = torch.ones(v_num) / v_num
         self.sigma = nn.Parameter(sigma)
         self.v_num = v_num
 

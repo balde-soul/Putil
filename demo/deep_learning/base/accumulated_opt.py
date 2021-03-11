@@ -16,15 +16,23 @@ class torch_DefaultAccumulatedOpt:
     def __init__(self, args):
         self._accumulation = args.accumulation_time
         self._count = 0
+        self._optimization = None
         pass
 
-    def append(self, loss, optimization, force_accumulation=None):
+    def __call__(self, optimization):
+        self._optimization = optimization
+        return self
+
+    def step(self, loss, force_accumulation=None):
         (loss / self._accumulation).backward() if force_accumulation is None else (loss / force_accumulation).backward()
         self._count += 1
         if self._count == (self._accumulation if force_accumulation is None else force_accumulation):
-            optimization.step()
-            optimization.zero_grad()
+            self._optimization.step()
             self._count = 0
             pass
+        pass
+
+    def zero_grad(self):
+        self._optimization.zero_grad()
         pass
     pass

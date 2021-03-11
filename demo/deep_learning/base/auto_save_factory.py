@@ -6,12 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.auto_save as standard
 from util import auto_save as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
-def auto_save_factory(args):
+def auto_save_factory(args, source, name, property_type, **kwargs):
     '''
      @brief
      @note
@@ -25,11 +22,11 @@ def auto_save_factory(args):
         pass
     else:
         raise NotImplementedError('auto_save of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.auto_save_source, args.auto_save_name)
-    logger.info('auto_save model: {}, arch: {}'.format(model, args.auto_save_arch))
-    return eval('{}(args)'.format(model))
+    model = '{0}.{1}'.format(source, name)
+    logger.info('auto_save: {}'.format(model))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
 
-def auto_save_arg_factory(parser, source, name):
+def auto_save_arg_factory(parser, source, name, property_type='', **kwargs):
     auto_save_arg = '{0}.{1}Arg'.format(source, name)
     logger.info('auto_save_arg: {}'.format(name))
-    return eval('{}(parser)'.format(auto_save_arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(auto_save_arg))

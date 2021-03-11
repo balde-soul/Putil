@@ -6,10 +6,57 @@ cat << EOF
     environ data:
         环境变量，所有同等地位的变量需要以'.'分隔，因为环境变量不接受空格，比如aug_sources与aug_names就存在多种并列的情况，
         需要使用aug_sources=source1.source2.source3与aug_names=name1.name2.name3的形式
-        remote_debug: 使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
-        log_level: 使用log_level=Info等设定log等级
-        del_train_time: 使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
-        train_name: 使用train_name=*name*，设置训练代表性目的以及影响训练子目录的名称
+        log_level: 
+            使用log_level=Info等设定log等级
+        del_train_time: 
+            使用del_train_time=tim-1.time-2.time-3, 删除训练总目录中的分段训练目录
+        train_name: 
+            使用train_name=*name*，设置训练代表性目的以及影响训练子目录的名称
+
+        name: 
+            the ${backbone_name}${name} would be the name of the fold to save the result
+            默认Unnamed
+        remote_debug: 
+            使用remote_debug=True或者remote_debug=true设定环境变量，代表即将进行remote_debug模式
+            setup with remote debug(blocked while not attached) or not'
+            默认False
+        run_stage: 
+            代表着本次运行的RunStage，默认是Train
+            Train/train-->train_off=False，evaluate_off=*，test_off=*
+            Evaluate/evaluate-->train_off=True，evaluate_off=False
+            Test/test-->train_off=True，evaluate_off=True，test_off=False
+        save_dir:
+            最基础的保存结果的根目录
+            默认为./result
+        weight_path: 
+            可以指定权重文件存放位置,
+            加上weight_epoch的指定，可以生成继续训练所继承的weight
+            help=the path where the trained model saved
+            默认为None，代表None，那么本次运行将不会是继续训练
+        weight_epoch: 
+            作用查看weight_path
+            help=the epoch when saved model which had been trained
+            默认为'None'代表None，那么本次运行将不会是继续训练
+        train_name:
+            继续训练的文件夹主名称
+            help=specify the name as the prefix for the continue train fold name
+            默认为''
+        debug:
+            help='run all the process in two epoch with tiny data')
+            默认为False
+        clean_train:
+            使用A.B.C的模式设置的一个列表，表示即将被清理的train_time文件夹
+            help=if not None, the result in specified train time would be clean, need args.weight_path
+            默认为
+        framework:
+            指定使用框架：
+            Torch/torch-->torch
+            tf/tensorflow-->tf
+        log_level:
+            指定log等级
+            Debug、Info、Warning、Error、Fatal
+            默认Info
+
     OPTIONS:
         -g      （指定gpus，使用逗号分隔）ip0:gpu0.gpu1,ip1:gpu0.gpu1 example: 127.0.0.1:0.1.2,127.0.0.2:0,127.0.0.3:0.1
         -w       specify the number of worker for every dataset,（指定数据进程数）
@@ -81,6 +128,7 @@ while getopts "g:b:w:l:" OPT; do
     esac
 done
 
+source ./experiments/base.sh
 # 获取horovod中的H,np与main中的gpus参数
 gpus_arg=
 horovod_np_arg=0
@@ -108,43 +156,15 @@ for (( i=0;i<${#gpus[@]};i++ )); do
 done
 echo gpus_arg: $gpus_arg horovod_np_arg: $horovod_np_arg horovod_H_arg: $horovod_H_arg
 
-# remote_debug 相关解析
-if [ $remote_debug ] && ([ $remote_debug == 'true' ] || [ $remote_debug == 'True' ]); then
-    echo "set remote_debug mode"
-    remote_debug_arg=--remote_debug
-else
-    remote_debug_arg=
-fi
+declare -A env_dict 
+env_dict=(
+[name]= [remote_debug]=False [run_stage]=Train [save_dir]=./result
+[weight_path]=None [weight_epoch]=None [train_name]=
+[clean_train]= [debug]=False [framework]=torch [log_level]=Info
+)
+set_env
 
-# log_level 相关解析
-if [ $log_level ]; then
-    log_level_arg=--log_level=$log_level
-    echo 'set log_level:' $(echo $log_level) $log_level_arg
-else
-    # Default: log_level
-    log_level_arg=--log_level=Info
-fi
-
-# del_train_time 相关解析
-if [ $del_train_time ]; then
-    clean_train_arg=--clean_train' '${del_train_time//./ }
-    echo 'set del train time:' ${del_train_time//./ } $clean_train_arg
-else
-    # Default: clean_train
-    clean_train_arg=
-fi
-
-# train_name 相关解析
-if [ $train_name ]; then
-    train_name_arg=--train_name=$(echo $train_name)
-    echo 'set train name:' $(echo $train_name) $train_name_arg
-else
-    # Default: train_name
-    train_name_arg=
-fi
-
-declare -A sources_names
-sources_names=(
+env_dict=(
 [auto_save_source]=standard [auto_save_name]=DefaultAutoSave
 [auto_stop_source]=standard [auto_stop_name]=DefaultAutoStop
 [lr_reduce_source]=standard [lr_reduce_name]=DefaultLrReduce
@@ -157,31 +177,19 @@ sources_names=(
 [decode_source]=standard [decode_name]=DefaultDecode
 [loss_source]=standard [loss_name]=DefaultLoss
 [indicator_source]=standard [indicator_name]=DefaultIndicator
-[statistic_indicator_source]=standard [statistic_indicator_name]=DefaultStatisticIndicator 
+[indicator_statistic_source]=standard [indicator_statistic_name]=DefaultIndicatorStatistic
 [optimization_source]=standard [optimization_name]=DefaultOptimization
-[aug_sources]=standard [aug_names]=DefaultAug
+[aug_source]=standard [aug_name]=DefaultAug
 [data_type_adapter_source]=standard [data_type_adapter_name]=DefaultDataTypeAdapter
 [fit_data_to_input_source]=standard [fit_data_to_input_name]=DefaultFitDataToInput
+[fit_to_loss_input_source]=standard [fit_to_loss_input_name]=DefaultFitToLossInput
+[fit_to_indicator_input_source]=standard [fit_to_indicator_input_name]=DefaultFitToIndicatorInput
+[fit_to_decode_input_source]=standard [fit_to_decode_input_name]=DefaultFitToDecodeInput
 [fit_decode_to_result_source]=standard [fit_decode_to_result_name]=DefaultFitDecodeToResult
 [recorder_source]=standard [recorder_name]=DefaultRecorder
 [accumulated_opt_source]=standard [accumulated_opt_name]=DefaultAccumulatedOpt
 )
-## 从脚本外获取手动设置的环境变量
-for key in $(echo ${!sources_names[*]}); do
-    if [ $(eval echo '$'$key) ]; then
-        echo 'manual set' $key 'from' ${sources_names[$key]}'(default)-->' $(eval echo '$'$key)
-        sources_names[$key]=$(eval echo '$'$key)
-    else
-        sources_names[$key]=${sources_names[$key]}
-    fi
-done
-# 生成环境变量语句
-env_set_command=
-for key in $(echo ${!sources_names[*]}); do
-    env_set_command=$(echo $env_set_command $key=${sources_names[$key]})
-done
-echo env_command: $env_set_command
-export $env_set_command
+set_env
 #################################env_set_command 如何使用######################################
 #当运行一个.sh文件或者是shell命令，shell会把当前的环境变量都复制过来，也就是子类和父类的关系。通过以下几个场景解释这个概念。
 #证明父能影响子

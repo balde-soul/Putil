@@ -6,12 +6,9 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.auto_stop as standard
 from util import auto_stop as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
-def auto_stop_factory(args):
+def auto_stop_factory(args, source, name, property_type='', **kwargs):
     '''
      @brief
      @note
@@ -25,13 +22,13 @@ def auto_stop_factory(args):
         pass
     else:
         raise NotImplementedError('auto_stop of framework: {} is not implemented'.format(args.framework))
-    model = '{0}.{1}'.format(args.auto_stop_source, args.auto_stop_name)
-    logger.info('auto_stop model: {}, arch: {}'.format(model, args.auto_stop_arch))
-    return eval('{}(args)'.format(model))
+    model = '{0}.{1}'.format(source, name)
+    logger.info('auto_stop: {}|{}'.format(model, property_type))
+    return eval('{}(args, property_type, **kwargs)'.format(model))
     
 
-def auto_stop_arg_factory(parser, source, name):
+def auto_stop_arg_factory(parser, source, name, property_type='', **kwargs):
     auto_stop_arg = '{0}.{1}Arg'.format(source, name)
-    logger.info('auto_stop_arg: {}'.format(auto_stop_arg))
+    logger.info('auto_stop_arg: {}|{}'.format(auto_stop_arg, property_type))
     #import pdb; pdb.set_trace()
-    return eval('{}(parser)'.format(auto_stop_arg)) 
+    return eval('{}(parser, property_type, **kwargs)'.format(auto_stop_arg))

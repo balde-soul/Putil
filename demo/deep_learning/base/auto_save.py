@@ -17,7 +17,7 @@ class DefaultAutoSave:
     def __call__(self, args):
         pass
 
-def DefaultAutoSave(args):
+def DefaultAutoSave(args, property_type='', **kwargs):
     '''
      @param[in] args
       args.auto_save_mode
@@ -29,9 +29,10 @@ def DefaultAutoSave(args):
       args.auto_save_history_amount
     '''
     def generate_default_auto_save():
-        return _DefaultAutoSave.generate_AutoSave_from_args(args)
+        return _DefaultAutoSave.generate_AutoSave_from_args(args, property_type, **kwargs)
     return generate_default_auto_save
 
 
-def DefaultAutoSaveArg(parser):
-    _DefaultAutoSave.generate_args(parser)
+def DefaultAutoSaveArg(parser, property_type='', **kwargs):
+    #import pdb; pdb.set_trace()
+    _DefaultAutoSave.generate_args(parser, property_type, **kwargs)

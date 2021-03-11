@@ -18,6 +18,7 @@ from Putil.data.vision_data_aug.detection.rectangle import RandomRotateCombine a
 from Putil.data.vision_data_aug.detection.rectangle import RandomShearCombine as RSC
 from Putil.data.vision_data_aug.detection.rectangle import VerticalFlipCombine as VFC 
 from Putil.data.vision_data_aug.detection.rectangle import RandomHSVCombine as RHC
+from Putil.data.vision_data_aug.detection.rectangle import SizeFloatCombine as SFC
 from Putil.data.aug import AugFunc
 
 image_wh = (800, 800)
@@ -40,7 +41,7 @@ class Data(CommonDataWithAug):
 
     def __init__(self):
         CommonDataWithAug.__init__(self)
-        self._index = [0]
+        self._data_field = [0]
     
     def _generate_from_origin_index(self, index):
         image = np.zeros(shape=[image_wh[1], image_wh[0], 3], dtype=np.uint8)
@@ -72,6 +73,10 @@ class CombineAugFuncHF(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -87,6 +92,10 @@ class CombineAugFuncVF(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -102,6 +111,10 @@ class CombineAugFuncRRC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
@@ -155,12 +168,33 @@ class CombineAugFuncRSC(AugFunc):
 
         image, bboxes = self._aug(image, bboxes)
         return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
     pass
 
 
 class CombineAugFuncRHC(pAug.AugFunc):
     def __init__(self):
         self._aug = RHC(0.0, 50.0, 50.0)
+        pass
+
+    def __call__(self, *args):
+        image = args[0]
+        bboxes = args[1]
+
+        image, bboxes = self._aug(image, bboxes)
+        return image, bboxes
+    
+    @property
+    def name(self):
+        return self._aug.name
+
+
+class CombineAugFuncSFC(pAug.AugFunc):
+    def __init__(self):
+        self._aug = SFC((0.5, 1.0), (0.5, 1.0))
         pass
 
     def __call__(self, *args):
@@ -183,6 +217,7 @@ RTCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRTC()))
 RRBNode = root_node.add_child(pAug.AugNode(CombineAugFuncRRB()))
 RSCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRSC()))
 RHCNode = root_node.add_child(pAug.AugNode(CombineAugFuncRHC()))
+SFCNode = root_node.add_child(pAug.AugNode(CombineAugFuncSFC()))
 root_node.freeze_node()
 
 for index in range(0, len(root_node)):

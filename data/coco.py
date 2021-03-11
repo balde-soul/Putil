@@ -1,7 +1,6 @@
 # coding=utf-8
 import copy
 from colorama import Fore
-#from pycocotools.cocoeval import COCOeval
 import matplotlib.pyplot as plt
 import skimage.io as io
 import pylab
@@ -16,8 +15,6 @@ from abc import ABCMeta, abstractmethod
 import random
 import json
 from skimage import io
-#import matplotlib.pyplot as plt
-from importlib import reload
 import cv2
 import time
 from enum import Enum
@@ -35,20 +32,11 @@ COCODataLogger.setLevel(plog.DEBUG)
 COCOBaseLogger = logger.getChild('COCOBase')
 COCOBaseLogger.setLevel(plog.DEBUG)
 
+from Putil.base import putil_status
 from Putil.data import cocoeval
-reload(cocoeval)
-COCOeval = cocoeval.CustomCOCOeval
 import Putil.data.vision_common_convert.bbox_convertor as bbox_convertor
-reload(bbox_convertor)
-from Putil.data.util.vision_util.detection_util import rect_angle_over_border as rect_angle_over_border
 from Putil.data.util.vision_util import detection_util
-rect_angle_over_border = detection_util.rect_angle_over_border
-clip_box = detection_util.clip_box_using_image
-reload(detection_util)
-rect_angle_over_border = detection_util.rect_angle_over_border
-clip_box = detection_util.clip_box_using_image
 import Putil.data.common_data as pcd
-reload(pcd)
 
 
 class COCOBase(pcd.CommonDataForTrainEvalTest):
@@ -449,16 +437,14 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
     def evaluate(self, image_ids=None, cat_ids=None, prefix=None, use_visual=False):
         pass
 
+    ##@brief evaluate the performance
+    # @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
+    # then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
+    # @param[in] image_ids the images would be considered in the evaluate, 当没有指定时，则对目标coco的getImgIds的所有image进行evaluate
+    # @param[in] cat_ids the categories would be considered in the evaluate，当没有指定时，则对目标coco的getCatIds的所有cat进行evaluate
+    # @param[in] scores list格式，阈值，超过该值的bbox才被考虑
+    # @param[in] ious list格式，阈值，考虑基于这些iou阈值的ap与ar
     def evaluate_detection(self, image_ids=None, cat_ids=None, scores=None, ious=None, prefix=None, use_visual=False):
-        '''
-         @brief evaluate the performance
-         @note use the result files in the self._information_save_to_path, combine all result files and save to a json file, and
-         then we would use this json file to evaluate the performance, base on object the image_ids Cap cat_ids
-         @param[in] image_ids the images would be considered in the evaluate, 当没有指定时，则对目标coco的getImgIds的所有image进行evaluate
-         @param[in] cat_ids the categories would be considered in the evaluate，当没有指定时，则对目标coco的getCatIds的所有cat进行evaluate
-         @param[in] scores list格式，阈值，超过该值的bbox才被考虑
-         @param[in] ious list格式，阈值，考虑基于这些iou阈值的ap与ar
-        '''
         assert type(prefix).__name__ == 'list' or prefix is None or type(prefix).__name__ == 'str'
         target_files = [COCOBase.generate_result_file_name(prefix, self._detection_result_file_name) for _prefix in prefix] if type(prefix).__name__ == 'list' \
             else [COCOBase.generate_result_file_name(prefix, self._detection_result_file_name)]
@@ -479,6 +465,9 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             t = lambda x, score: x != None
         scores = [None] if scores is None else scores
         for score in scores:
+            COCODataLogger.info('evaluate with score: {}'.format(score))
+            json_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_formated_sub_detection_result.json'.format(prefix, score))
+            evaluate_detection_result_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_result.json'.format(prefix, score))
             sub_detection_result = detection_result[t(detection_result['score'], score)]
             if use_visual:
                 visual_save_to = os.path.join(self._information_save_to_path, '{}-{}'.format(prefix, score))
@@ -506,6 +495,7 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
                         目前没有找到其他方法，使用该函数分离[top_x, top_y, width, height]'''
                         s['top_x'], s['top_y'], s['w'], s['h'] = s['bbox'][0], s['bbox'][1], s['bbox'][2], s['bbox'][3]
                         return s
+                    # : 获取当前coco的label
                     labels_for_this_image = self._instances_coco.loadAnns(self._instances_coco.getAnnIds(imgIds=[image_id], catIds=cat_ids))
                     if not result_for_this_image.empty:
                         # visual the pre
@@ -525,16 +515,15 @@ class COCOBase(pcd.CommonDataForTrainEvalTest):
             index_name = {index: name for index, name in enumerate(list(sub_detection_result.columns))}
             sub_detection_result_formated = [{index_name[index]: tt for index, tt in enumerate(t)} for t in list(np.array(sub_detection_result))]
                 
-            json_file_path = os.path.join(self._information_save_to_path, '{}_score_{}_formated_sub_detection_result.json'.format(prefix, score))
             with open(json_file_path, 'w') as fp:
                 json.dump(sub_detection_result_formated, fp)
         
             sub_detection_result_coco = self._instances_coco.loadRes(json_file_path)
             #result_image_ids = sub_detection_result_coco.getImgIds()
-            cocoEval = COCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
-            cocoEval.params.imgIds  = image_ids if image_ids is not None else cocoEval.params.imgIds
-            cocoEval.params.catIds = cat_ids if cat_ids is not None else cocoEval.params.catIds
-            cocoEval.params.iouThrs = ious if ious is not None else cocoEval.params.iouThrs
+            cocoEval = cocoeval.CustomCOCOeval(self._instances_coco, sub_detection_result_coco, 'bbox')
+            cocoEval.params.imgIds  = np.array(image_ids) if image_ids is not None else cocoEval.params.imgIds
+            cocoEval.params.catIds = np.array(cat_ids) if cat_ids is not None else cocoEval.params.catIds
+            cocoEval.params.iouThrs = np.array(ious) if ious is not None else cocoEval.params.iouThrs
             cocoEval.evaluate()
             cocoEval.accumulate()
             cocoEval.summarize()
@@ -726,11 +715,11 @@ class COCOData(COCOBase):
                 pass
             #for box in bboxes:
             #    cv2.rectangle(image, (box[0] - box[])
-            #assert rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
+            #assert detection_util.rect_angle_over_border(bboxes, image.shape[1], image.shape[0]) is False, "cross the border"
             #if index == 823:
             #    pass
             if len(bboxes) != 0:
-                bboxes = clip_box(bboxes, image)
+                bboxes = detection_util.clip_box_using_image(bboxes, image)
                 classes = np.delete(classes, np.argwhere(np.isnan(bboxes)), axis=0)
                 bboxes = np.delete(bboxes, np.argwhere(np.isnan(bboxes)), axis=0)
             datas[COCOBase.base_information_index] = base_information
@@ -738,7 +727,7 @@ class COCOData(COCOBase):
             datas[COCOBase.detection_box_index] = bboxes
             datas[COCOBase.detection_class_index] = classes
             #ret = self._aug_check(*ret)
-            COCODataLogger.warning('original data generate no obj') if len(datas[COCOBase.detection_box_index]) == 0 else None
+            COCODataLogger.warning('original data generate no obj') if len(datas[COCOBase.detection_box_index]) == 0 and putil_status.putil_is_debug() else None
             return tuple(datas)
         else:
             raise NotImplementedError('unimplemented')
@@ -751,7 +740,7 @@ class COCOData(COCOBase):
                 bboxes = args[COCOBase.detection_box_index]
                 classes = args[COCOBase.detection_class_index]
                 assert len(bboxes) == len(classes)
-                COCODataLogger.warning('zero obj occu') if len(bboxes) == 0 else None
+                COCODataLogger.warning('zero obj occur') if len(bboxes) == 0 and putil_status.putil_is_debug() else None
                 if len(bboxes) == 0:
                     pass
                 assert np.argwhere(np.isnan(np.array(bboxes))).size == 0

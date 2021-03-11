@@ -9,6 +9,8 @@ lr_reduce_logger = plog.PutilLogConfig('lr_reduce').logger()
 lr_reduce_logger.setLevel(plog.DEBUG)
 LrReduceLogger = lr_reduce_logger.getChild('LrReduce')
 LrReduceLogger.setLevel(plog.DEBUG)
+LrReduceWithoutLrInitLogger = lr_reduce_logger.getChild('LrReduceWithoutLrInit')
+LrReduceWithoutLrInitLogger.setLevel(plog.DEBUG)
 
 class lr_reduce(metaclass=ABCMeta):
     def __init__(self):
@@ -34,12 +36,13 @@ class LrReduceProvideReduceMethod(lr_reduce):
     @staticmethod
     def reduce(self, lr_old):
         pass
+    pass
 
 
-class LrReduceWithoutLrInit(lr_reduce):
+class LrReduceWithoutLrInit(LrReduceProvideReduceMethod):
     @staticmethod 
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod
@@ -81,11 +84,10 @@ class LrReduceWithoutLrInit(lr_reduce):
         params['lr_min'] = args.lr_reduce_lr_min
         params['mode'] = args.lr_reduce_mode
         return LrReduce(**params)
-        pass
 
     def __init__(self, init_lr, lr_factor, lr_epsilon, lr_patience, lr_cool_down, lr_min, mode='max'):
         LrReduceLogger.info(Fore.GREEN + '-->LrReduce.__init__' + Fore.RESET)
-        lr_reduce.__init__(self)
+        LrReduceProvideReduceMethod.__init__(self)
         self._lr_base = init_lr
         self._lr_now = init_lr
         self._lr_factor = lr_factor
@@ -189,22 +191,20 @@ class LrReduceWithoutLrInit(lr_reduce):
                     pass
             if self._count >= self._lr_patience:
                 self._cool_count = self._lr_cool_down
-                LrReduceLogger.info(Fore.LIGHTGREEN_EX +
-                                    'up to patience, reduce the learning rate from {0} to {1}'.format(
-                                        self._lr_now, self._lr_factor * self._lr_now)
-                                    + Fore.RESET
-                                    )
-                self._lr_now = self._lr_factor * self._lr_now
+                LrReduceLogger.info(Fore.LIGHTGREEN_EX + 'up to patience, suppose reduce the learning rate' + Fore.RESET)
                 self._count = 0
-                #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 return True
             else:
-                #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 LrReduceLogger.info(Fore.GREEN + 'NOT REDUCE' + Fore.RESET)
                 return False
             pass
-            #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
         pass
+
+    def reduce(self, lr):
+        temp = self._lr_now
+        self._lr_now = self._lr_factor * lr
+        LrReduceWithoutLrInitLogger.info(Fore.LIGHTGREEN_EX + 'reduce the learning rate from {0} to {1}'.format(temp, self._lr_now))
+        return self._lr_now
 
     def state_dict(self):
         state_dict = {}
@@ -230,10 +230,10 @@ class LrReduceWithoutLrInit(lr_reduce):
 # while the indicator does not improve for patience epoch, this while return the reduce learn rate
 # if feed None, would return the newest learn rate
 # once the reduce worked, the reducer would coll down for lr_cool_down epoch, which not
-class LrReduce(lr_reduce):
+class LrReduce(LrReduceProvideReduceMethod):
     @staticmethod 
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type=''):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod
@@ -265,17 +265,16 @@ class LrReduce(lr_reduce):
         return args.lr_reduce_mode
 
     @staticmethod
-    def generate_LrReduce_from_args(args):
+    def generate_LrReduce_from_args(args, property_type='', **kwargs):
         params = dict()
-        params['init_lr'] = args.lr_reduce_init_lr
-        params['lr_factor'] = args.lr_reduce_lr_factor
-        params['lr_epsilon'] = args.lr_reduce_lr_epsilon
-        params['lr_patience'] = args.lr_reduce_lr_patience
-        params['lr_cool_down'] = args.lr_reduce_cool_down
-        params['lr_min'] = args.lr_reduce_lr_min
-        params['mode'] = args.lr_reduce_mode
+        params['init_lr'] = eval('args.{}lr_reduce_init_lr'.format(property_type))
+        params['lr_factor'] = eval('args.{}lr_reduce_lr_factor'.format(property_type))
+        params['lr_epsilon'] = eval('args.{}lr_reduce_lr_epsilon'.format(property_type))
+        params['lr_patience'] = eval('args.{}lr_reduce_lr_patience'.format(property_type))
+        params['lr_cool_down'] = eval('args.{}lr_reduce_lr_cool_down'.format(property_type))
+        params['lr_min'] = eval('args.{}lr_reduce_lr_min'.format(property_type))
+        params['mode'] = eval('args.{}lr_reduce_mode'.format(property_type))
         return LrReduce(**params)
-        pass
 
     def __init__(self, init_lr, lr_factor, lr_epsilon, lr_patience, lr_cool_down, lr_min, mode='max'):
         LrReduceLogger.info(Fore.GREEN + '-->LrReduce.__init__' + Fore.RESET)
@@ -365,13 +364,11 @@ class LrReduce(lr_reduce):
                 pass
             else:
                 pass
-            plog.api_function_out_log(LrReduceLogger, 'reduce_or_not')
-            #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
+            LrReduceLogger.info('NOT REDUCE')
             return False
         else:
             if self._best is None:
                 self._best = indicator 
-                #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 return False
             else:
                 if (self._best - indicator) * self._direction < -self._lr_epsilon:
@@ -383,22 +380,20 @@ class LrReduce(lr_reduce):
                     pass
             if self._count >= self._lr_patience:
                 self._cool_count = self._lr_cool_down
-                LrReduceLogger.info(Fore.LIGHTGREEN_EX +
-                                    'up to patience, reduce the learning rate from {0} to {1}'.format(
-                                        self._lr_now, self._lr_factor * self._lr_now)
-                                    + Fore.RESET
-                                    )
-                self._lr_now = self._lr_factor * self._lr_now
+                LrReduceLogger.info(Fore.LIGHTGREEN_EX + 'up to patience, suppose reduce the learning rate' + Fore.RESET)
                 self._count = 0
-                #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
                 return True
             else:
-                #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
-                LrReduceLogger.info(Fore.GREEN + 'NOT REDUCE' + Fore.RESET)
+                LrReduceLogger.info('NOT REDUCE')
                 return False
             pass
-            #LrReduceLogger.info(Fore.GREEN + 'reduce_or_not-->' + Fore.RESET)
         pass
+
+    def reduce(self, lr):
+        temp = self._lr_now
+        self._lr_now = self._lr_factor * lr
+        LrReduceLogger.info(Fore.LIGHTGREEN_EX + 'reduce the learning rate from {0} to {1}'.format(temp, self._lr_now))
+        return self._lr_now
 
     def state_dict(self):
         state_dict = {}

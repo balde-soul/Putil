@@ -1,4 +1,5 @@
 # coding=utf-8
+import torch
 from colorama import Fore
 from enum import Enum
 import copy
@@ -15,41 +16,57 @@ DefaultBackboneLogger.setLevel(plog.DEBUG)
 from Putil.torch.pretrained_model.vgg import VGG
 
 
-def common_backbone_arg(parser):
-    '''
-     @brief 生成常用的backbone参数
-     @note
-      backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
-      backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
-      backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
-      backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
-    '''
-    parser.add_argument('--backbone_arch', type=str, default='', action='store', \
+##@brief 生成常用的backbone参数
+# @note generate the follow name space arg
+# <property_type>backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
+# <property_type>backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
+# <property_type>backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
+# <property_type>backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
+def common_backbone_arg(parser, property_type='', **kwargs):
+    parser.add_argument('--{}backbone_arch'.format(property_type), type=str, default='', action='store', \
         help='specify the arch of the backbone, such 19 for backbone_name with vgg')
-    parser.add_argument('--backbone_downsample_rate', type=int, default=None, action='store', \
+    parser.add_argument('--{}backbone_downsample_rate'.format(property_type), type=int, default=None, action='store', \
         help='specify the downsample rate for the backbone')
-    parser.add_argument('--backbone_pretrained', default=False, action='store_true', \
+    parser.add_argument('--{}backbone_pretrained'.format(property_type), default=False, action='store_true', \
         help='load the pretrained backbone weight or not')
-    parser.add_argument('--backbone_weight_path', type=str, default='', action='store', \
+    parser.add_argument('--{}backbone_weight_path'.format(property_type), type=str, default='', action='store', \
         help='specify the pre-trained model for the backbone, use while in finetune mode, '\
             'if the weight is specify, the backbone weight would be useless')
     pass
 
 
 class Backbone:
-    def __init__(self, args):
-        self._backbone_pretrained = args.backbone_pretrained
-        self._backbone_name = args.backbone_name
-        self._backbone_arch = args.backbone_arch
-        self._backbone_weight_path = args.backbone_weight_path
-        self._backbone_downsample_rate = args.backbone_downsample_rate
+    ##@brief
+    # @param[in] args.backbone_pretrained
+    def __init__(self, args, property_type='', **kwargs):
+        self._args = args
+        self._backbone_pretrained = eval('args.{}backbone_pretrained'.format(property_type))
+        self._backbone_arch = eval('args.{}backbone_arch'.format(property_type))
+        self._backbone_weight_path = eval('args.{}backbone_weight_path'.format(property_type))
         pass
     pass
 
 
-class _vgg(Backbone, Module):
-    def __init__(self, args):
-        Backbone.__init__(self, args)
+##@brief base common Backbone for 2D data
+# @
+class DDBackbone(Backbone):
+    ##@brief 
+    # @param[in] args for the Backbone
+    # @param[in] args.backbone_downsample_rate specify the downsample rate for the backbone
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
+        self._backbone_downsample_rate = eval('args.{}backbone_downsample_rate'.format(property_type))
+        pass
+    pass
+
+
+##@brief the VGG backbone
+# @note
+class _vgg(DDBackbone, Module):
+    ##@brief waiting for completing
+    # @param[in] args.
+    def __init__(self, args, property_type='', **kwargs):
+        DDBackbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         self._vgg = VGG(self._backbone_arch, self._backbone_downsample_rate, self._backbone_weight_path, self._backbone_pretrained)
     
@@ -58,15 +75,15 @@ class _vgg(Backbone, Module):
     pass
 
 
-def vgg(args):
+def vgg(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_vgg():
-        return _vgg(args)
+        return _vgg(args, property_type='', **kwargs)
     return generate_vgg
 
 
-def vggArg(parser):
-    common_backbone_arg(parser)
+def vggArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type='', **kwargs)
     pass
 
 
@@ -97,8 +114,8 @@ def _resnet(arch, block, layers, pretrained, progress, model_dir, **kwargs):
     return model
 
 class _resnet(Backbone, Module):
-    def __init__(self, args):
-        Backbone.__init__(self, args)
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
         param = dict()
         if self._backbone_arch != 'custom':
@@ -120,15 +137,15 @@ class _resnet(Backbone, Module):
     def forward(self, x):
         pass
 
-def resnet(args):
+def resnet(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_resent():
-        return _resnet(temp_args)
+        return _resnet(temp_args, property_type, **kwargs)
     return generate_resent
 
-def resnetArg(parser):
-    common_backbone_arg(parser)
-    parser.add_argument('--resnet_help', action='store', type=str, default='', \
+def resnetArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type, **kwargs)
+    parser.add_argument('--{}resnet_help'.format(property_type), action='store', type=str, default='', \
         help='backbone_arch: [18, 34, 50, 101, 152, ext50_32x4d, ext101_32x8d, wide_50_2, wide_101_2] \n' \
             'backbone_pretrained: see the doc\n' \
                 'backbone_weight_path: see the doc')
@@ -136,27 +153,46 @@ def resnetArg(parser):
     pass
 
 
-def unet(args):
+def unet(args, property_type='', **kwargs):
     pass
 
 
-def unetArg(parser):
+def unetArg(parser, property_type='', **kwargs):
     pass
 
 
-class DefaultBackbone(Backbone, Module):
-    def __init__(self, args):
-        Backbone.__init__(self, args)
+class _DefaultBackbone(Backbone, Module):
+    def __init__(self, args, property_type='', **kwargs):
+        Backbone.__init__(self, args, property_type, **kwargs)
         Module.__init__(self)
+        self._params = list()
+        input_shape = 1
+        for index, inter_cell in enumerate(eval('self._args.{}interlayer_cell'.format(property_type))):
+            temp_param = torch.nn.Parameter(torch.rand([input_shape, inter_cell], dtype=torch.float32, requires_grad=True))
+            self.register_parameter('inter_cell_{}'.format(index), temp_param)
+            self._params.append((index, temp_param))
+            input_shape = inter_cell
         pass
 
     def forward(self, x):
-        return x
+        out = x
+        for (index, param) in self._params:
+            out = torch.matmul(out, param)
+        return out
     pass
 
 
-def DefaultBackboneArg(parser):
-    common_backbone_arg(parser)
+def DefaultBackbone(args, property_type='', **kwargs):
+    temp_args = copy.deepcopy(args)
+    def _generate_default_backbone():
+        return _DefaultBackbone(args, property_type, **kwargs)
+    return _generate_default_backbone
+
+
+def DefaultBackboneArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type, **kwargs)
+    parser.add_argument('--{}interlayer_cell'.format(property_type), nargs='+', type=int, default=[32, 32, 16], \
+        help='the inter layer nerve cell amount, a list, the len represent the layer amount, the cell represent the nerve amount')
     pass
 #
 #

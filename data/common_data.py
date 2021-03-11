@@ -2,6 +2,9 @@
 ##@package common_data
 #提供Dataset基本类与功能
 #
+
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, utils
 from enum import Enum
 import random
 import Putil.PutilEnvSet as penv
@@ -33,6 +36,9 @@ GeneratedDataLogger.setLevel(plog.DEBUG)
 import Putil.data.convert_to_input as convert_to_input
 import Putil.data.data_type_adapter as data_type_adapter
 import Putil.data.fit_all_common_data as fit_all_common_data
+import Putil.trainer.util as util
+import Putil.data.aug as Aug
+
 
 
 class CommonDataManager(BaseManager):
@@ -110,9 +116,6 @@ class ConvertPostOperation:
     @abstractmethod
     def __call__(self, *args):
         return args
-
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 
 
 class CommonData(metaclass=ABCMeta):
@@ -380,8 +383,6 @@ class CommonData(metaclass=ABCMeta):
         return len(self._data_field)
     pass
 
-import Putil.data.aug as Aug
-
 ##该类提供保存数据集单元数据的结构，比如一个固化数据集有一个单一标记表示每一个数据单元，而DatasetField表示了该数据单元的扩展
 #为什么要用一个DatasetField来表示呢，这是为了方便以后的扩展，注意DatasetField与CommonData中的data_field的区别
 #data_field表示的是原始数据的单一标志，DatasetField表示的是扩展之后的单一标志
@@ -463,15 +464,11 @@ class CommonDataWithAug(CommonData, metaclass=ABCMeta):
 
 
 class CommonDataForTrainEvalTest(CommonDataWithAug):
-    class Stage(Enum):
-        Train=0
-        Evaluate=1
-        Test=2
-
-    def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=CommonData.RemainStrategy.Drop):
-        CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
-        pass
-
+    Stage = util.Stage
+    #class Stage(Enum):
+    #    Train=0
+    #    Evaluate=1
+    #    Test=2
 
 class CombineCommonData(CommonDataWithAug):
     '''

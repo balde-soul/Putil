@@ -5,6 +5,12 @@ import time
 from collections import defaultdict
 import copy
 from pycocotools import cocoeval
+from Putil.base import logger as plog
+
+logger = plog.PutilLogConfig('cocoeval').logger()
+logger.setLevel(plog.DEBUG)
+CustomCOCOevalLogger = logger.getChild('CustomCOCOeval')
+CustomCOCOevalLogger.setLevel(plog.DEBUG)
 
 
 class CustomCOCOeval(cocoeval.COCOeval):
@@ -42,26 +48,19 @@ class CustomCOCOeval(cocoeval.COCOeval):
                 mean_s = -1
             else:
                 mean_s = np.mean(s[s>-1])
-            print(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
+            CustomCOCOevalLogger.info(iStr.format(titleStr, typeStr, iouStr, areaRng, maxDets, mean_s))
             return mean_s
         def _summarizeDets():
-            stats = np.zeros((12,))
-            stats[0] = _summarize(1)
-            #stats[1] = _summarize(1, iouThr=.5, maxDets=self.params.maxDets[2])
-            #stats[2] = _summarize(1, iouThr=.75, maxDets=self.params.maxDets[2])
-            #stats[3] = _summarize(1, areaRng='small', maxDets=self.params.maxDets[2])
-            #stats[4] = _summarize(1, areaRng='medium', maxDets=self.params.maxDets[2])
-            #stats[5] = _summarize(1, areaRng='large', maxDets=self.params.maxDets[2])
-            #stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
-            #stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
-            stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
-            #stats[9] = _summarize(0, areaRng='small', maxDets=self.params.maxDets[2])
-            #stats[10] = _summarize(0, areaRng='medium', maxDets=self.params.maxDets[2])
-            #stats[11] = _summarize(0, areaRng='large', maxDets=self.params.maxDets[2])
-            #temp_len = len(stats)
-            #for index, iouthr in enumerate(self.params.iouThrs):
-            #    stats[temp_len + index] = _summarize(1, iouThr=iouthr, maxDets=self.params.maxDets[2])
-            return stats
+            stats = list()
+            index = 0
+            stats.append(_summarize(1))
+            stats.append(_summarize(0))
+            for p in [0, 1]:
+                for maxDet in self.params.maxDets:
+                    for iouThr in self.params.iouThrs:
+                        for areaRng in self.params.areaRngLbl:
+                            stats.append(_summarize(p, iouThr=iouThr, areaRng=areaRng, maxDets=maxDet))
+            return np.array(stats)
         def _summarizeKps():
             stats = np.zeros((10,))
             stats[0] = _summarize(1, maxDets=20)

@@ -3,8 +3,6 @@ logger = plog.PutilLogConfig('a').logger()
 logger.setLevel(plog.DEBUG)
 import test_reload_plog_lib_lib as lib
 # 这个非常关键
-from importlib import reload
-reload(lib)
 
 
 def a():

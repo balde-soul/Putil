@@ -6,9 +6,6 @@ logger.setLevel(plog.DEBUG)
 
 import Putil.demo.deep_learning.base.model as standard
 from util import model as project
-from importlib import reload
-reload(standard)
-reload(project)
 
 
 def model_factory(args):
@@ -26,7 +23,7 @@ def model_factory(args):
     else:
         raise NotImplementedError('model of framework: {} is not implemented'.format(args.framework))
     model = '{0}.{1}'.format(args.model_source, args.model_name)
-    logger.info('model model: {}, arch: {}'.format(model, args.model_arch))
+    logger.info('model model: {}'.format(model))
     return eval('{}(args)'.format(model))
 
 

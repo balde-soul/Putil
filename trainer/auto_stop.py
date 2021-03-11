@@ -43,8 +43,8 @@ class auto_stop(ABC):
 
 class AutoStop:
     @staticmethod
-    def generate_args(parser):
-        generate_args(parser)
+    def generate_args(parser, property_type):
+        generate_args(parser, property_type)
         pass
 
     @staticmethod
@@ -56,10 +56,10 @@ class AutoStop:
         return args.auto_stop_mode
 
     @staticmethod
-    def generate_AutoStop_from_args(args):
+    def generate_AutoStop_from_args(args, property_type='', **kwargs):
         params = dict()
-        params['patience'] = args.auto_stop_patience
-        params['mode'] = args.auto_stop_mode
+        params['patience'] = eval('args.{}auto_stop_patience'.format(property_type))
+        params['mode'] = eval('args.{}auto_stop_mode'.format(property_type))
         return AutoStop(**params)
 
     def __init__(self, patience, mode='max'):

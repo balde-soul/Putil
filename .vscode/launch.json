@@ -76,5 +76,21 @@
                 }
             ]
         },
+        {
+            "name": "fix_doxygen",
+            "type": "python",
+            "request": "launch",
+            "program": "tools/fix_doxygen_config_file.py",
+            "console": "integratedTerminal",
+            "args": ["--source_config", "./test/result/DoxyfileOriginal.public", "--target_config", "./test/result/Doxyfile.public"]
+        },
+        {
+            "name": "test_functional",
+            "type": "python",
+            "request": "launch",
+            "program": "test/torch/functional.py",
+            "console": "integratedTerminal",
+            "args": [],
+        },
     ]
 }
