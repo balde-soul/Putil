@@ -649,3 +649,77 @@ class SizeFloat(ImageSizeFloat, pAug.AugFunc):
     def __call__(self, *args):
         image = args[0]
         return cv2.resize(cv2.resize(image, (int(self._width_size), int(self._height_size))), (image.shape[1], image.shape[0]))
+    pass
+
+
+class ImageSaturation:
+    def __init__(self):
+        self._increment = None
+        pass
+
+    def get_increment(self):
+        return self._increment
+
+    def set_increment(self, increment):
+        self._increment = increment
+        pass
+    increment = property(get_increment, set_increment)
+    pass
+
+
+##@brief 对图像进行饱和度调节
+# @note
+class Saturation(ImageSaturation, pAug.AugFunc):
+    def __init__(self):
+        ImageSaturation.__init__(self)
+        pAug.AugFunc.__init__(self)
+        pass
+
+    def __call__(self, image):
+        img = image * 1.0
+        img_min = img.min(axis=2)
+        img_max = img.max(axis=2)
+        img_out = img
+    
+        #获取HSL空间的饱和度和亮度
+        delta = (img_max - img_min) / 255.0
+        value = (img_max + img_min) / 255.0
+        L = value/2.0
+    
+        # s = L<0.5 ? s1 : s2
+        mask_1 = L < 0.5
+        s1 = delta/(value)
+        s2 = delta/(2 - value)
+        s = s1 * mask_1 + s2 * (1 - mask_1)
+    
+        # 增量大于0，饱和度指数增强
+        if self._increment >= 0 and 1 == 0:
+            # alpha = self._increment+s > 1 ? alpha_1 : alpha_2
+            temp = self._increment + s
+            mask_2 = temp >  1
+            alpha_1 = s
+            alpha_2 = s * 0 + 1 - self._increment
+            alpha = alpha_1 * mask_2 + alpha_2 * (1 - mask_2)
+
+            alpha = 1 / alpha -1 
+            img_out[:, :, 0] = img[:, :, 0] + (img[:, :, 0] - L * 255.0) * alpha
+            img_out[:, :, 1] = img[:, :, 1] + (img[:, :, 1] - L * 255.0) * alpha
+            img_out[:, :, 2] = img[:, :, 2] + (img[:, :, 2] - L * 255.0) * alpha
+
+        # 增量小于0，饱和度线性衰减
+        else:
+            alpha = self._increment
+            img_out[:, :, 0] = img[:, :, 0] + (img[:, :, 0] - L * 255.0) * alpha
+            img_out[:, :, 1] = img[:, :, 1] + (img[:, :, 1] - L * 255.0) * alpha
+            img_out[:, :, 2] = img[:, :, 2] + (img[:, :, 2] - L * 255.0) * alpha
+    
+        img_out = img_out/255.0
+    
+        # RGB颜色上下限处理(小于0取0，大于1取1)
+        mask_3 = img_out  < 0 
+        mask_4 = img_out  > 1
+        img_out = img_out * (1 - mask_3)
+        img_out = img_out * (1 - mask_4) + mask_4
+        img_out = (img_out * 255).astype(np.uint8)
+    
+        return img_out

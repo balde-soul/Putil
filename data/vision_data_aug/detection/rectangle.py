@@ -9,6 +9,12 @@ import cv2
 import matplotlib.pyplot as plt
 import sys
 import os
+from colorama import Fore
+from Putil.base import logger as plog
+logger = plog.PutilLogConfig('rectangle').logger()
+logger.setLevel(plog.DEBUG)
+SaturationLogger = logger.getChild('Saturation')
+SaturationLogger.setLevel(plog.DEBUG)
 import Putil.data.aug as pAug
 from Putil.data.vision_common_convert.bbox_convertor import BBoxConvertToCenterBox
 from Putil.data.vision_common_convert.bbox_convertor import BBoxToBBoxTranslator
@@ -784,3 +790,15 @@ class SizeFloatCombine(pAug.AugFunc):
         self._image_size_float.width_size = width_size
         image = self._image_size_float(image)
         return image, bboxes
+    pass
+
+
+class SaturationCombine(pAug.AugFunc):
+    def __init__(self, mu=None, variance=None, sample_func=None):
+        pAug.AugFunc.__init__(self)
+        if (mu is None or variance is None) and (sample_func is None):
+            SaturationLogger.fatal(Fore.RED + 'you should specify the mu and variance or the sample_func, all is None' + Fore.RESET)
+            pass
+        # 使用高斯采样法
+        # 使用指定采样函数采样法
+        pass

@@ -25,6 +25,10 @@ class Gaussian(function.Function):
         ret = 1.0 / denominator * np.exp(exponent)
         return ret
 
+    ##@brief
+    # @note
+    # @param[in] Sigma shape=(dim, dim), {Sigma}_ij=correlation({dim}_i, {dim}_j)
+    # @return 
     def set_Sigma(self, Sigma):
         '''
          @brief
@@ -46,11 +50,15 @@ class Gaussian(function.Function):
             pass
         pass
 
+    def get_Sigma(self):
+        return self._Sigma
+    Sigma = property(get_Sigma, set_Sigma)
+
+    ##@brief
+    # @note 
+    # @param[in] Mu shape=(dim,1)
+    # @return 
     def set_Mu(self, Mu):
-        '''
-        params:
-            Mu: should with shape: dim x 1: mu_i
-        '''
         for mu in Mu[1: ]:
             assert len(mu) == len(Mu[0])
         self._Mu = np.array(Mu)
@@ -60,6 +68,11 @@ class Gaussian(function.Function):
         else:
             self._Sigma = None
         pass
+
+    def get_Mu(self):
+        return self._Mu
+    
+    Mu = property(get_Mu, set_Mu)
 
     def _param_confirm(self):
         not_none = (self._Sigma is not None) and (self._Mu is not None)

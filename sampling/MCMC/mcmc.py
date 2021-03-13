@@ -19,4 +19,9 @@ class MCMC(s.Sample):
         self._random_func = func
         self._x = self._random_func()
         pass
+
+    def get_random_func(self):
+        return self._random_func
+    
+    random_func = property(get_random_func, set_random_func)
     pass

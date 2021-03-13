@@ -11,6 +11,10 @@ class Sample(ABC):
         self._pdf_func = pdf_func
         pass
 
+    def get_pdf_func(self):
+        return self._pdf_func
+    pdf_func = property(get_pdf_func, set_pdf_func)
+
     @abstractmethod
     def sample(self):
         pass

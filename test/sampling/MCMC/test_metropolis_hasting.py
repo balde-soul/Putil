@@ -18,12 +18,14 @@ a = mh.MetropolisHasting()
 a.set_random_func(rf)
 a.set_pdf_func(pdff)
 xs = list()
-for i in range(0, 10000):
+for i in range(0, 20000):
     xs.append(a.sample())
     pass
 xs = np.array(xs)
 X, Y = np.meshgrid(ss, ss)
 Z = pdff([X, Y])
 plt.contourf(X, Y, Z, 100, alpha=1.0, cmap=cm.coolwarm)
-plt.scatter(xs[:, 0], xs[:, 1], c='g', marker='.')
+plt.show()
+plt.contourf(X, Y, Z, 100, alpha=1.0, cmap=cm.coolwarm)
+plt.scatter(xs[:, 0], xs[:, 1], c='g', marker='.', linewidths=0.001)
 plt.show()
