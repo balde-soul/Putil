@@ -2,52 +2,49 @@
 
 import torch
 from torch.nn import Module
+from Putil.torch.indicator.vision.object_detection import box
+from Putil.torch.indicator.vision.object_detection import iou
+
+def _argmin_area(x11, y11, x12, y12, x21, y21, x22, y22):
+    cx1, cy1, cx2, cy2 = box._argmin_box(x11, y11, x12, y12, x21, y21, x22, y22)
+    area_c = box._box_area(cx1, cy1, cx2, cy2)
+    return area_c
 
 
-class GIoU(Module):
-    '''
-     @brief
-     @note
-     https://arxiv.org/pdf/1902.09630.pdf
-     iou在iou为0时无法直接优化，针对bbox的回归无法等价于iou的回归，提出giou可作为目标进行优化
-     @param[in] pre
-     float or double, positivated, [batch_size, ..., one_box] content of box: 
-     (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
-     @prarm[in] gt 
-     float or double, positivated, [batch_size, ..., one_box] content of box: 
-     (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
-     @ret
-     0: the iou [batch_size, ..., 1]
-     1: the giou [batch_size, ..., 1]
-    '''
+##@brief
+# @note
+# https://arxiv.org/pdf/1902.09630.pdf
+# C=\underset{C}{argmin}{(pre\cup gt\subseteq C)} 
+# GIoU=IoU-\frac{{{\parallel C -(pre\cup gt)\parallel}_0}}{{\parallel C\parallel}_0}
+# iou在iou为0时无法直接优化，针对bbox的回归无法等价于iou的回归，提出giou可作为目标进行优化
+# @param[in] pre
+# float or double, positivated, [batch_size, one_box, ...] content of box: 
+# (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
+# @prarm[in] gt 
+# float or double, positivated, [batch_size, one_box, ...] content of box: 
+# (top_left_x + any_x_shift, top_left_y + any_y_shift, width, height)
+# @ret
+# 0: the iou [batch_size, ..., 1]
+# 1: the giou [batch_size, ..., 1]
+class GIoU(iou.iou):
+    def iou_index(self):
+        return 1 
+
     def __init__(self):
-        Module.__init__(self)
+        iou.iou.__init__(self)
         pass
 
-    def forward(self, pre, gt):
-        x1, y1, width, height = torch.split(pre, 1, dim=1)
-        x1g, y1g, widthgt, heightgt = torch.split(gt, 1, dim=1)
-        x2, y2 = (x1 + width, y1 + height)
-        x2g, y2g = (x1g + widthgt, y1g + heightgt)
-    
-        cap_x1 = torch.max(x1, x1g)
-        cap_y1 = torch.max(y1, y1g)
-        cap_x2 = torch.min(x2, x2g)
-        cap_y2 = torch.min(y2, y2g)
-    
-        closure_x1 = torch.min(x1, x1g)
-        closure_y1 = torch.min(y1, y1g)
-        closure_x2 = torch.max(x2, x2g)
-        closure_y2 = torch.max(y2, y2g)
-    
-        cap = torch.zeros(x1.shape).to(pre)
-        mask = (cap_y2 > cap_y1) * (cap_x2 > cap_x1)
-        cap[mask] = (cap_x2[mask] - cap_x1[mask]) * (cap_y2[mask] - cap_y1[mask]) # cap 
-        #cup = torch.zeros(x1.shape).to(pre)
-        cup = (x2 - x1) * (y2 - y1) + (x2g - x1g) * (y2g - y1g) - cap + 1e-32 # pre \cup gtr
-    
-        iou = cap / cup # whild the cap is zero , there would be no grad backpropagation(take a look at where the cap come from)
-    
-        area_c = (closure_x2 - closure_x1) * (closure_y2 - closure_y1) + 1e-7
-        giou = iou - ((area_c - cup) / area_c)
-        return iou, giou
+    def forward(self, box1, box2):
+        box1 = box._tlwh_to_tlbr(box1)
+        box2 = box._tlwh_to_tlbr(box2)
+        x11, y11, x12, y12 = box._to_xyxy(box1)
+        x21, y21, x22, y22 = box._to_xyxy(box2)
+
+        cap, cup = box._cap_cup(x11, y11, x12, y12, x21, y21, x22, y22)
+
+        _iou = iou._cap_cup_iou(cap, cup)
+
+        _area_c = _argmin_area(x11, y11, x12, y12, x21, y21, x22, y22)
+
+        _giou = _iou - ((_area_c - cup) / _area_c + 1e-32)
+        return _iou, _giou

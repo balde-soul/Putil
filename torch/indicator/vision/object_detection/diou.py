@@ -1,53 +1,48 @@
 # coding=utf-8
 
 import torch 
+from Putil.torch.indicator.vision.object_detection import box
+from Putil.torch.indicator.vision.object_detection import iou
+
+def _square_center_distance(cx1, cy1, cx2, cy2):
+    return torch.pow(cx2 - cx1, 2) + torch.pow(cy2 - cy1, 2)
 
 
-def compute_diou(pre, gt):
-    '''
-     @brief
-     @note
-     https://arxiv.org/pdf/1911.08287.pdf
-     DIoU = IoU - \
-     @param[in] pre
-     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
-     @prarm[in] gt 
-     float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
-     @ret
-     0: the iou [batch_size, ..., 1]
-     1: the giou [batch_size, ..., 1]
-    '''
-    x1, y1, width, height = torch.split(pre, 1, dim=-1)
-    x1g, y1g, widthgt, heightgt = torch.split(gt, 1, dim=-1)
-    x2, y2 = (x1 + width, y1 + height)
-    x2g, y2g = (x1g + widthgt, y1g + heightgt)
+##@brief
+# @note
+# https://arxiv.org/pdf/1911.08287.pdf
+# DIoU = IoU - \
+# @param[in] pre
+# float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+# @prarm[in] gt 
+# float or double, positivated, [batch_size, ..., one_box] content of box: (top_left_x, top_left_y, width, height)
+# @ret
+# 0: the iou [batch_size, ..., 1]
+# 1: the giou [batch_size, ..., 1]
+class DIoU(iou.iou):
+    def iou_index(self):
+        return 0
 
-    center_x = (x1 + x2) / 2 
-    center_y = (y1 + y2) / 2 
-    center_xgt = (x1g + x2g) / 2
-    center_ygt = (y1g + y2g) / 2
+    def __init__(self):
+        iou.iou.__init__(self)
+        pass
 
-    cap_x1 = torch.max(x1, x1g)
-    cap_y1 = torch.max(y1, y1g)
-    cap_x2 = torch.min(x2, x2g)
-    cap_y2 = torch.min(y2, y2g)
+    def forward(self, box1, box2):
+        cxcywh1 = box._tlwh_to_cxcywh(box1)
+        cx1, cy1, _, _ = box._to_cxcywh(cxcywh1)
+        cxcywh2 = box._tlwh_to_cxcywh(box2)
+        cx2, cy2, _, _ = box._to_cxcywh(cxcywh2)
 
-    closure_x1 = torch.min(x1, x1g)
-    closure_y1 = torch.min(y1, y1g)
-    closure_x2 = torch.max(x2, x2g)
-    closure_y2 = torch.max(y2, y2g)
+        tlbr1 = box._tlwh_to_tlbr(box1)
+        tlbr2 = box._tlwh_to_tlbr(box2)
+        x11, y11, x12, y12 = box._to_xyxy(tlbr1)
+        x21, y21, x22, y22 = box._to_xyxy(tlbr2)
 
-    cap = torch.zeros(x1.shape).to(pre)
-    mask = (cap_y2 > cap_y1) * (cap_x2 > cap_x1)
-    cap[mask] = (cap_x2[mask] - cap_x1[mask]) * (cap_y2[mask] - cap_y1[mask]) # cap 
-    cup = (x2 - x1) * (y2 - y1) + (x2g - x1g) * (y2g - y1g) - cap + 1e-32 # pre \cup gtr
+        _iou = iou._iou(x11, y11, x12, y12, x21, y21, x22, y22)
 
-    iou = cap / cup # whild the cap is zero , there would be no grad backpropagation(take a look at where the cap come from)
+        cbox_x1, cbox_y1, cbox_x2, cbox_y2 = box._argmin_box(x11, y11, x12, y12, x21, y21, x22, y22)
+        _area_c = box._box_area(cbox_x1, cbox_y1, cbox_x2, cbox_y2)
+        _square_d = _square_center_distance(cx1, cy1, cx2, cy2)
 
-    inter_diag = (center_x - center_xgt)**2 + (center_y - center_ygt)**2
-
-    outer_diag = (closure_x1 - closure_x2) ** 2 + (closure_y1 - closure_y2) ** 2 + 1e-32
-
-    dious = iou - (inter_diag) / outer_diag
-
-    return iou, dious
+        diou = _iou - _square_d / (torch.pow(_area_c, 2) + 1e-32)
+        return diou, _iou, _area_c, _square_d

@@ -1,54 +1,33 @@
 # coding=utf-8
 
+import numpy as np
 import torch
+from Putil.torch.indicator.vision.object_detection import box
+from Putil.torch.indicator.vision.object_detection import iou
+from Putil.torch.indicator.vision.object_detection import diou
+from Putil.torch.indicator.vision.object_detection import giou
 
-def bbox_overlaps_ciou(bboxes1, bboxes2):
-    rows = bboxes1.shape[0]
-    cols = bboxes2.shape[0]
-    cious = torch.zeros((rows, cols))
-    if rows * cols == 0:
-        return cious
-    exchange = False
-    if bboxes1.shape[0] > bboxes2.shape[0]:
-        bboxes1, bboxes2 = bboxes2, bboxes1
-        cious = torch.zeros((cols, rows))
-        exchange = True
+##@brief
+# @note
+class CIoU(iou.iou):
+    def iou_index(self):
+        return 0
 
-    w1 = bboxes1[:, 2] - bboxes1[:, 0]
-    h1 = bboxes1[:, 3] - bboxes1[:, 1]
-    w2 = bboxes2[:, 2] - bboxes2[:, 0]
-    h2 = bboxes2[:, 3] - bboxes2[:, 1]
+    def __init__(self):
+        iou.iou.__init__(self)
+        self._square_pi = torch.nn.parameter.Parameter(torch.pow(torch.Tensor([np.pi]), 2))
+        self.register_parameter('CIoU_pi', self._square_pi)
+        pass
 
-    area1 = w1 * h1
-    area2 = w2 * h2
-
-    center_x1 = (bboxes1[:, 2] + bboxes1[:, 0]) / 2
-    center_y1 = (bboxes1[:, 3] + bboxes1[:, 1]) / 2
-    center_x2 = (bboxes2[:, 2] + bboxes2[:, 0]) / 2
-    center_y2 = (bboxes2[:, 3] + bboxes2[:, 1]) / 2
-
-    inter_max_xy = torch.min(bboxes1[:, 2:],bboxes2[:, 2:])
-    inter_min_xy = torch.max(bboxes1[:, :2],bboxes2[:, :2])
-    out_max_xy = torch.max(bboxes1[:, 2:],bboxes2[:, 2:])
-    out_min_xy = torch.min(bboxes1[:, :2],bboxes2[:, :2])
-
-    inter = torch.clamp((inter_max_xy - inter_min_xy), min=0)
-    inter_area = inter[:, 0] * inter[:, 1]
-    inter_diag = (center_x2 - center_x1)**2 + (center_y2 - center_y1)**2
-    outer = torch.clamp((out_max_xy - out_min_xy), min=0)
-    outer_diag = (outer[:, 0] ** 2) + (outer[:, 1] ** 2)
-    union = area1+area2-inter_area
-    u = (inter_diag) / outer_diag
-    iou = inter_area / union
-    with torch.no_grad():
-        arctan = torch.atan(w2 / h2) - torch.atan(w1 / h1)
-        v = (4 / (math.pi ** 2)) * torch.pow((torch.atan(w2 / h2) - torch.atan(w1 / h1)), 2)
-        S = 1 - iou
-        alpha = v / (S + v)
-        w_temp = 2 * w1
-    ar = (8 / (math.pi ** 2)) * arctan * ((w1 - w_temp) * h1)
-    cious = iou - (u + alpha * ar)
-    cious = torch.clamp(cious,min=-1.0,max = 1.0)
-    if exchange:
-        cious = cious.T
-    return cious
+    def forward(self, box1, box2):
+        x11, y11, x12, y12 = box._to_xyxy(box._tlwh_to_tlbr(box1))
+        x21, y21, x22, y22 = box._to_xyxy(box._tlwh_to_tlbr(box2))
+        cx1, cy1, width1, height1 = box._to_cxcywh(box._tlwh_to_cxcywh(box1))
+        cx2, cy2, width2, height2 = box._to_cxcywh(box._tlwh_to_cxcywh(box2))
+        _iou = iou._iou(x11, y11, x12, y12, x21, y21, x22, y22)
+        _area_c = giou._argmin_area(x11, y11, x12, y12, x21, y21, x22, y22)
+        _square_d = diou._square_center_distance(cx1, cy1, cx2, cy2)
+        _v = 4 * torch.pow(torch.arctan(width1) / torch.arctan(height1) - torch.arctan(width2) / torch.arctan(height2), 2) / self._square_pi
+        _alpha = _v / (1 - _iou + _v)
+        _ciou = _iou - _square_d / (torch.pow(_area_c, 2) + 1e-21) - _alpha * _v 
+        return  _ciou, _iou, _area_c, _square_d, _v, _alpha

@@ -11,7 +11,7 @@ import random
 from Putil.torch.util import set_torch_deterministic as STD
 from Putil.test.torch.indicator.vision.object_detection import test_iou
 
-from Putil.torch.indicator.vision.object_detection.giou import GIoU as IoU
+from Putil.torch.indicator.vision.object_detection.ciou import CIoU as IoU
 
 iou = IoU()
 iou_data = test_iou.test_iou(iou)
