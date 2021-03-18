@@ -20,8 +20,8 @@ def test_iou(iou):
     X, Y = np.meshgrid(ran, ran)
 
     shape = [10, 4, 100, 100]
-    pre = torch.from_numpy(np.reshape(np.random.sample(np.prod(shape)) * 100, shape))
-    gt = torch.from_numpy(np.reshape(np.random.sample(np.prod(shape)) * 50, shape)) 
+    pre = torch.from_numpy(np.reshape(np.random.sample(np.prod(shape)) * 100 - 50, shape))
+    gt = torch.from_numpy(np.reshape(np.random.sample(np.prod(shape)) * 50 - 25, shape)) 
     _iou = iou(pre, gt)
     return _iou
 

@@ -13,6 +13,11 @@ def _iou(x11, y11, x12, y12, x21, y21, x22, y22):
 def _cap_cup_iou(cap, cup):
     return cap / (cup + 1e-32)
 
+##@brief 计算IoU，基于[batch, box, ...]进行计算，box的结构是[top_left_x, top_left_y, width, height], 
+# 返回的是[batch, 1, ...]，第二维表示的是iou值，当前单元不存在gt_box的情况使用[0, 0, 0, 0]代表，
+# 那么不同的iou，针对不存在gt的情况获得的值就不一样，需要特别注明 **一般情况下，计算一个batch的MeanIoU都是需要
+# 进
+# @note
 class iou(torch.nn.Module):
     def __init__(self):
         torch.nn.Module.__init__(self)
@@ -23,6 +28,21 @@ class iou(torch.nn.Module):
     @abstractmethod
     def iou_index(self):
         pass
+
+    @abstractmethod
+    def iou_mean(self, iou):
+        pass
+
+class MeanIoU(torch.nn.Module):
+    def __init__(self):
+        torch.nn.Module.__init__(self)
+        pass
+
+    def forward(self, iou, obj_gt):
+        iou_filtered = iou * obj_gt
+        iou = torch.nansum(iou_filtered) / (torch.isnan(iou_filtered).eq(False) * obj_gt).sum()
+        return iou
+        
 
 ##@brief
 # @note
