@@ -1,7 +1,7 @@
 # coding=utf-8
 import torch
 from Putil.base import putil_status
-from Putil.torch._functional import _get_mat_right, _get_mat_left, _to_mat_dim_split, _dims_to_shape, _resum_dims, _get_tensor_left, _get_tensor_right
+from Putil.torch._functional import _get_mat_right, _get_mat_left, _to_mat_dim_split, _dims_to_shape, _resum_dims, _get_tensor_left, _get_tensor_right, _get_tensor_from_matmul
 
 
 def correlated(x, y, dims):
