@@ -10,7 +10,7 @@ import argparse
 # @param[in] file the full path of the target file
 def args_save(args, file):
     with open(file, 'w') as fp:
-        json.dump(args.__dict__, fp, indent=4, default=lambda unserized_obj: 'unserized_obj')
+        json.dump(args.__dict__, fp, indent=4, default=lambda unserized_obj: 'unserized_obj', check_circular=True, sort_keys=True)
     pass
 
 
