@@ -392,7 +392,7 @@ class LrReduce(LrReduceProvideReduceMethod):
     def reduce(self, lr):
         temp = self._lr_now
         self._lr_now = self._lr_factor * lr
-        LrReduceLogger.info(Fore.LIGHTGREEN_EX + 'reduce the learning rate from {0} to {1}'.format(temp, self._lr_now))
+        LrReduceLogger.info(Fore.LIGHTGREEN_EX + 'reduce the learning rate from {0} to {1}'.format(temp, self._lr_now) + Fore.RESET)
         return self._lr_now
 
     def state_dict(self):

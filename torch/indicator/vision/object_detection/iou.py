@@ -8,10 +8,10 @@ from Putil.torch.indicator.vision.object_detection import box
 # @return 
 def _iou(x11, y11, x12, y12, x21, y21, x22, y22):
     cap, cup = box._cap_cup(x11, y11, x12, y12, x21, y21, x22, y22)
-    return cap / (cup + 1e-32)
+    return cap / cup
 
 def _cap_cup_iou(cap, cup):
-    return cap / (cup + 1e-32)
+    return cap / cup
 
 ##@brief 计算IoU，基于[batch, box, ...]进行计算，box的结构是[top_left_x, top_left_y, width, height], 
 # 返回的是[batch, 1, ...]，第二维表示的是iou值，当前单元不存在gt_box的情况使用[0, 0, 0, 0]代表，
@@ -40,7 +40,7 @@ class MeanIoU(torch.nn.Module):
 
     def forward(self, iou, obj_gt):
         iou_filtered = iou * obj_gt
-        iou = torch.nansum(iou_filtered) / (torch.isnan(iou_filtered).eq(False) * obj_gt).sum()
+        iou = torch.nansum(iou_filtered) / ((torch.isnan(iou_filtered).eq(False) * obj_gt).sum() + 1e-32)
         return iou
         
 
