@@ -112,7 +112,7 @@ def train(epoch):
         return False,
 
 def evaluate(epoch):
-    ret = run_train_stage.train_stage_common(args, util_with_args.Stage.TrainEvaluate if util.evaluate_stage(args) else util_with_args.Stage.Evaluate, \
+    ret = run_train_stage.train_stage_common(args, util_with_args.Stage.TrainEvaluate if util_with_args.evaluate_stage(args) else util_with_args.Stage.Evaluate, \
         epoch, fit_data_to_input, backbone, backend, decode, fit_decode_to_result, loss, optimization, \
             evaluate_indicator, indicator_statistic, accumulated_opt, train_loader, recorder, writer, MainLogger)
     if util_with_args.train_stage(args):
