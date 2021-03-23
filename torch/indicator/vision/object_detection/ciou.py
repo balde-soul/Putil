@@ -28,6 +28,7 @@ class CIoU(iou.iou):
         _area_c = giou._argmin_area(x11, y11, x12, y12, x21, y21, x22, y22)
         _square_d = diou._square_center_distance(cx1, cy1, cx2, cy2)
         _v = 4 * torch.pow(torch.arctan(width1) / torch.arctan(height1) - torch.arctan(width2) / torch.arctan(height2), 2) / self._square_pi
-        _alpha = _v / (1 - _iou + _v)
+        with torch.no_grad():
+            _alpha = _v / (1 - _iou + _v)
         _ciou = _iou - _square_d / (torch.pow(_area_c, 2) + 1e-21) - _alpha * _v 
         return  _ciou, _iou, _area_c, _square_d, _v, _alpha
