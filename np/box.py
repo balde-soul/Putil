@@ -1,9 +1,8 @@
 # coding=utf-8
 from enum import Enum
 import copy
+import numpy as np
 import torch
-
-from Putil.data.util.vision_util import box
 # tlwh: boxes, shape[batch, 4, ...], box format: (top_left_x, top_left_y, width, height)
 # tlbr: boxes, shape[batch, 4, ...], box format: (top_left_x, top_left_y, bottom_right_x, bottom_right_y)
 # cxcywh: boxes, shape[batch, 4, ...], box format: (center_x, center_y, width, height)
@@ -13,7 +12,7 @@ from Putil.data.util.vision_util import box
 # @param[in] boxes, shape[batch, 4, ...], box format: (top_left_x, top_left_y, width, height)
 # @return cxcywh: boxes, shape[batch, 4, ...], box format: (center_x, center_y, width, height)
 def _tlwh_to_cxcywh(box):
-    box = torch.cat([box[:, 0: 2], box[:, 0: 2] + box[:, 2: 4]], dim=1)
+    box = np.concatenate([box[:, 0: 2], box[:, 0: 2] + box[:, 2: 4]], axis=1)
     return box
 
 ##@brief tlwh 模式的box转为tlbr
@@ -21,7 +20,7 @@ def _tlwh_to_cxcywh(box):
 # @param[in] boxes, shape[batch, 4, ...], box format: (top_left_x, top_left_y, width, height)
 # @return tlbr: boxes, shape[batch, 4, ...], box format: (top_left_x, top_left_y, bottom_right_x, bottom_right_y)
 def _tlwh_to_tlbr(box):
-    box = torch.cat([box[:, 0: 2], box[:, 0: 2] + box[:, 2: 4]], dim=1)
+    box = np.concatenate([box[:, 0: 2], box[:, 0: 2] + box[:, 2: 4]], axis=1)
     return box
 
 ##@brief
@@ -101,51 +100,71 @@ def _cap_cup(x11, y11, x12, y12, x21, y21, x22, y22):
 
 ##@brief BBoxToBBoxTranslator
 # @note
-class BBoxToBBoxTranslator(box.BBoxToBBoxTranslator):
+class BBoxToBBoxTranslator:
+    ##@brief
+    # @note
+    class BBoxFormat(Enum):
+        # the [left_top_col_index, left_top_row_index, width, height]
+        LTWHXY = 1
+        # the [left_top_row_index, left_top_col_index, height, width]
+        LTWHYX = 0
+        # the [left_top_col_index, left_top_row_index, width, height]
+        LTRBXY = 2
+        # the [left_top_row_index, left_top_col_index, height, width]
+        LTRBYX = 3
+        # the [center_x, center_y, width, height]
+        CWHXY = 4
+        # the [center_y, center_x, height, width]
+        CWHYX = 5
+        pass
+
     def __init__(self, bbox_in_format, bbox_ret_format):
-        box.BBoxToBBoxTranslator.__init__(self, bbox_in_format, bbox_ret_format)
+        self._bbox_in_format = bbox_in_format
+        self._bbox_ret_format = bbox_ret_format
+
+        self._translate_func = self._generate_translate_func()
         pass
 
     def _directed(self, box):
         return box
 
     def _ltwhxy2ltwhyx(self, box):
-        return torch.cat([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], dim=1)
+        return np.concatenate([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], axis=1)
     
     def _ltrbxy2ltrbyx(self, box):
-        return torch.cat([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], dim=1)
+        return np.concatenate([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], axis=1)
     
     def _cwhxy2cwhyx(self, box):
-        return torch.cat([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], dim=1)
+        return np.concatenate([box[:, 1: 2], box[:, 0: 1], box[:, 3: 4], box[:, 2: 3]], axis=1)
     
     def _ltwhxy2ltrbxy(self, box):
-        return torch.cat([box[:, 0: 1], box[:, 1: 2], box[:, 0: 1] + box[:, 2: 3], box[:, 1: 2] + box[:, 3: 4]], dim=1)
+        return np.concatenate([box[:, 0: 1], box[:, 1: 2], box[:, 0: 1] + box[:, 2: 3], box[:, 1: 2] + box[:, 3: 4]], axis=1)
     
     def _ltrbxy2ltwhxy(self, box):
-        return torch.cat([box[:, 0: 1], box[:, 1: 2], box[:, 0: 1] + box[:, 2: 3], box[:, 1: 2] + box[:, 3: 4]], dim=1)
+        return np.concatenate([box[:, 0: 1], box[:, 1: 2], box[:, 0: 1] + box[:, 2: 3], box[:, 1: 2] + box[:, 3: 4]], axis=1)
     
     def _ltwhxy2cwhxy(self, box):
-        return torch.cat([box[:, 0: 1] + 0.5 * box[:, 2: 3], box[:, 1: 2] + 0.5 * box[:, 3: 4], box[:, 2: 3], box[:, 3: 4]], dim=1)
+        return np.concatenate([box[:, 0: 1] + 0.5 * box[:, 2: 3], box[:, 1: 2] + 0.5 * box[:, 3: 4], box[:, 2: 3], box[:, 3: 4]], axis=1)
 
     def _cwhxy2ltwhxy(self, box):
-        return torch.cat([box[:, 0: 1] - 0.5 * box[:, 2: 3], box[:, 1: 2] - 0.5 * box[:, 3: 4], box[:, 2: 3], box[:, 3: 4]], dim=1)
+        return np.concatenate([box[:, 0: 1] - 0.5 * box[:, 2: 3], box[:, 1: 2] - 0.5 * box[:, 3: 4], box[:, 2: 3], box[:, 3: 4]], axis=1)
 
     def _generate_translate_func(self):
         if self._bbox_in_format == self._bbox_ret_format:
             return self._directed
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHYX:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.LTWHYX:
             return self._ltwhxy2ltwhyx
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.LTRBXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.LTRBYX:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.LTRBXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.LTRBYX:
             return self._ltrbxy2ltrbyx
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.CWHXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.CWHYX:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.CWHXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.CWHYX:
             return self._cwhxy2cwhyx
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.LTRBXY:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.LTRBXY:
             return self._ltwhxy2ltrbxy
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.LTRBXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHXY:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.LTRBXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.LTWHXY:
             return self._ltrbxy2ltwhxy
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.CWHXY:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.LTWHXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.CWHXY:
             return self._ltwhxy2cwhxy
-        elif self._bbox_in_format == box.BBoxToBBoxTranslator.BBoxFormat.CWHXY and self._bbox_ret_format == box.BBoxToBBoxTranslator.BBoxFormat.LTWHXY:
+        elif self._bbox_in_format == BBoxToBBoxTranslator.BBoxFormat.CWHXY and self._bbox_ret_format == BBoxToBBoxTranslator.BBoxFormat.LTWHXY:
             return self._cwhxy2ltwhxy
         else:
             raise NotImplementedError("this function is not implemented")
@@ -154,7 +173,7 @@ class BBoxToBBoxTranslator(box.BBoxToBBoxTranslator):
         return self._translate_func(*args)
     pass
 
-class BBoxRegularization(box.BBoxRegularization):
+class BBoxRegularization:
     def __init__(self, non_neg, ltx_max, lty_max, ltx_min, lty_min, w_max, w_min, h_max, h_min):
         pass
     pass

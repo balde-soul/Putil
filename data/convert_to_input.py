@@ -52,4 +52,8 @@ class IOConvertorNoOp(ConvertToInput):
     pass
 
 ConvertToInputNoOp = IOConvertorNoOp
-Encode = IOConvertor
+
+class Encode(IOConvertor):
+    def __init__(self, io=IOConvertor.IODirection.InputConvertion):
+        IOConvertor.__init__(self, IOConvertor.IODirection.InputConvertion)
+        pass

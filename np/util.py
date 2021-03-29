@@ -38,4 +38,3 @@ class np_type:
 
     def to_tf(self):
         return util._tf_type[self._label]
-        pass
