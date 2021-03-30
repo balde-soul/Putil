@@ -122,3 +122,31 @@ class UNet(nn.Module):
     def final_out_channels(self):
         return 256 
     pass
+
+
+class NonLocalAttentionUNet(UNet):
+    def __init__(self, downsample_rate, features, input_shape, bilinear=False):
+        self._n_channels = input_shape[1] 
+        self._bilinear = bilinear
+        super(NonLocalAttentionUNet, self).__init__(self._n_channels, downsample_rate, bilinear)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        UnetModuleLogger.debug('x1 min: {}; max: {}'.format(x1.min(), x1.max()))
+        x2 = self.down1(x1)
+        UnetModuleLogger.debug('x2 min: {}; max: {}'.format(x2.min(), x2.max()))
+        x3 = self.down2(x2)
+        UnetModuleLogger.debug('x3 min: {}; max: {}'.format(x3.min(), x3.max()))
+        x4 = self.down3(x3)
+        UnetModuleLogger.debug('x4 min: {}; max: {}'.format(x4.min(), x4.max()))
+        x5 = self.down4(x4)
+        UnetModuleLogger.debug('x5 min: {}; max: {}'.format(x5.min(), x5.max()))
+        x = self.up1(x5, x4)
+        UnetModuleLogger.debug('x min: {}; max: {}'.format(x.min(), x.max()))
+        x = self.up2(x, x3)
+        UnetModuleLogger.debug('x min: {}; max: {}'.format(x.min(), x.max()))
+        x = self.up3(x, x2)
+        UnetModuleLogger.debug('x min: {}; max: {}'.format(x.min(), x.max()))
+        x = self.up4(x, x1)
+        return x
+    pass
