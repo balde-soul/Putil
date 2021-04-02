@@ -92,5 +92,13 @@
             "console": "integratedTerminal",
             "args": [],
         },
+        {
+            "name": "test_voc_statistic",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "console": "integratedTerminal",
+            "args": ["-q", "test/data/test_voc_statistic.py"],
+        },
     ]
 }
