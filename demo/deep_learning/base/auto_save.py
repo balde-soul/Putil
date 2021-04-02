@@ -10,13 +10,6 @@ from Putil.trainer.auto_save import auto_save as AutoSave
 from Putil.trainer.auto_save import AutoSave as _DefaultAutoSave
 
 
-class DefaultAutoSave:
-    def __init__(self):
-        pass
-    
-    def __call__(self, args):
-        pass
-
 def DefaultAutoSave(args, property_type='', **kwargs):
     '''
      @param[in] args
