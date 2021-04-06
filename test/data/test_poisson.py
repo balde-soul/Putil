@@ -29,6 +29,27 @@ plt.show()
 plt.imshow(bg_img, cmap='gray')
 plt.show()
 #In[]
+# 使用贝叶斯融合
+import matting
+
+def method4():
+    alpha = io.imread('test_output/alpha.png')
+    alpha[np.where(alpha < 128)] = 0
+    alpha[np.where(alpha >= 128)] = 255
+    trimap_temp = alpha
+    trimap = trimap_make(trimap_temp, alpha)
+    img = io.imread(args.rgb)
+ 
+    result = matting.bayesian_matte(img*255, trimap)
+    background_img = io.imread(args.background_image)
+    back_img = transform.resize(background_img, [img.shape[0], img.shape[1]])
+ 
+    # 下来需要做的是叠加两张图
+    final_result = np.zeros(img.shape)
+    for i in range(3):
+            final_result[:, :, i] = img[:, :, i] * result / 255 + back_img[:, :, i] * (1-result)
+    io.imsave("final_result.jpg", final_result)
+#In[]
 code_img_bgr = cv2.cvtColor(code_img, cv2.COLOR_GRAY2BGR)
 bg_img_bgr = cv2.cvtColor(bg_img, cv2.COLOR_GRAY2BGR)
 mask = 255 * np.ones(code_img_bgr.shape, code_img_bgr.dtype)
