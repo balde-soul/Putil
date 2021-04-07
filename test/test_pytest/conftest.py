@@ -1,3 +1,4 @@
+# coding=utf-8
 import pytest
 
 # 增加传入参数配置

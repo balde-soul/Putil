@@ -98,6 +98,13 @@
             "request": "launch",
             "module": "pytest",
             "args": ["test/test_pytest/test_pytest.py", "--username=asdasd", "--password=asdasd"],
-        }
+        },
+        {
+            "name": "TestCifar100Base",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["test/data/test_cifar.py", "--cifar_root_dir=/data2/Public_Data/CIFAR"],
+        },
     ]
 }
