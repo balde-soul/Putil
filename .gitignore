@@ -115,6 +115,7 @@ venv.bak/
 
 # vscode
 .vscode/settings.json
+*.ipynb
 
 image_without_ann.json
 _log*.log
