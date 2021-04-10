@@ -721,7 +721,7 @@ if __name__ == '__main__':
                     break
                 if evaluate_ret[2] is True and args.test_off is False:
                     MainLogger.info('run test')
-                    test() if args.test_off is False else MainLogger.info('test_off, do not run test')
+                    test(epoch) if args.test_off is False else MainLogger.info('test_off, do not run test')
             else:
                 MainLogger.info('evaluate_off, do not run the evaluate')
                 pass

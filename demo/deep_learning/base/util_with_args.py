@@ -375,3 +375,6 @@ def get_module(module_dict, target=''):
         pass
     GetModuleLogger.info(Fore.GREEN + 'use the '.format(module_dict[target].__class__.__name__) + Fore.RESET)
     return module_dict[target]
+
+def is_continue_train(args):
+    pass
