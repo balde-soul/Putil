@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from collections import OrderedDict
 from torch import nn
-from .utils import load_state_dict_from_url
+from torch.utils.model_zoo import load_url as load_state_dict_from_url
 
 
 __all__ = ['MobileNetV2', 'mobilenet_v2']
