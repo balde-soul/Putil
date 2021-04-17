@@ -1,4 +1,6 @@
 # coding=utf-8
+import numpy as np
+import pandas as pd
 import re
 import os
 import json
@@ -20,16 +22,56 @@ class VOC(pcd.CommonDataWithAug):
         Layout = 3
         pass
 
+    def __init__(
+        self, 
+        voc_root,
+        task_type, 
+        use_rate,
+        sub_data,
+        remain_strategy):
+        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
+        self._voc_root = voc_root
+        self._task_type = task_type
+        if self._task_type == VOC.TaskType.ObjDet:
+            pass
+        pass
+
+    @staticmethod
+    def read_samples(fp):
+        pass
+
+    @staticmethod
+    def fix_nan(x):
+        t = list()
+        for _x in x:
+            if pd.isna(t):
+                pass
+            else:
+                t.append(_x)
+                pass
+            pass
+        return pd.Series(t)
+    
+    @staticmethod
+    def _remove_nan(x):
+        t = []
+        for _x in x:
+            t += [] if np.isnan(_x) else []
+            pass
+        return t
+        pass
+
     ##@brief
     # @note 
     #   生成json的格式
     #   ordered_image_object：将iamge_id排序，使用map记录{image_id: index}
     #   action：在ordered_image_object的
+    #   统计每个任务类型每个对象的样本量，交叉量
     # @param[in]
     # @param[in]
     # @return 
     @staticmethod
-    def statistic(voc_root, sub_data, fp):
+    def statistic(voc_root):
         statistic_dict = dict()
         images = os.listdir(os.path.join(voc_root, 'JPEGImages'))
         image_id_index_map = {image.split('.')[0]: index for index, image in enumerate(images)}
@@ -49,16 +91,20 @@ class VOC(pcd.CommonDataWithAug):
                 continue
             if re.search('train.txt', _asf) is not None:
                 # todo: do the train statistic
-                with open(_asf, 'r') as fp:
+                pd.read_csv(os.path.join(_action_set_path, _asf), sep=' ', names=list('1234567'))
+                with open(os.path.join(_action_set_path, _asf), 'r') as fp:
+                    _t = fp.readlines()
                     pass
                 continue
             if re.search('val.txt', _asf) is not None:
                 # todo: do the val statistic
+                with open(_asf, 'r') as fp:
+                    _v = fp.readlines()
                 continue
         pass
 
     @staticmethod
-    def get_image_id(statistic_file, ):
+    def get_image_id(statistic_file):
         pass
     pass
 
@@ -117,6 +163,6 @@ class VOC2012(VOC):
         use_rate,
         sub_data,
         remain_strategy):
-        pcd.CommonDataWithAug.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
+        VOC.__init__(self, voc_root, task_type, use_rate, sub_data, remain_strategy)
         pass
     pass
