@@ -39,27 +39,24 @@ class VOC(pcd.CommonDataWithAug):
     @staticmethod
     def read_samples(fp):
         pass
+    
 
     @staticmethod
-    def fix_nan(x):
-        t = list()
-        for _x in x:
-            if pd.isna(t):
-                pass
-            else:
-                t.append(_x)
-                pass
-            pass
-        return pd.Series(t)
-    
+    def read_set_file(file):
+        _t = pd.read_csv(os.path.join(_action_set_path, _asf), sep=' ', names=list('1234567'))
+        _t = _t.apply(VOC._remove_nan, axis=1)
+        return _t
+
     @staticmethod
     def _remove_nan(x):
         t = []
         for _x in x:
-            t += [] if np.isnan(_x) else []
+            if type(_x) == str:
+                t += [_x]
+                continue
+            t += [] if np.isnan(_x) else [_x]
             pass
-        return t
-        pass
+        return pd.Series(t)
 
     ##@brief
     # @note 
@@ -91,16 +88,14 @@ class VOC(pcd.CommonDataWithAug):
                 continue
             if re.search('train.txt', _asf) is not None:
                 # todo: do the train statistic
-                pd.read_csv(os.path.join(_action_set_path, _asf), sep=' ', names=list('1234567'))
-                with open(os.path.join(_action_set_path, _asf), 'r') as fp:
-                    _t = fp.readlines()
-                    pass
                 continue
             if re.search('val.txt', _asf) is not None:
                 # todo: do the val statistic
-                with open(_asf, 'r') as fp:
-                    _v = fp.readlines()
                 continue
+            pass
+
+        _main_set_path = os.path.join(voc_root, )
+        for _msf
         pass
 
     @staticmethod
