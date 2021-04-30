@@ -127,6 +127,10 @@ class CommonData(metaclass=ABCMeta):
         UseAsNegative=1 # sub_data的补集最为负集合
         UseAsBackground=2 # sub_data的补集作为背景联合sub_data中的target生成样本
     
+    class TaskDataSetOperation(Enum):
+        Cap=0 # 不同task的样本取交集形成dataset
+        Cup=1 # 不同task的样本去并集形成dataset
+    
     @staticmethod
     def get_remain_strategy_field():
         return CommonData.RemainStrategy.__members__

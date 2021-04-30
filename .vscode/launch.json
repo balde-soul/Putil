@@ -98,7 +98,15 @@
             "request": "launch",
             "module": "pytest",
             "console": "integratedTerminal",
-            "args": ["test/data/test_voc_statistic.py", "--voc_root=/data2/Public_Data/Psacal_Voc/VOCdevkit/VOC2012"],
+            "args": ["test/data/test_voc.py::test_voc_statistic", "--voc_root=/data2/Public_Data/Psacal_Voc/VOCdevkit/VOC2012"],
+        },
+        {
+            "name": "test_voc_make_dataset",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "console": "integratedTerminal",
+            "args": ["test/data/test_voc.py::test_voc_make_dataset", "--voc_root=/data2/Public_Data/Psacal_Voc/VOCdevkit/VOC2012"],
         },
         {
             "name": "TestPyTest",
