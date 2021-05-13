@@ -14,65 +14,9 @@ BackboneLogger.setLevel(plog.DEBUG)
 DefaultBackboneLogger = root_logger.getChild('DefaultBackbone')
 DefaultBackboneLogger.setLevel(plog.DEBUG)
 from Putil.torch.pretrained_model.vgg import VGG
-
-
-##@brief 生成常用的backbone参数
-# @note generate the follow name space arg
-# <property_type>backbone_arch：每个backbone类型可以分为几种核心架构，此参数定义生成的架构
-# <property_type>backbone_downsample_rate: 一个backbone中会对输入数据进行下采样，此参数规定下采样尺寸
-# <property_type>backbone_pretrained: 当该参数被set时，表示要加载backbone的预训练参数，同时backbone_weight_path必须要有相关的设置
-# <property_type>backbone_weight_path：表示预训练模型参数文件的path，可以custom设置参数
-def common_backbone_arg(parser, property_type='', **kwargs):
-    parser.add_argument('--{}backbone_arch'.format(property_type), type=str, default='', action='store', \
-        help='specify the arch of the backbone, such 19 for backbone_name with vgg')
-    parser.add_argument('--{}backbone_downsample_rate'.format(property_type), type=int, default=None, action='store', \
-        help='specify the downsample rate for the backbone')
-    parser.add_argument('--{}backbone_pretrained'.format(property_type), default=False, action='store_true', \
-        help='load the pretrained backbone weight or not')
-    parser.add_argument('--{}backbone_weight_path'.format(property_type), type=str, default='', action='store', \
-        help='specify the pre-trained model for the backbone, use while in finetune mode, '\
-            'if the weight is specify, the backbone weight would be useless')
-    pass
-
-
-class Backbone:
-    ##@brief
-    # @param[in] args.backbone_pretrained
-    def __init__(self, args, property_type='', **kwargs):
-        self._args = args
-        self._backbone_pretrained = eval('args.{}backbone_pretrained'.format(property_type))
-        self._backbone_arch = eval('args.{}backbone_arch'.format(property_type))
-        self._backbone_weight_path = eval('args.{}backbone_weight_path'.format(property_type))
-        pass
-    pass
-
-
-##@brief base common Backbone for 2D data
-# @
-class DDBackbone(Backbone):
-    ##@brief 
-    # @param[in] args for the Backbone
-    # @param[in] args.backbone_downsample_rate specify the downsample rate for the backbone
-    def __init__(self, args, property_type='', **kwargs):
-        Backbone.__init__(self, args, property_type, **kwargs)
-        self._backbone_downsample_rate = eval('args.{}backbone_downsample_rate'.format(property_type))
-        pass
-    pass
-
-
-##@brief the VGG backbone
-# @note
-class _vgg(DDBackbone, Module):
-    ##@brief waiting for completing
-    # @param[in] args.
-    def __init__(self, args, property_type='', **kwargs):
-        DDBackbone.__init__(self, args, property_type, **kwargs)
-        Module.__init__(self)
-        self._vgg = VGG(self._backbone_arch, self._backbone_downsample_rate, self._backbone_weight_path, self._backbone_pretrained)
-    
-    def forward(self, x):
-        return self._vgg(x)
-    pass
+from Putil.demo.deep_learning.base.backbone_impl.backbone import Backbone, common_backbone_arg, VisionBackbone, DDBackbone
+from Putil.demo.deep_learning.base.backbone_impl.resnet_cus import _resnet
+from Putil.demo.deep_learning.base.backbone_impl.vgg_cus import _vgg
 
 
 def vgg(args, property_type='', **kwargs):
@@ -84,58 +28,10 @@ def vgg(args, property_type='', **kwargs):
 
 def vggArg(parser, property_type='', **kwargs):
     common_backbone_arg(parser, property_type='', **kwargs)
+    parser.add_argument('--{}vgg_help'.format(property_type), action='store', type=str, default='', \
+        help='vgg arch: [vgg11, vgg13, vgg16, vgg19, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn] \n' \
+            'supported downsample rate: []')
     pass
-
-
-from Putil.torch.pretrained_model.resnet import _ResNet
-from torchvision.models.resnet import model_urls
-from torchvision.models.resnet import BasicBlock
-from torchvision.models.resnet import Bottleneck
-from torchvision.models.utils import load_state_dict_from_url
-resnet_block = {'18': BasicBlock, '34': BasicBlock, '50': Bottleneck, \
-    '101': Bottleneck, '152': Bottleneck, 'ext50_32x4d': Bottleneck, 'ext101_32x8d': Bottleneck, \
-        'wide_50_2': Bottleneck, 'wide_101_2': Bottleneck}
-resnet_layer = {'18': [2, 2, 2, 2], '34': [3, 4, 6, 3], '50': [3, 4, 6, 3], \
-    '101': [3, 4, 23, 3], '152': [3, 8, 36, 3], 'ext50_32x4d': [3, 4, 6, 3], 'ext101_32x8d': [3, 4, 23, 3], \
-        'wide_50_2': [3, 4, 6, 3], 'wide_101_2': [3, 4, 23, 3]}
-groups = {'18': None, '34': None, '50': None, \
-    '101': None, '152': None, 'ext50_32x4d': 32, 'ext101_32x8d': 32, \
-        'wide_50_2': None, 'wide_101_2': None}
-width_per_group_type = {'18': None, '34': None, '50': None, \
-    '101': None, '152': None, 'ext50_32x4d': 4, 'ext101_32x8d': 8, \
-        'wide_50_2': 64 * 2, 'wide_101_2': 64 * 2}
-def _resnet(arch, block, layers, pretrained, progress, model_dir, **kwargs):
-    model = _ResNet(block, layers, **kwargs)
-    if pretrained:
-        state_dict = load_state_dict_from_url(model_urls[arch],
-                                              progress=progress, 
-                                              model_dir=model_dir)
-        model.load_state_dict(state_dict)
-    return model
-
-class _resnet(Backbone, Module):
-    def __init__(self, args, property_type='', **kwargs):
-        Backbone.__init__(self, args, property_type, **kwargs)
-        Module.__init__(self)
-        param = dict()
-        if self._backbone_arch != 'custom':
-            if groups[self._backbone_arch] is not None:
-                param['groups'] = groups[self._backbone_arch]
-                pass
-            if width_per_group_type[self._backbone_arch] is not None:
-                param['width_per_group_type'] = width_per_group_type[self._backbone_arch]
-                pass
-            self._backbone = _resnet(self._backbone_arch, resnet_block[self._backbone_arch], \
-                layers=resnet_layer[self._backbone_arch][0: self._backbone_downsample_rate], \
-                pretrained=self._backbone_pretrained, progress=True, model_dir=self._backbone_weight_path, **param)
-            pass
-        else:
-            raise NotImplementedError('custom resnet is not implemented')
-            pass
-        pass
-
-    def forward(self, x):
-        pass
 
 def resnet(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
