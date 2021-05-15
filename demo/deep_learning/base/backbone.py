@@ -17,17 +17,31 @@ from Putil.torch.pretrained_model.vgg import VGG
 from Putil.demo.deep_learning.base.backbone_impl.backbone import Backbone, common_backbone_arg, VisionBackbone, DDBackbone
 from Putil.demo.deep_learning.base.backbone_impl.resnet_cus import _resnet
 from Putil.demo.deep_learning.base.backbone_impl.vgg_cus import _vgg
+from Putil.demo.deep_learning.base.backbone_impl.mobilenet_cus import _mobilenet
+
+def mobilenet(args, property_type='', **kwargs):
+    temp_args = copy.deepcopy(args)
+    def generate_mobilenet():
+        return _mobilenet(args, property_type=property_type, **kwargs)
+    return generate_mobilenet
+
+def mobilenetArg(parser, property_type='', **kwargs):
+    common_backbone_arg(parser, property_type=property_type, **kwargs)
+    #parser.add_argument('{}mobilenetv2_width_multi', )
+    parser.add_argument('--{}mobilenet2_help'.format(property_type), action='store', type=str, default='', \
+        help='')
+    pass
 
 
 def vgg(args, property_type='', **kwargs):
     temp_args = copy.deepcopy(args)
     def generate_vgg():
-        return _vgg(args, property_type='', **kwargs)
+        return _vgg(args, property_type=property_type, **kwargs)
     return generate_vgg
 
 
 def vggArg(parser, property_type='', **kwargs):
-    common_backbone_arg(parser, property_type='', **kwargs)
+    common_backbone_arg(parser, property_type=property_type, **kwargs)
     parser.add_argument('--{}vgg_help'.format(property_type), action='store', type=str, default='', \
         help='vgg arch: [vgg11, vgg13, vgg16, vgg19, vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn] \n' \
             'supported downsample rate: []')

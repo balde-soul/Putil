@@ -1,6 +1,12 @@
 # coding=utf-8
 import torch.nn.functional as F
 from torch.utils.model_zoo import load_url as load_state_dict_from_url
+import Putil.base.logger as plog
+
+logger = plog.PutilLogConfig('resnet_cus').logger()
+logger.setLevel(plog.DEBUG)
+LoadCheckpointLogger = logger.getChild('load_checkpoint')
+LoadCheckpointLogger.setLevel(plog.DEBUG)
 
 from torchvision.models.resnet import BasicBlock
 from torchvision.models.resnet import Bottleneck
@@ -64,28 +70,23 @@ class ResnetCus(resnet.ResNet, DDBackboneWithResolution):
 
     def _forward_impl(self, x):
         # See note [TorchScript super()]
-        x = self.conv1(x)
+        x = self.conv1(x) # downsample x2
         x = self.bn1(x)
         x = self.relu(x)
-        x = self.maxpool(x)
+        x = self.maxpool(x) # downsample x2
         self._resolution_output[1] = x
-        if self._backbone_downsample_rate >= 2:
-            x = self.layer1(x)
-            self._resolution_output[2] = x
-        if self._backbone_downsample_rate >= 3:
-            x = self.layer2(x)
-            self._resolution_output[3] = x
-        if self._backbone_downsample_rate >= 4:
-            x = self.layer3(x)
-            self._resolution_output[4] = x
-        if self._backbone_downsample_rate >= 5:
-            x = self.layer4(x)
-            self._resolution_output[5] = x
-        x = F.relu(x)
-
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        x = self.layer1(x)
+        self._resolution_output[2] = x
+        x = self.layer2(x) # downsample x2
+        self._resolution_output[3] = x
+        x = self.layer3(x) # downsample x2
+        self._resolution_output[4] = x
+        x = self.layer4(x) # downsample x2
+        self._resolution_output[5] = x
+        #x = F.relu(x)
+        #x = self.avgpool(x)
+        #x = x.view(x.size(0), -1)
+        #x = self.fc(x)
 
         return x
     pass
@@ -95,7 +96,9 @@ def _resnet(args, property_type, **kwargs):
     if model.backbone_pretrained:
         state_dict = load_state_dict_from_url(model_urls[model.backbone_arch], 
         eval('args.{}backbone_weight_path'.format(property_type)))
-        model.load_state_dict(state_dict)
+        missing_key, unexpected_key = model.load_state_dict(state_dict, False)
+        LoadCheckpointLogger.info('missing keys(没找到的key): {}'.format('\n'.join(missing_key)))
+        LoadCheckpointLogger.info('unexpected keys(没用到的key): {}'.format('\n'.join(unexpected_key)))
         # release
         del state_dict
     return model
