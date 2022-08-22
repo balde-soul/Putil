@@ -54,10 +54,10 @@ FormatRecommend = "%(asctime)s: %(filename)s: %(lineno)d: %(levelname)s: %(name)
 
 # file name
 if sys.platform == 'win32':
-    user = os.environ['USERDOMAIN']
+    user = os.environ.get('USERDOMAIN', 'USER')
     pass
 elif sys.platform == 'linux':
-    user = os.environ['USER']
+    user = os.environ.get('USER', 'USER')
     pass
 else:
     raise OSError("platform is not support")
