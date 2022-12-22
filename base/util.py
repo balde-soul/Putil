@@ -1,6 +1,7 @@
 import Putil.base.logger as plog
 from functools import wraps
 from abc import ABCMeta, abstractmethod
+import threading
 _logger = plog.PutilLogConfig('Putil.base').logger()
 _logger.setLevel(plog.DEBUG)
 singlecallLogger = _logger.getChild('singlecall')
@@ -17,22 +18,29 @@ class singlecall:
         self._state = dict()
         self._state['iscalled'] = False
         self._raise_exception = raise_exception
+        self._lock = threading.Lock()
         pass
 
     def __call__(self, func):
         @wraps(func)
         def call(*args, **kwargs):
-            if self._state['iscalled'] is False:
-                singlecallLogger.info('{0} would be called'.format(func.__qualname__))
-                self._state['iscalled']= True
-                return func(*args, **kwargs)
-            else:
-                singlecallLogger.info('{0} has been called'.format(func.__qualname__))
-                if self._raise_exception:
-                    raise singlecall.HasCalled('{0} has been called'.format(func.__qualname__))
+            try:
+                self._lock.acquire()
+                if self._state['iscalled'] is False:
+                    singlecallLogger.info('{0} would be called'.format(func.__qualname__))
+                    self._state['iscalled']= True
+                    return func(*args, **kwargs)
                 else:
-                    None
-                pass
+                    singlecallLogger.info('{0} has been called'.format(func.__qualname__))
+                    if self._raise_exception:
+                        raise singlecall.HasCalled('{0} has been called'.format(func.__qualname__))
+                    else:
+                        None
+                    pass
+            except Exception as ex:
+                raise ex
+            finally:
+                self._lock.release()
             pass
         return call
     pass

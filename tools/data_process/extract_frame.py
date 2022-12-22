@@ -7,10 +7,10 @@ random.seed(1995)
 parser = argparse.ArgumentParser()
 parser.add_argument('--video_path', dest='VideoPath', type=str, default='', action='store', help='指定抽帧视频文件')
 parser.add_argument('--save_to', dest='SaveTo', type=str, default='', action='store', help='指定图像保存目录')
-parser.add_argument('--fps', dest='FPS', type=int, default=1, action='store', help='指定抽帧fps,默认为1,每秒抽一帧')
+parser.add_argument('--fps', dest='FPS', type=float, default=1, action='store', help='指定抽帧fps,默认为1,每秒抽一帧')
 options = parser.parse_args()
 
-def select_frame(video, fps=1, save_dir='/media/s4/ae13bf8c-93ea-4157-bb06-1ef3acc87a19/rgb/rgb_test'):
+def select_frame(video, fps, save_dir):
     # select frames of video contained traffic lights, save frames selected into save_dir
     cap = cv2.VideoCapture(video)
     video_name = os.path.basename(video)
