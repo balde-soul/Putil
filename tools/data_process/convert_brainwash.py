@@ -73,7 +73,6 @@ def save_xml(image_name,  boxes, save_dir, width=640, height=480, channel=3):
 
     save_to = os.path.join(save_dir, image_name.replace('png', 'xml').replace('jpg', 'xml'))
     if os.path.exists(save_to):
-        print('{0} is exist'.format(save_to))
         pass
     save_xml = os.path.join(save_to)
     with open(save_xml, 'wb') as f:

@@ -3,18 +3,37 @@
 # @Author cjh
 # @Time 2022-12-10
 #In[]
+import random, sklearn
+random.seed(1990)
+sklearn.random.seed(1990)
 import numpy as np
+np.random.seed(1990)
 import pandas as pd
 import cvxpy, argparse, os, json, sys
+from sklearn.utils import shuffle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--voc_statistic_file', dest='VOCStatisticFile', type=str, default='', help='指定VOC数据集统计存储文件')
+parser.add_argument('--data_list', dest='DataList', type=str, default=None, help='指定voc_statistic_file中的子集')
 parser.add_argument('--set_rate', dest='SetRate', type=float, nargs='+', help='指定分割比例')
 parser.add_argument('--set_name', dest='SetName', type=str, nargs='+', help='指定分割集合名称')
 parser.add_argument('--target_class', dest='TargetClass', type=str, nargs='+', help='指定目标名')
 parser.add_argument('--image_root', dest='ImageRoot', type=str, default='', help='图像根目录')
+parser.add_argument('--attachabled', dest='Attachabled', action='store_true', help='是否链接debug')
 options = parser.parse_args()
-#options.VOCStatisticFile = '/root/workspace/data/chefhat/VOC2012/voc_xml_statistic.csv'
+if options.Attachabled:
+    import ptvsd
+    host = '127.0.0.1'
+    port = 12345
+    ptvsd.enable_attach(address=(host, port), redirect_output=True)
+    ptvsd.wait_for_attach()
+    pass
+#options.VOCStatisticFile = '/root/workspace/data/chef-uniform/voc_xml_statistic.csv'
+#options.SetRate = [0.8, 0.2]
+#options.SetName = ['train', 'test']
+#options.TargetClass = ['chef uniform', 'no chef uniform']
+#options.ImageRoot = '/root/workspace/data/chef-uniform/images'
+#options.DataList = '/root/workspace/data/chef-uniform/train.txt'
 root_dir = os.path.dirname(options.VOCStatisticFile)
 
 if not os.path.exists(options.VOCStatisticFile):
@@ -23,6 +42,14 @@ if not os.path.exists(options.VOCStatisticFile):
     pass
 
 df = pd.read_csv(options.VOCStatisticFile)
+
+# 使用data_list过滤目标，一般用于统一statistic file多次分割
+if options.DataList is not None:
+    with open(options.DataList, 'r') as fp:
+        sl = [os.path.split(i.replace('\n', ''))[-1] for i in fp.readlines()]
+        df = df[df['image_id'].apply(lambda x: x in sl)]
+        pass
+    pass
 
 def format_func(x):
     types = json.loads(x['type_set'])
@@ -43,25 +70,15 @@ def calc_class_num(x):
         pass
     return pd.Series(ret)
 
+df = shuffle(df)
 class_num_df = df.apply(calc_class_num, axis=1)
 
 L = class_num_df.to_numpy().T
 
-#image_num = 1000
-#class_num = 10
-#
-#L = np.reshape(np.random.random(image_num * class_num) * 5, [class_num, image_num]).astype(np.int32)
-#print(L)
-
-#L = np.array([[2,3,0,3,0,8,4],
-#              [3,0,2,0,0,0,4],
-#              [0,2,5,1,3,0,2]])
 nc, n = L.shape
 
-#train_mins = np.array([12, 6, 8])
-#valid_mins = np.array([7, 3, 4])
-train_mins = (np.sum(L, axis=1, keepdims=False) * 0.8).astype(np.int32)
-valid_mins = (np.sum(L, axis=1, keepdims=False) * 0.2).astype(np.int32)
+train_mins = (np.sum(L, axis=1, keepdims=False) * options.SetRate[0]).astype(np.int32)
+valid_mins = (np.sum(L, axis=1, keepdims=False) * options.SetRate[1]).astype(np.int32)
 
 x = cvxpy.Variable(n, boolean=True)
 lr = cvxpy.Variable(nc, nonneg=True)
@@ -100,13 +117,13 @@ index = np.array([int(round(i)) for i in result])
 train_index = np.where(index == 1)[0]
 val_index = np.where(index == 0)[0]
 
-with open(os.path.join(os.path.dirname(options.VOCStatisticFile), 'train.txt'), 'w') as fp:
+with open(os.path.join(os.path.dirname(options.VOCStatisticFile), '{0}.txt'.format(options.SetName[0])), 'w') as fp:
     for i in df.iloc[train_index]['image_id']:
         fp.write('{0}\n'.format(os.path.join(options.ImageRoot, i)))
         pass
     pass
 
-with open(os.path.join(os.path.dirname(options.VOCStatisticFile), 'val.txt'), 'w') as fp:
+with open(os.path.join(os.path.dirname(options.VOCStatisticFile), '{0}.txt'.format(options.SetName[1])), 'w') as fp:
     for i in df.iloc[val_index]['image_id']:
         fp.write('{0}\n'.format(os.path.join(options.ImageRoot, i)))
         pass
@@ -114,4 +131,4 @@ with open(os.path.join(os.path.dirname(options.VOCStatisticFile), 'val.txt'), 'w
 
 train_sum = np.sum(class_num_df.to_numpy()[train_index], axis=0)
 val_sum = np.sum(class_num_df.to_numpy()[val_index], axis=0)
-print('{2} train_rate: {0}, val_rate: {1}'.format(train_sum/(train_sum + val_sum), val_sum/(train_sum + val_sum), class_num_df.columns))
+print('{2} {3}_rate: {0}, {4}_rate: {1}'.format(train_sum/(train_sum + val_sum), val_sum/(train_sum + val_sum), class_num_df.columns, options.SetName[0], options.SetName[1]))

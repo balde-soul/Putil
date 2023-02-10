@@ -30,7 +30,7 @@ def select_frame(video, fps, save_dir):
         if frame_cnt % gap_frame == 0:
             # save fram into save_dir
             path = os.path.join(save_dir, video_name.split('.')[0] + '_' + str(num) + '.jpg')
-            cv2.imwrite(path, frame[:, :, ::-1])
+            cv2.imwrite(path, frame)
             num += 1
             pass
 

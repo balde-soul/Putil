@@ -6,9 +6,20 @@
 
 # 若模型保存文件夹不存在，创建模型保存文件夹，若存在，删除重建
 from glob import glob
-import cv2
+import cv2, copy, json, random, sys, cv2, argparse, os
 from lxml.etree import Element, SubElement, tostring
 import numpy as np
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))))
+import pandas as pd
+random.seed(1995)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--image_list_file_path', dest='ImageListFilePath', type=str, default='', action='store', help='表示图像列表的txt文件或者图像集路径')
+parser.add_argument('--txt_root', dest='TxtRoot', type=str, action='store', default='', help='保存txt文件的路径')
+parser.add_argument('--xml_root', dest='XmlRoot', type=str, action='store', default='', help='保存xml文件的路径')
+parser.add_argument('--category_set', dest='CategorySet', type=str, nargs='+', default=[], help='会根据category_set的内容配合txt中的object index生成目标名称')
+options = parser.parse_args()
+from Putil.tools.data_process.voc_util import VOCToolSet
 
 
 # YOLO格式的txt转VOC格式的xml
@@ -24,6 +35,17 @@ def convert(img, box):
     y = (y * 2 - h) / 2
     return name, x, y, w, h
 
+def extract_objects_from_txt(txt_path, category_set):
+    objects = list()
+    with open(txt_img, "r") as f:
+        for line in f.readlines():
+            line = line.strip('\n')
+            txt_info = line.split(" ")
+            name, x, y, w, h= convert(img, txt_info)
+            objects.append({'name': category_set[naem], 'bbox': [x, y, x + w, y + h]})
+            pass
+        pass
+    return objects
 
 # 单个文件转换
 def txt_xml(img_path, txt_path, xml_save_to, category_set):
@@ -60,7 +82,7 @@ def txt_xml(img_path, txt_path, xml_save_to, category_set):
         node_pose = SubElement(node_object, 'pose')
         node_pose.text = "Unspecified"
         node_truncated = SubElement(node_object, 'truncated')
-        node_truncated.text = "truncated"
+        node_truncated.text = '0'
         node_difficult = SubElement(node_object, 'difficult')
         node_difficult.text = '0'
         node_bndbox = SubElement(node_object, 'bndbox')
@@ -90,58 +112,54 @@ def generate_label_file():
     for img in imgs:
         txt_xml(img.split(os.sep)[-1])
 
+if options.XmlRoot == '':
+    print('specify the xml_root')
+    sys.exit(1)
+    pass
+if not os.path.exists(options.XmlRoot):
+    print('mkdir {0}'.format(options.XmlRoot))
+    os.mkdir(options.XmlRoot)
+    pass
 
-if __name__ == "__main__":
-    import pandas as pd
-    import os, copy, json, random, sys, cv2
-    import argparse
-    random.seed(1995)
+if options.ImageListFilePath == '':
+    print('specify the image_list_file_path')
+    sys.exit(1)
+    pass
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--image_list_file_path', dest='ImageListFilePath', type=str, default='', action='store', help='表示图像列表的txt文件')
-    parser.add_argument('--txt_root', dest='TxtRoot', type=str, action='store', default='', help='保存txt文件的路径')
-    parser.add_argument('--xml_root', dest='XmlRoot', type=str, action='store', default='', help='保存xml文件的路径')
-    parser.add_argument('--category_set', dest='CategorySet', type=str, nargs='+', default=[], help='会根据category_set的内容配合txt中的object index生成目标名称')
-    options = parser.parse_args()
-    
-    if options.XmlRoot == '':
-        print('specify the xml_root')
-        sys.exit(1)
-        pass
-    if not os.path.exists(options.XmlRoot):
-        print('mkdir {0}'.format(options.XmlRoot))
-        os.mkdir(options.XmlRoot)
-        pass
+if options.TxtRoot == '':
+    print('specify the txt_root')
+    pass
 
-    if options.ImageListFilePath == '':
-        print('specify the image_list_file_path')
-        sys.exit(1)
-        pass
+if len(options.CategorySet) == 0:
+    print('specify the category_set')
+    pass
 
-    if options.TxtRoot == '':
-        print('specify the txt_root')
-        pass
-
-    if len(options.CategorySet) == 0:
-        print('specify the category_set')
-        pass
-
+if os.path.isdir(options.ImageListFilePath):
+    img_paths = [os.path.join(options.ImageListFilePath, i) for i in os.listdir(options.ImageListFilePath)]
+elif os.path.isfile(options.ImageListFilePath):
     with open(options.ImageListFilePath, 'r') as fp:
-        with open(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), '{0}.info'.format(os.path.split(os.path.abspath(__file__))[1].split('.')[0])), 'w') as info_fp:
-            while True:
-                img_path = fp.readline().strip('\n')
-                if img_path is None:
-                    break
-                img_id = os.path.split(img_path)[-1].split('.')[0]
-                txt_path = os.path.join(options.TxtRoot, '{0}.txt'.format(img_id))
-                if not os.path.exists(img_path):
-                    info_fp.write('{0} does not exist\n'.format(img_path))
-                    continue
-                    pass
-                if not os.path.exists(txt_path):
-                    info_fp.write('{0} does not exist\n'.format(txt_path))
-                    continue
-                    pass
-                txt_xml(img_path, txt_path, options.XmlRoot, options.CategorySet)
-                pass
+        img_paths = [i.strip('\n') for i in fp.readlines()]
+else:
+    print('image_list_file_path: {0} type no supported'.format(options.ImageListFilePath))
+    sys.exit(1)
+    pass
+with open(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), '{0}.info'.format(os.path.split(os.path.abspath(__file__))[1].split('.')[0])), 'w') as info_fp:
+    for img_path in img_paths:
+        if img_path is None:
+            break
+        img_id = VOCToolSet.image2id(img_path)
+        txt_path = os.path.join(options.TxtRoot, '{0}.txt'.format(img_id))
+        if not os.path.exists(img_path):
+            info_fp.write('{0} does not exist\n'.format(img_path))
+            continue
+            pass
+        if not os.path.exists(txt_path):
+            info_fp.write('{0} does not exist\n'.format(txt_path))
+            continue
+            pass
+        #objects = extract_objects_from_txt(txt_path, options.CategorySet)
+        #VOCToolSet.generate_empty_xml(img_path, os.path.join(XmlRoot, VOCToolSet.id2xml(img_id)))
+        #VOCToolSet.append_object(os.path.join(XmlRoot, VOCToolSet.id2xml(img_id)), objects)
+        txt_xml(img_path, txt_path, options.XmlRoot, options.CategorySet)
         pass
+pass

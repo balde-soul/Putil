@@ -7,16 +7,25 @@
 # coding-utf-8
 import pandas as pd
 import xml.etree.ElementTree as ET
-import os, copy, json, random
-import argparse
+import os, copy, json, random, argparse, sys
 random.seed(1995)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--xml_root', dest='XmlRoot', type=str, default='', help='指定xml存储路径')
+parser.add_argument('--statistic_file', dest='StatisticFile', type=str, default='', help='指定统计结果保存位置(csv文件)，默认为空字符时，保存到xml_root上层目录/voc_xml_statistic.csv')
 options = parser.parse_args()
 
 xmls = os.listdir(options.XmlRoot)
-result_name = 'voc_xml_statistic.csv'
+if options.StatisticFile == '':
+    result_name = 'voc_xml_statistic.csv'
+    os.path.join(os.path.dirname(options.XmlRoot), result_name)
+    pass
+else:
+    if not os.path.exists(os.path.dirname(options.StatisticFile)):
+        print('statistic_file: {0}, root dir not found'.format(options.StatisticFile))
+        sys.exit(1)
+        pass
+    pass
 
 def convert(size, box):
     dw = 1./(size[0])  # 有的人运行这个脚本可能报错，说不能除以0什么的，你可以变成dw = 1./((size[0])+0.1)
@@ -54,10 +63,35 @@ for xml in xmls:
         bb = convert((w,h), b)
         target_bbox[object_type].append(list(bb) + [object_type, int(difficult)])
     se = {ot: json.dumps(bbox) for ot, bbox in target_bbox.items()}
+    for ot, bbox in target_bbox.items():
+        se['{0}_object_amount'.format(ot)] = len(bbox)
     se['image_id'] = image_name
     se['image_width'] = w
     se['image_height'] = h
     se['type_set'] = json.dumps([ot for ot, bbox in target_bbox.items()])
     statistic.append(se)
     pass
-print(pd.DataFrame(statistic).to_csv(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), result_name)), sep=',')
+df = pd.DataFrame(statistic)
+
+type_set = list()
+def get_all_type(x):
+    type_set_list = json.loads(x['type_set'])
+    for ts in type_set_list:
+        if ts not in type_set:
+            type_set.append(ts)
+            pass
+        pass
+    pass
+df.apply(get_all_type, axis=1)
+type_object_amount = {ts: df['{0}_object_amount'.format(ts)].sum() for ts in sorted(type_set)}
+print('all types: {0}'.format(type_object_amount))
+
+def bbox_statistic(x):
+    type_set_list = json.loads(x['type_set'])
+    ret = dict()
+    for ts in type_set_list:
+        return json.loads(x['ts'])
+        pass
+    pass
+
+print(df.to_csv(options.StatisticFile), sep=',')
