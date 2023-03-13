@@ -756,36 +756,51 @@ class DataPutProcess:
         pass
 
 
-class StandardCommonData(CommonDataWithAug):
+class StandardCommonData(CommonDataForTrainEvalTest):
     def __init__(self, use_rate=1.0, sub_data=None, remain_strategy=None):
+        CommonDataForTrainEvalTest.__init__(self, use_rate=use_rate, sub_data=sub_data, remain_strategy=remain_strategy)
         self._use_rate = use_rate if use_rate is not None else 1.0
         self._sub_data = sub_data
         self._remain_strategy = remain_strategy if remain_strategy is not None else 'drop'
 
-        self._data_field = self.__generate_data_field()
+        self._data_field = self._generate_data_field()
         # apply sub_data and remain_strategy
-        self._data_field = self.__sub_data_filteration(self._sub_data, self._remain_strategy)
+        self._data_field = self._sub_data_filteration(self._sub_data, self._remain_strategy)
         # apply use_rate
-        self._data_field = self.__use_rate_filteration()
+        self._data_field = self._use_rate_filteration()
         pass
 
-    def __use_rate_filteration(self):
+    def _use_rate_filteration(self):
         self._fix_field()
         return self._data_field
 
+    ##@brief 使用sub_data数据单元返回过滤之后的数据集合列表
+    # @note
+    # @param[in] sub_data
+    # @param[in] remain_strategy
+    # @return[list]
+    # @time 2023-03-02
+    # @author cjh
     @abstractmethod
-    def __sub_data_filteration(self, sub_data, remain_strategy):
+    def _sub_data_filteration(self, sub_data, remain_strategy):
         raise NotImplementedError('__sub_data_filteration is not implemented')
         pass
 
+    ##@brief 返回生成数据集合列表
+    # @note
+    # @param[in]
+    # @param[in]
+    # @return 
+    # @time 2023-03-02
+    # @author cjh
     @abstractmethod
-    def __generate_data_field(self):
+    def _generate_data_field(self):
         '''
          @brief
          @note
         '''
         raise NotImplementedError('__generate_data_field is not implemented')
 
-    @abstractmethod
-    def add_result(self, result_tuple, save=False):
-        raise NotImplementedError('add_result is not implemented')
+    #@abstractmethod
+    #def add_result(self, result_tuple, save=False):
+    #    raise NotImplementedError('add_result is not implemented')

@@ -639,7 +639,7 @@ class COCOData(COCOBase):
         pass
 
     def _restart_process(self, restart_param):
-        self._image_width = restart_param('image_width', self._image_width)
+        self._image_width = restart_param.get('image_width', self._image_width)
         self._image_height = restart_param.get('image_height', self._image_height)
         pass
 
