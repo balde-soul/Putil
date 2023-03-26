@@ -56,7 +56,7 @@ class VOCToolSet:
     @staticmethod
     def extract_object(xmldir):
         object_cells = list()
-        in_file = open(xmldir)
+        in_file = open(xmldir, encoding='utf-8')
         tree = ET.parse(in_file)
         root = tree.getroot()
         for obj in root.iter('object'):
@@ -188,7 +188,7 @@ class VOCToolSet:
     @staticmethod
     def get_image_info(xmldir):
         ret = dict()
-        in_file = open(xmldir)
+        in_file = open(xmldir, encoding='utf-8')
         tree = ET.parse(in_file)
         root = tree.getroot()
         path = root.find('path') # path有无无所谓
