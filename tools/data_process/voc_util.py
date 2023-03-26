@@ -8,7 +8,16 @@ import numpy as np
 ##@brief
 # @note
 #   * object单元数据:
-#     * [{'name': str, 'bbox': {'xmin': int, 'ymin': int, 'xmax': int, 'ymax': int}, 'pose': str, 'truncated': int, 'difficult': int}]
+#     * [
+#           {
+#               'name': str, 
+#               'bbox': {'xmin': int, 'ymin': int, 'xmax': int, 'ymax': int}, 
+#               'pose': str, 
+#               'truncated': int, 
+#               'difficult': int, 
+#               'prob': '目标置信度'
+#           }
+#       ]
 #   * fid:图像去除后缀的名称
 #   * image_info:xml标记文件去除object信息之后的图像信息
 # @time 2023-01-04
@@ -68,7 +77,7 @@ class VOCToolSet:
     # @author cjh
     @staticmethod
     def append_object(xmldir, object_cells):
-        with open(xmldir, 'r') as fp:
+        with open(xmldir, 'r', encoding='utf-8') as fp:
             dom = minidom.parse(fp)
         node_root = ET.fromstring(dom.toxml())
         #in_file = open(xmldir)
@@ -79,6 +88,9 @@ class VOCToolSet:
             node_name = Element('name')
             node_name.text = str(oc['name'])
             node_object.append(node_name)
+            node_prob = Element('prob')
+            node_prob.text = oc.get('prob', '')
+            node_object.append(node_prob)
             node_pose = Element('pose')
             node_pose.text = oc.get('pose', "Unspecified")
             node_object.append(node_pose)
@@ -105,7 +117,7 @@ class VOCToolSet:
             node_root.append(node_object)
         xml = ET.tostring(node_root)
         dom = minidom.parseString(xml)
-        with open(xmldir, 'w') as f:
+        with open(xmldir, 'w', encoding='utf-8') as f:
             dom.writexml(f, '', '\t', '\n', 'utf-8')
         #xml = tostring(node_root, pretty_print=True, encoding='utf-8')  # 格式化显示，该换行的换行
         #file_object = open(xmldir, 'wb')
@@ -156,7 +168,7 @@ class VOCToolSet:
         tree._setroot(node_root)
         xml = ET.tostring(node_root)
         dom = minidom.parseString(xml)
-        with open(xmldir, 'w') as f:
+        with open(xmldir, 'w', encoding='utf-8') as f:
             dom.writexml(f, '', '\t', '\n', 'utf-8')
         #node_folder = SubElement(node_root, 'folder')
         #node_folder.text = 'imge'
@@ -179,7 +191,8 @@ class VOCToolSet:
         in_file = open(xmldir)
         tree = ET.parse(in_file)
         root = tree.getroot()
-        ret['path'] = root.find('path').text
+        path = root.find('path') # path有无无所谓
+        ret['path'] = path.text if path is not None else ''
         ret['filename'] = root.find('filename').text
         size = root.find('size')
         ret['width'] = int(size.find('width').text)

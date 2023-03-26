@@ -33,6 +33,9 @@ if options.StartUp:
             self._datasets_lock = threading.Lock()
             pass
 
+        def save_image_objects(self, dataset, imgid):
+            pass
+
         def get_image_objects(self, dataset, imgid):
             pass
 
@@ -90,16 +93,18 @@ if options.StartUp:
             pass
         finally:
             return json.dumps(ret)
-            pass
         pass
 
-    class ShowLabelRe(BaseModel):
+    class ImageObjects(BaseModel):
+        pass
+
+    class GetLabelRe(BaseModel):
         taskid: str
         dataset: str
         imageid: str
 
-    @app.post('/show_label')
-    async def show_label(request: MyRequest):
+    @app.post('/get_label')
+    async def get_label(request: GetLabelRe):
         ret = {
             'taskid': '',
             'Status': True,
@@ -119,4 +124,15 @@ if options.StartUp:
         finally:
             return json.dumps(ret)
         pass
+
+    class SaveLabelRe(BaseModel):
+        taskid: str
+        dataset: str
+        imageid: str
+        image_objects: ImageObjects
+
+    @app.post('/save_label')
+    async def save_label(request: SaveLabelRe):
+        pass
+
     uvicorn.run(app='api:app', host=options.IP, port=options.Port)

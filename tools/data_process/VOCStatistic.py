@@ -9,13 +9,15 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import os, copy, json, random, argparse, sys
 random.seed(1995)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+from Putil.tools.data_process.voc_util import VOCToolSet
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--xml_root', dest='XmlRoot', type=str, default='', help='指定xml存储路径')
+parser.add_argument('--image_root', dest='ImageRoot', type=str, default='', help='指定图像集合根目录，如果不指定，可能出现xml文件纯在但image不存在的情况，\n这对统计是存在差错的')
 parser.add_argument('--statistic_file', dest='StatisticFile', type=str, default='', help='指定统计结果保存位置(csv文件)，默认为空字符时，保存到xml_root上层目录/voc_xml_statistic.csv')
 options = parser.parse_args()
 
-xmls = os.listdir(options.XmlRoot)
 if options.StatisticFile == '':
     result_name = 'voc_xml_statistic.csv'
     os.path.join(os.path.dirname(options.XmlRoot), result_name)
@@ -24,8 +26,18 @@ else:
     if not os.path.exists(os.path.dirname(options.StatisticFile)):
         print('statistic_file: {0}, root dir not found'.format(options.StatisticFile))
         sys.exit(1)
-        pass
     pass
+
+if options.ImageRoot == '':
+    print('可能出现xml文件纯在但image不存在的情况，这容易出现统计出错，直接使用xml路径进行统计')
+    xmls = os.listdir(options.XmlRoot)
+    pass
+else:
+    xmls = list()
+    for img in os.listdir(options.ImageRoot):
+        imgdir = os.path.join(options.ImageRoot, img)
+        if os.path.exists(os.path.join(options.XmlRoot, VOCToolSet.id2xml(VOCToolSet.image2id(imgdir)))):
+            xmls.append(VOCToolSet.id2xml(VOCToolSet.image2id(imgdir)))
 
 def convert(size, box):
     dw = 1./(size[0])  # 有的人运行这个脚本可能报错，说不能除以0什么的，你可以变成dw = 1./((size[0])+0.1)

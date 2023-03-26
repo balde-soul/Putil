@@ -63,7 +63,15 @@ if options.SepContainTargetAndNot:
         fp.writelines('\n'.join(contain))
         fp.writelines('\n')
         pass
+    with open(os.path.join(options.SaveTo, 'contain.txt'), 'w') as fp:
+        fp.writelines('\n'.join(contain))
+        fp.writelines('\n')
+        pass
     with open(os.path.join(options.SaveTo, '{0}-not-contain.txt'.format('-'.join(options.TargetClass))), 'w') as fp:
+        fp.writelines('\n'.join(not_contain))
+        fp.writelines('\n')
+        pass
+    with open(os.path.join(options.SaveTo, 'not-contain.txt'), 'w') as fp:
         fp.writelines('\n'.join(not_contain))
         fp.writelines('\n')
         pass

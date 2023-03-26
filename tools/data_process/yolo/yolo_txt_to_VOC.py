@@ -35,18 +35,6 @@ def convert(img, box):
     y = (y * 2 - h) / 2
     return name, x, y, w, h
 
-def extract_objects_from_txt(txt_path, category_set):
-    objects = list()
-    with open(txt_img, "r") as f:
-        for line in f.readlines():
-            line = line.strip('\n')
-            txt_info = line.split(" ")
-            name, x, y, w, h= convert(img, txt_info)
-            objects.append({'name': category_set[naem], 'bbox': [x, y, x + w, y + h]})
-            pass
-        pass
-    return objects
-
 # 单个文件转换
 def txt_xml(img_path, txt_path, xml_save_to, category_set):
     clas = []
@@ -55,7 +43,7 @@ def txt_xml(img_path, txt_path, xml_save_to, category_set):
     img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
     imh, imw = img.shape[0: 2]
     txt_img = txt_path
-    with open(txt_img, "r") as f:
+    with open(txt_img, "r", encoding='utf-8') as f:
         for line in f.readlines():
             line = line.strip('\n')
             list = line.split(" ")
@@ -96,7 +84,7 @@ def txt_xml(img_path, txt_path, xml_save_to, category_set):
         node_ymax.text = str(int(clas[i][2] + clas[i][4] + 0.5))
     xml = tostring(node_root, pretty_print=True)  # 格式化显示，该换行的换行
     img_newxml = os.path.join(xml_save_to, img_id + '.xml')
-    file_object = open(img_newxml, 'wb')
+    file_object = open(img_newxml, 'wb', encoding='utf-8')
     file_object.write(xml)
     file_object.close()
 
@@ -143,7 +131,7 @@ else:
     print('image_list_file_path: {0} type no supported'.format(options.ImageListFilePath))
     sys.exit(1)
     pass
-with open(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), '{0}.info'.format(os.path.split(os.path.abspath(__file__))[1].split('.')[0])), 'w') as info_fp:
+with open(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), '{0}.info'.format(os.path.split(os.path.abspath(__file__))[1].split('.')[0])), 'w', encoding='utf-8') as info_fp:
     for img_path in img_paths:
         if img_path is None:
             break
@@ -152,14 +140,38 @@ with open(os.path.join(os.path.dirname(os.path.abspath(options.XmlRoot)), '{0}.i
         if not os.path.exists(img_path):
             info_fp.write('{0} does not exist\n'.format(img_path))
             continue
-            pass
         if not os.path.exists(txt_path):
             info_fp.write('{0} does not exist\n'.format(txt_path))
             continue
-            pass
-        #objects = extract_objects_from_txt(txt_path, options.CategorySet)
-        #VOCToolSet.generate_empty_xml(img_path, os.path.join(XmlRoot, VOCToolSet.id2xml(img_id)))
-        #VOCToolSet.append_object(os.path.join(XmlRoot, VOCToolSet.id2xml(img_id)), objects)
-        txt_xml(img_path, txt_path, options.XmlRoot, options.CategorySet)
+
+        clas = []
+        img_name = os.path.split(img_path)[-1]
+        img_id = img_name.split('.')[0]
+        img = cv2.imdecode(np.fromfile(img_path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+        imh, imw = img.shape[0: 2]
+        txt_img = txt_path
+        with open(txt_img, "r", encoding='utf-8') as f:
+            for line in f.readlines():
+                line = line.strip('\n')
+                _list = line.split(" ")
+                _list = convert(img, _list)
+                clas.append(_list)
+        objects = list()
+#     * [{'name': str, 'bbox': {'xmin': int, 'ymin': int, 'xmax': int, 'ymax': int}, 'pose': str, 'truncated': int, 'difficult': int}]
+        for i in range(len(clas)):
+            objects.append(
+                {
+                    'name': str(options.CategorySet[int(clas[i][0])]),
+                    'bbox': {
+                        'xmin': int(clas[i][1] + 0.5),
+                        'ymin': int(clas[i][2] + 0.5),
+                        'xmax': int(clas[i][1] + clas[i][3] + 0.5),
+                        'ymax': int(clas[i][2] + clas[i][4] + 0.5)
+                    }
+                }
+            )
+        VOCToolSet.generate_empty_xml(img_path, os.path.join(options.XmlRoot, VOCToolSet.id2xml(img_id)))
+        VOCToolSet.append_object(os.path.join(options.XmlRoot, VOCToolSet.id2xml(img_id)), objects)
+        #txt_xml(img_path, txt_path, options.XmlRoot, options.CategorySet)
         pass
 pass

@@ -21,6 +21,7 @@ if len(options.OriginalCategory) != len(options.TargetCategory):
     pass
 else:
     reflect_map = {o: t for o, t in zip(options.OriginalCategory, options.TargetCategory)}
+    print(reflect_map)
     pass
 
 
