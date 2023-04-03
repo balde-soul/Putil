@@ -55,7 +55,7 @@ def convert(size, box):
 statistic = list()
 
 for xml in xmls:
-    in_file = open(os.path.join(options.XmlRoot, xml))
+    in_file = open(os.path.join(options.XmlRoot, xml), encoding='utf-8')
     tree = ET.parse(in_file)
     root = tree.getroot()
     image_name = root.find('filename').text

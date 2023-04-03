@@ -125,7 +125,7 @@ if len(options.CategorySet) == 0:
 if os.path.isdir(options.ImageListFilePath):
     img_paths = [os.path.join(options.ImageListFilePath, i) for i in os.listdir(options.ImageListFilePath)]
 elif os.path.isfile(options.ImageListFilePath):
-    with open(options.ImageListFilePath, 'r') as fp:
+    with open(options.ImageListFilePath, 'r', encoding='utf-8') as fp:
         img_paths = [i.strip('\n') for i in fp.readlines()]
 else:
     print('image_list_file_path: {0} type no supported'.format(options.ImageListFilePath))

@@ -42,16 +42,11 @@ class_reflect = {c: cs_index for cs_index, cs in enumerate([cr.split(',') for cr
 if class_reflect != {}:
     print('use class reflect')
     one_hot_extract = list(set([class_reflect[a] for a in class_filter_and_onehot]))
-    if max(one_hot_extract) != (len(one_hot_extract) - 1):
-        print('one_hot_extract: {0}'.format(one_hot_extract))
-        print('class_filter_and_onehot: {0}'.format(class_filter_and_onehot))
-        print('class_reflect: {0}'.format(class_reflect))
-        raise RuntimeError('unfit')
-        pass
-    pass
+    print('one_hot_extract: {0}'.format(one_hot_extract))
+    print('class_filter_and_onehot: {0}'.format(class_filter_and_onehot))
+    print('class_reflect: {0}'.format(class_reflect))
 else:
     print('use default class filter {0} for onehot'.format(class_filter_and_onehot))
-    pass
 
 if not os.path.exists(formated_save_to):  # 修改路径（最好使用全路径）
     os.makedirs(formated_save_to)  # 修改路径（最好使用全路径）
@@ -88,8 +83,8 @@ def convert(size, box):
 # @param[in]
 # @return 
 def convert_annotation(xml_id, classes):
-    in_file = open(os.path.join(xml_root, '{0}.xml'.format(xml_id)))
-    out_file = open(os.path.join(formated_save_to, '{0}.txt'.format(xml_id)), 'w')
+    in_file = open(os.path.join(xml_root, '{0}.xml'.format(xml_id)), encoding='utf-8')
+    out_file = open(os.path.join(formated_save_to, '{0}.txt'.format(xml_id)), 'w', encoding='utf-8')
     tree = ET.parse(in_file)
     root = tree.getroot()
     image_name = root.find('filename').text
