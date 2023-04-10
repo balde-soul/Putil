@@ -16,10 +16,10 @@ parser.add_argument('--xml_mode', dest='XmlMode', action='store_true', default=F
 parser.add_argument('--image_mode', dest='ImageMode', action='store_true', default=False, help='使用image模式，即根据TSetImageRoot中文件从OSetXmlRoot中提取标记到TSetXmlRoot')
 options = parser.parse_args()
 
-ImageRoot = r'D:\download_from_server\MyDataset\JPEGImages'
-
-XmlRoot = r'D:\download_from_server\SCUT-Filtered\a'
-ToImageRoot = r'D:\download_from_server\SCUT-Filtered\JPEGImages-ForChefHat-Manualed'
+#ImageRoot = r'D:\download_from_server\MyDataset\JPEGImages'
+#
+#XmlRoot = r'D:\download_from_server\SCUT-Filtered\a'
+#ToImageRoot = r'D:\download_from_server\SCUT-Filtered\JPEGImages-ForChefHat-Manualed'
 
 if not (options.ImageMode or options.XmlMode):
     print('no mode specified')

@@ -57,8 +57,8 @@ if options.SepContainTargetAndNot:
         if not has:
             not_contain.append(i)
         pass
-    print('contain {0} set: {1}'.format('-'.join(options.TargetClass), len(contain)))
-    print('not contain {0} set: {1}'.format('-'.join(options.TargetClass), len(not_contain)))
+    print('contain {0} set: {1}'.format(' '.join(options.TargetClass), len(contain)))
+    print('not contain {0} set: {1}'.format(' '.join(options.TargetClass), len(not_contain)))
     with open(os.path.join(options.SaveTo, '{0}-contain.txt'.format('-'.join(options.TargetClass))), 'w') as fp:
         fp.writelines('\n'.join(contain))
         fp.writelines('\n')
