@@ -131,7 +131,7 @@ for index, sn in zip(set_index, set_name):
                 pass
             pass
         except Exception as ex:
-            print(ex.args)
+            print('{0} raise: {1}'.format(xml_id, ex.args))
             raise ex
             continue
         pass

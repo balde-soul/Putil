@@ -75,10 +75,17 @@ if __name__ == '__main__':
         pass
     else:
         xmls = list()
-        for img in os.listdir(options.ImageRoot):
+        imgs = os.listdir(options.ImageRoot)
+        has_labeled_imgs = list()
+        for img in imgs:
             imgdir = os.path.join(options.ImageRoot, img)
             if os.path.exists(os.path.join(options.XmlRoot, VOCToolSet.id2xml(VOCToolSet.image2id(imgdir)))):
                 xmls.append(VOCToolSet.id2xml(VOCToolSet.image2id(imgdir)))
+                has_labeled_imgs.append(img)
+                pass
+            pass
+        imgs = has_labeled_imgs
+        pass
 
     '''
     def convert(size, box):
@@ -97,11 +104,11 @@ if __name__ == '__main__':
 
     statistic = list()
 
-    for xml in xmls:
+    for xml, img in zip(xmls, imgs):
         in_file = open(os.path.join(options.XmlRoot, xml), encoding='utf-8')
         tree = ET.parse(in_file)
         root = tree.getroot()
-        image_name = root.find('filename').text
+        image_name = img
         size = root.find('size')
         w = int(size.find('width').text)
         h = int(size.find('height').text)
